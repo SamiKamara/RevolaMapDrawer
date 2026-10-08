@@ -16,6 +16,9 @@ offline Windows map editor.
 - Verify actual wall previews, drawing, facing changes and native save/reopen in
   source and packaged release checks, with views fitted to smaller test windows.
 
+Published as the latest Windows x64 portable release with its SHA-256 checksum:
+[v0.10.4](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.4).
+
 ## [0.10.3] - 2026-10-08
 
 Prepared source only; superseded by 0.10.4 before public release after hosted

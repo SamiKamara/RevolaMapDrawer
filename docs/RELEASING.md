@@ -17,7 +17,7 @@ to create drafts for review; they do not publish automatically.
 
 ## Delivered files
 
-The two prepared release assets for version `0.10.4` are:
+The two uploaded release assets for version `0.10.4` are:
 
 - `RevolaMapDrawer-0.10.4-win-x64.zip` — the complete portable Windows x64 folder;
 - `SHA256SUMS.txt` — the SHA-256 checksum of that exact ZIP.

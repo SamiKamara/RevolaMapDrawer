@@ -6,15 +6,75 @@ Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pen
 
 - [x] Fit the focused airlock UI checks to smaller windows, retain actual preview,
   pointer and persistence assertions, and prepare version 0.10.4.
-- [ ] Verify the complete local portable build and the compact-window regression.
-- [ ] Commit/push `main`, create immutable v0.10.4 and verify hosted checks/draft.
-- [ ] Publish verified v0.10.4 as latest and verify the public downloadable assets.
-- [ ] Inspect and launch the actual desktop shortcut for the final handoff.
+- [x] Verify the complete local portable build and the compact-window regression.
+- [x] Commit/push `main`, create immutable v0.10.4 and verify hosted checks/draft.
+- [x] Publish verified v0.10.4 as latest and verify the downloadable assets.
+- [x] Inspect and launch the actual desktop shortcut for the final handoff.
 
 The owner's release-update request remains the authorization. The first hosted
 attempt exposed a fixed-zoom assumption in the new UI test, after v0.10.3 had
 already been tagged. Version 0.10.4 corrects test framing while retaining the
 same application geometry. The v0.10.3 tag remains unchanged and unpublished.
+
+### Version 0.10.4 release verification — 2026-10-08
+
+- Preparation commit **53747d086b07f41986e495c388f5d44d13809c99** was pushed
+  directly to synchronized `main`. [Verify application run 37775610556](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/37775610556)
+  passes **243/243** tests, source/packaged UI and the compact wall-start checks.
+  The maintained `scripts/create-release.ps1 -Version 0.10.4 -Push` repeated the
+  full local build, exact package/ZIP verification and extracted offline save/
+  reopen before creating immutable **v0.10.4** at that same commit. Local and
+  remote annotated tags peel to it. No existing tag was altered.
+- The local tagging build ZIP is **158,199,041 bytes**, SHA-256
+  **ac0bf765c87f12d9e834d1df670445efa66a5f2062598186d443ed32e6590252**.
+  Its checksum agrees and all **77** ZIP files match the verified package.
+  Extracted native persistence preserves the exact **36-wall** graph, with no
+  renderer errors or HTTP(S) requests. The prior independent preparation ZIP has
+  its own build checksum; cross-build/environment reproducibility is not claimed.
+- [Build release run 37778553179](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/37778553179)
+  passes every step, including the actual draft-creation step. Hosted tests pass
+  **243/243** with no skipped tests. Source and packaged checks each pass **11**
+  generated floor groups and the focused **10** fixture views, **eight** wall
+  placements, **four** facing/legacy compatibility groups and **six** native
+  raster crops at the compact **715 × 448** canvas. Optional private floor
+  fixture coverage is not configured and is not claimed.
+- Downloaded the hosted draft's exact ZIP and checksum into ignored
+  `artifacts/release-0.10.4-hosted-assets/`. ZIP: **162,821,121 bytes**, SHA-256
+  **9024efcfd3689b01d3ff28e1d011e40aac1720bca48949f25be495abd7b4c85c**,
+  agreeing with the checksum, GitHub asset digest and hosted build logs. Its
+  **77** files include the complete runtime and notices. Two local text files
+  differed only by CRLF/LF; the downloaded `src/render.js` and `src/style.css`
+  bytes matched the immutable Git blobs exactly. Normalized the local files to
+  those committed LF bytes without changing source content, then the downloaded
+  archive's **20** runtime files/minimal manifest matched byte-for-byte. Its
+  extracted native offline save/reopen independently passes with **36 walls**,
+  exact geometry, no renderer errors and **zero network requests**. The local
+  desktop package was refreshed after this line-ending normalization.
+- Published [v0.10.4](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.4)
+  at **2026-10-08 12:45:47 UTC**, with `draft=false`, `prerelease=false` and
+  explicit latest status. The reviewed final notes omit the draft-pending sentence.
+  Latest-release metadata identifies **v0.10.4** and the exact two verified assets:
+  `RevolaMapDrawer-0.10.4-win-x64.zip` and `SHA256SUMS.txt`. The repository remains
+  public, default branch `main`; no visibility change was made. The v0.10.3
+  preparation tag remains unpublished and untouched.
+- Anonymous release-page and public checksum downloads both return **HTTP 200**;
+  the public checksum retains the exact verified hosted ZIP hash above. README,
+  changelog and release instructions now identify the published latest release.
+  All **31** local relative documentation links still resolve.
+- Final `npm run package` and `npm run test:packaged` pass after normalizing the
+  local source bytes. All **20** runtime files and the minimal **0.10.4** manifest
+  match source, with native persistence, SVG/floor checks and compact wall-start
+  checks passing without renderer errors. Fresh `-VerifyOnly` shortcut readback
+  confirms direct target `<repository root>\dist\RevolaMapDrawer-win32-x64\RevolaMapDrawer.exe`,
+  empty arguments, repository working directory and existing target/icon paths.
+  Launched the actual desktop `.lnk` through Windows Shell; Computer Use verified
+  the packaged `resources/app.asar/index.html` editor, **8192 × 8192** canvas,
+  corrected upper-corner handles, image export controls and clean **0 walls / 0
+  doors** with disabled history. Left it in Wall mode at **52%** airlock zoom.
+  No user map was opened or modified. The final documentation-only follow-up
+  records publication evidence without moving the release tag or altering runtime
+  application files. Generated distributions, downloaded verification artifacts
+  and the desktop shortcut remain outside Git.
 
 ### Version 0.10.4 viewport preparation — 2026-10-08
 
