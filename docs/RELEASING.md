@@ -6,12 +6,14 @@ ModularGameOverlay reference: manually prepared versions and changelog entries,
 verified Windows builds, immutable version tags and GitHub Actions. This project
 creates **draft releases** for owner review by default.
 
-The repository is currently private at
+The public source repository is
 [SamiKamara/RevolaMapDrawer](https://github.com/SamiKamara/RevolaMapDrawer).
-The owner will inspect it before deciding whether to make it public. Building,
+The first public portable release is
+[v0.10.2](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.2).
+The owner authorized release publication and public visibility on **2026-10-08**. Building,
 tagging, creating a draft and publishing a reviewed release are separate actions;
-none changes repository visibility. Version `0.10.2` is the prepared baseline,
-not a claim that a GitHub Release already exists.
+none changes repository visibility. Future release scripts and workflows continue
+to create drafts for review; they do not publish automatically.
 
 ## Delivered files
 
@@ -28,6 +30,7 @@ Windows ARM64 packages, installers, automatic updates and Authenticode signing
 are not currently provided.
 
 The ZIP contains standalone `README.txt` instructions, `DISTRIBUTION.md`,
+the project's MIT license as `LICENSE-RevolaMapDrawer.txt`,
 `THIRD-PARTY-NOTICES.txt` and Electron's unchanged `LICENSE` and
 `LICENSES.chromium.html`. The application archive contains only `index.html`,
 runtime `src/`, `electron/`, `assets/` and a minimal `package.json`. It excludes
@@ -35,10 +38,12 @@ Git metadata, agent instructions, development dependencies, tests, original
 reference PNGs, the Finnish brief, personal maps and generated test evidence.
 GitHub's automatic source archives are separate from the portable application.
 
-Read [DISTRIBUTION.md](DISTRIBUTION.md) before public distribution. The application
-license and permission to distribute supplied game/reference artwork require
-owner review. The bundled Electron licenses do not grant rights to that artwork.
-This review does not block the authorized private repository preparation.
+Read [DISTRIBUTION.md](DISTRIBUTION.md) before distribution. The project's
+original code, documentation and assets use the [MIT License](../LICENSE),
+unless separately identified as third-party material. Preserve its copyright
+and license notice in software copies or substantial portions, and keep the
+separate runtime license files unchanged. Exported maps do not need a Revola
+Map Drawer credit.
 
 ## Prepare a version
 
@@ -152,7 +157,8 @@ gh run download RUN_ID --name RevolaMapDrawer-0.10.2-win-x64
 
 Use the real run ID returned by `gh run list`. This path leaves the verified ZIP,
 checksum and notes as an Actions artifact for inspection for 14 days. It creates
-no release and no tag. GitHub CLI must be authenticated to the private repository.
+no release and no tag. GitHub CLI must be authenticated with permission to run
+workflows in this repository.
 
 To rebuild an existing version tag for inspection without uploading a draft:
 
@@ -190,7 +196,7 @@ ZIP contents. A new release is always created with `--draft --latest=false
 same verification. Published releases are rejected. Failed commands leave a
 draft or local tag available for inspection; they do not automatically publish it.
 
-## Publish a reviewed draft later
+## Publish a reviewed draft
 
 An owner can explicitly authorize an agent to publish a reviewed draft. After
 confirming the intended tag, assets, checksums, release notes and distribution
@@ -200,10 +206,10 @@ status, the publication command is:
 gh release edit v0.10.2 --repo SamiKamara/RevolaMapDrawer --draft=false
 ```
 
-Run it only for the explicitly approved version. This is outside the current
-private preparation task and is not executed by scripts or workflows. Publishing
-a release still does not make a private repository public. Repository visibility
-is a separate later owner decision, after the source/artwork/license review.
+Run it only for the explicitly approved version after the draft and its assets
+have been verified. Scripts and workflows do not execute this publication step.
+Publishing a release does not change repository visibility; any future visibility
+change still requires the owner's separate instruction.
 
 ## Check a downloaded ZIP
 

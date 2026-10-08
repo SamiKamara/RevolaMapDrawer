@@ -8,9 +8,9 @@ The application runs locally without an account, internet connection or developm
 
 ## Portable Windows package
 
-The repository is private for owner review; access must be granted by the owner. The first release has not been published as part of this preparation, and making the repository public is a later owner decision. Once a release is available to you:
+The source repository is public. The first portable release is [v0.10.2](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.2):
 
-1. Open [Releases](https://github.com/SamiKamara/RevolaMapDrawer/releases) and download the versioned `RevolaMapDrawer-<version>-win-x64.zip` asset. GitHub's automatic **Source code** archives are for development and do not contain a runnable packaged app.
+1. Open [v0.10.2](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.2) and download `RevolaMapDrawer-0.10.2-win-x64.zip`. GitHub's automatic **Source code** archives are for development and do not contain a runnable packaged app.
 2. Extract the ZIP completely to a folder you can write to. Keep the entire `RevolaMapDrawer-win32-x64` folder together, including `resources` and the supporting DLLs and license files.
 3. Run **`RevolaMapDrawer.exe`** inside that extracted folder.
 
@@ -156,4 +156,6 @@ Python and Pillow are only needed for this development utility, not to run or pa
 
 ## License and supplied artwork
 
-A project license has not yet been selected. The owner must review the code license and redistribution rights for the supplied reference images, derived ship artwork and star texture before public distribution. The reference notes document technical provenance; they do not establish ownership or permission. Bundled Electron/Chromium license notices remain in the portable package. The [distribution review](docs/DISTRIBUTION.md) records the current publication stage, asset provenance and pending decisions.
+Revola Map Drawer is available under the [MIT License](LICENSE), copyright **2026 SamiKamara**. You may use, modify and redistribute the project, including commercially, while retaining its copyright and license notice in copies or substantial portions of the software. The license covers the project's original code, documentation and assets unless a component is separately identified as third-party material. [The standard MIT terms](https://opensource.org/license/mit) describe the notice requirement and warranty disclaimer.
+
+You can use and share exported maps without adding a Revola Map Drawer credit. The software's notice requirement does not require a credit printed on every map. Bundled Electron/Chromium and other third-party components retain their own licenses. The reference notes record how supplied materials were used without asserting ownership of the Revola game or third-party materials. See [distribution and asset provenance](docs/DISTRIBUTION.md) for the project license, bundled notices and material provenance.

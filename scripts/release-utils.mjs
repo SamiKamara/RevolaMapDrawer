@@ -64,12 +64,12 @@ export function isRuntimePath(candidate) {
 }
 
 export function runtimeManifest(packageJson) {
-  return Object.fromEntries(['name', 'version', 'description', 'type', 'main'].map(key => [key, packageJson[key]]));
+  return Object.fromEntries(['name', 'version', 'description', 'license', 'type', 'main'].map(key => [key, packageJson[key]]));
 }
 
 export function portableReadme(version) {
   requireVersion(version);
-  return `Revola Map Drawer ${version}\n\nA specialized offline map editor for Revola: Post Hyper.\nIt is not a general-purpose drawing tool.\n\nWindows x64 portable application\n1. Extract the entire ZIP into a normal folder.\n2. Open RevolaMapDrawer.exe in this folder.\n3. Keep all files and subfolders together. No installation, Node.js,\n   development server or internet connection is needed to run the editor.\n\nSave wall PNG or Save project to preserve editable maps. Wall SVG and\nfloor PNG/SVG are image exports without editable project data.\n\nThis executable is not Authenticode-signed.\nRead adjacent DISTRIBUTION.md for application/artwork distribution status.\nThird-party runtime licenses: LICENSE, LICENSES.chromium.html and\nTHIRD-PARTY-NOTICES.txt in this folder.\n\nVerify the downloaded ZIP against its SHA256SUMS.txt before extracting.\nFull instructions and limitations:\nhttps://github.com/${RELEASE_REPOSITORY}/blob/main/README.md\nRelease process:\nhttps://github.com/${RELEASE_REPOSITORY}/blob/main/docs/RELEASING.md\n`;
+  return `Revola Map Drawer ${version}\n\nA specialized offline map editor for Revola: Post Hyper.\nIt is not a general-purpose drawing tool.\n\nWindows x64 portable application\n1. Extract the entire ZIP into a normal folder.\n2. Open RevolaMapDrawer.exe in this folder.\n3. Keep all files and subfolders together. No installation, Node.js,\n   development server or internet connection is needed to run the editor.\n\nSave wall PNG or Save project to preserve editable maps. Wall SVG and\nfloor PNG/SVG are image exports without editable project data.\n\nApplication source and documentation: MIT license, Copyright (c) 2026 SamiKamara.\nYou may use, modify and redistribute the software, including commercially.\nPreserve the copyright and permission notice in copies or substantial portions.\nRead LICENSE-RevolaMapDrawer.txt for the full project license and\nDISTRIBUTION.md for the separate supplied artwork/reference terms.\nThird-party runtime licenses: LICENSE, LICENSES.chromium.html and\nTHIRD-PARTY-NOTICES.txt in this folder. The adjacent LICENSE belongs to Electron.\nThis executable is not Authenticode-signed.\n\nVerify the downloaded ZIP against its SHA256SUMS.txt before extracting.\nFull instructions and limitations:\nhttps://github.com/${RELEASE_REPOSITORY}/blob/main/README.md\nRelease process:\nhttps://github.com/${RELEASE_REPOSITORY}/blob/main/docs/RELEASING.md\n`;
 }
 
 export function portableDistributionNotice(source) {
@@ -118,6 +118,10 @@ export async function verifyPackagedSource(root, packageDirectory) {
   assert.deepEqual(JSON.parse(extractFile(archive, 'package.json')), runtimeManifest(sourceManifest), 'Packaged manifest must contain the exact version and only runtime metadata.');
   assert.equal(await fs.readFile(path.join(packageDirectory, 'README.txt'), 'utf8'), portableReadme(sourceManifest.version), 'Portable launch instructions must match this version.');
   assert.equal(await fs.readFile(path.join(packageDirectory, 'DISTRIBUTION.md'), 'utf8'), portableDistributionNotice(await fs.readFile(path.join(root, 'docs', 'DISTRIBUTION.md'), 'utf8')), 'Packaged distribution notice must match the current maintained notice.');
+  const projectLicense = await fs.readFile(path.join(root, 'LICENSE'));
+  const packagedLicense = await fs.readFile(path.join(packageDirectory, 'LICENSE-RevolaMapDrawer.txt'));
+  assert.ok(projectLicense.length > 0, 'Project license must not be empty.');
+  assert.ok(packagedLicense.equals(projectLicense), 'Packaged project license must match the current LICENSE byte-for-byte.');
   for (const file of ['RevolaMapDrawer.exe', 'LICENSE', 'LICENSES.chromium.html', 'THIRD-PARTY-NOTICES.txt']) {
     assert.ok((await fs.stat(path.join(packageDirectory, file))).size > 0, `Required portable file missing or empty: ${file}`);
   }

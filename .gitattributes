@@ -11,4 +11,5 @@
 *.ps1 text eol=crlf
 *.cmd text eol=crlf
 *.png binary
+LICENSE text eol=lf
 "alustava toteutusohje.txt" -text

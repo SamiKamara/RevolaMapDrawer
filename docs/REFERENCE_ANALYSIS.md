@@ -2,7 +2,7 @@
 
 Measured and visually reviewed on 2026-10-06; upper airlock doorway extraction updated on 2026-10-07 and symmetric airlock correction on 2026-10-08. Sources are the unchanged root files `RevolaCandiMapASample.png` and `RevolaCandiMapBSample.png`. Measurements use original image pixels; one map unit is one reference pixel.
 
-These references guide a specialized map tool for **Revola: Post Hyper**. Their measured style and dimensions are not a specification for a general drawing application. The source files and derived artwork were supplied for this project; this analysis records technical provenance, not an ownership claim or redistribution permission. The owner must review those rights, the supplied `assets/editor-stars.png` texture and the project license before public distribution.
+These references guide a specialized map tool for **Revola: Post Hyper**. Their measured style and dimensions are not a specification for a general drawing application. The source files and derived artwork were supplied for this project; this analysis records technical provenance without asserting ownership of the Revola game or third-party materials. The owner authorized this project's public distribution and selected the standard MIT License on 2026-10-08. The project's original code, documentation and assets use [MIT](../LICENSE), unless separately identified as third-party material; see [DISTRIBUTION.md](DISTRIBUTION.md) for license scope and bundled notices.
 
 ## Inspection and reproducibility
 

@@ -2,6 +2,16 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Public release and MIT license — 2026-10-08
+
+- [x] Owner reviewed the private project and explicitly authorized the GitHub release and public repository.
+- [-] Apply the standard MIT license with the original copyright and permission notices preserved, update distribution documentation, and include the project license separately from Electron's licenses in the portable package.
+- [-] Verify the rebuilt version **0.10.2** locally, create its immutable release tag from synchronized `main`, and verify the tag-triggered GitHub build and draft assets.
+- [-] Publish the verified release as latest, change repository visibility to public, and verify public access and downloadable assets.
+- [-] Inspect and launch the latest packaged executable through the real desktop shortcut and record final release evidence.
+
+The owner's publication request and later permissive-license request are the authorization for this milestone. Software and map geometry remain at version **0.10.2**; no released tag exists yet. The original brief and source PNGs remain unchanged. No user map is modified: the existing test window contained a clean Untitled map with **0 walls / 0 doors**, disabled undo/redo and no unsaved indicator before normal close for rebuilding.
+
 ## Private distribution preparation — 2026-10-08
 
 - [x] Refresh the English README and documentation around the specialized **Revola: Post Hyper** map workflow and portable Windows distribution.
@@ -9,8 +19,8 @@ Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pen
 - [x] Verify geometry, UI, packaged application, complete portable archive and the actual desktop shortcut.
 - [x] Create and push `SamiKamara/RevolaMapDrawer` on `main` as a private GitHub repository for owner review.
 - [x] Verify the hosted main CI and the manual release build without creating a tag or release.
-- [ ] Owner review before public visibility or release publication.
-- [ ] Select a software license and document supplied artwork/reference redistribution terms before public distribution.
+- [x] Owner review before public visibility or release publication; approved in the subsequent publication request.
+- [x] Owner selected a common permissive attribution license; the standard MIT license is applied in the subsequent public-release milestone.
 
 Scope: keep application version **0.10.2**, existing geometry and document schema unchanged. This milestone prepares the release process; it does not create a release tag, publish a release or make the repository public. Source references remain unchanged. Historical machine paths below use `<repository root>` and `<desktop>` placeholders; private user maps and backups stay outside Git.
 

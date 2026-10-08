@@ -70,15 +70,15 @@ test('production allowlist rejects repository metadata, originals, dependencies 
   for (const name of ['', '/src', '/src/app.js', '\\electron\\preload.cjs', '/assets/ship.png', '/assets/ship-floor-contour.js', 'package.json', 'index.html']) {
     assert.equal(isRuntimePath(name), true, name);
   }
-  for (const name of ['.git/config', '.github/workflows/release.yml', 'AGENTS.md', 'README.md', 'docs/DESIGN.md',
+  for (const name of ['.git/config', '.github/workflows/release.yml', 'AGENTS.md', 'README.md', 'LICENSE', 'docs/DESIGN.md',
     'tests/model.test.js', 'scripts/package-app.mjs', 'package-lock.json', 'node_modules/electron/package.json',
     'RevolaCandiMapASample.png', 'alustava toteutusohje.txt', 'personal.revola.json', 'src/../private.js',
     'assets/.private.js', 'src/nested/private.js', 'src/.env.js', 'dist/RevolaMapDrawer.exe']) {
     assert.equal(isRuntimePath(name), false, name);
   }
-  assert.deepEqual(runtimeManifest({ name: 'app', version: '1.2.3', description: 'specialized tool', type: 'module',
+  assert.deepEqual(runtimeManifest({ name: 'app', version: '1.2.3', description: 'specialized tool', license: 'MIT', type: 'module',
     main: 'electron/main.cjs', scripts: { package: 'private-path' }, devDependencies: { electron: '1' }, private: true }),
-  { name: 'app', version: '1.2.3', description: 'specialized tool', type: 'module', main: 'electron/main.cjs' });
+  { name: 'app', version: '1.2.3', description: 'specialized tool', license: 'MIT', type: 'module', main: 'electron/main.cjs' });
 });
 
 test('release output paths stay within the generated release directory', () => {
@@ -94,6 +94,9 @@ test('portable instructions are self-contained and notice references point to ca
   assert.match(portableReadme('0.10.2'), /Revola: Post Hyper/);
   assert.match(portableReadme('0.10.2'), /Extract the entire ZIP/);
   assert.match(portableReadme('0.10.2'), /not Authenticode-signed/);
+  assert.match(portableReadme('0.10.2'), /Preserve the copyright and permission notice/);
+  assert.match(portableReadme('0.10.2'), /LICENSE-RevolaMapDrawer\.txt/);
+  assert.match(portableReadme('0.10.2'), /The adjacent LICENSE belongs to Electron/);
   assert.equal(portableDistributionNotice('[source](REFERENCE_ANALYSIS.md) [root](../README.md) [web](https://example.com) [anchor](#rights)'),
     '[source](https://github.com/SamiKamara/RevolaMapDrawer/blob/main/docs/REFERENCE_ANALYSIS.md) [root](https://github.com/SamiKamara/RevolaMapDrawer/blob/main/README.md) [web](https://example.com) [anchor](#rights)');
 });
@@ -113,11 +116,11 @@ test('checksums reject changed ZIP bytes and unexpected checksum entries', async
   await assert.rejects(verifyChecksums(directory, '0.10.2'), /exactly/);
 });
 
-test('ASAR verification detects stale source, development metadata and stray packaged files', async t => {
+test('package verification detects changed licenses, stale source, development metadata and stray files', async t => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'revola-asar-'));
   t.after(() => fs.rm(directory, { recursive: true, force: true }));
   const source = path.join(directory, 'source'), stage = path.join(directory, 'stage'), packaged = path.join(directory, 'package');
-  const packageJson = { name: 'revola-test', version: '0.10.2', description: 'Test', type: 'module', main: 'electron/main.cjs', scripts: { test: 'node test' } };
+  const packageJson = { name: 'revola-test', version: '0.10.2', description: 'Test', license: 'MIT', type: 'module', main: 'electron/main.cjs', scripts: { test: 'node test' } };
   for (const folder of ['src', 'assets', 'electron', 'docs']) await fs.mkdir(path.join(source, folder), { recursive: true });
   for (const folder of ['src', 'assets', 'electron']) await fs.mkdir(path.join(stage, folder), { recursive: true });
   await fs.mkdir(path.join(packaged, 'resources'), { recursive: true });
@@ -127,6 +130,8 @@ test('ASAR verification detects stale source, development metadata and stray pac
     await fs.copyFile(path.join(source, file), path.join(stage, file));
   }
   await fs.writeFile(path.join(source, 'package.json'), JSON.stringify(packageJson));
+  await fs.writeFile(path.join(source, 'LICENSE'), 'MIT fixture copyright and permission notice\n');
+  await fs.copyFile(path.join(source, 'LICENSE'), path.join(packaged, 'LICENSE-RevolaMapDrawer.txt'));
   await fs.writeFile(path.join(source, 'docs', 'DISTRIBUTION.md'), 'Distribution status [notes](RELEASING.md).');
   await fs.writeFile(path.join(stage, 'package.json'), JSON.stringify(runtimeManifest(packageJson)));
   await fs.writeFile(path.join(packaged, 'README.txt'), portableReadme('0.10.2'));
@@ -135,6 +140,18 @@ test('ASAR verification detects stale source, development metadata and stray pac
   const archive = path.join(packaged, 'resources', 'app.asar');
   const rebuild = async () => { await createPackage(stage, archive); uncache(archive); };
   await rebuild();
+  assert.equal((await verifyPackagedSource(source, packaged)).files, files.length);
+  const packagedLicense = path.join(packaged, 'LICENSE-RevolaMapDrawer.txt');
+  await fs.unlink(packagedLicense);
+  await assert.rejects(verifyPackagedSource(source, packaged), /ENOENT.*LICENSE-RevolaMapDrawer\.txt/);
+  await fs.writeFile(packagedLicense, 'MIT fixture with attribution removed\n');
+  await assert.rejects(verifyPackagedSource(source, packaged), /project license must match.*byte-for-byte/);
+  await fs.writeFile(packagedLicense, '');
+  await assert.rejects(verifyPackagedSource(source, packaged), /project license must match.*byte-for-byte/);
+  await fs.writeFile(path.join(source, 'LICENSE'), '');
+  await assert.rejects(verifyPackagedSource(source, packaged), /Project license must not be empty/);
+  await fs.writeFile(path.join(source, 'LICENSE'), 'MIT fixture copyright and permission notice\n');
+  await fs.copyFile(path.join(source, 'LICENSE'), packagedLicense);
   assert.equal((await verifyPackagedSource(source, packaged)).files, files.length);
   await fs.writeFile(path.join(source, 'src', 'app.js'), 'changed source');
   await assert.rejects(verifyPackagedSource(source, packaged), /Stale packaged source/);
