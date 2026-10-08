@@ -8,9 +8,9 @@ The application runs locally without an account, internet connection or developm
 
 ## Portable Windows package
 
-The source repository is public. Portable version **0.10.3** is prepared for release. The first published portable release was [v0.10.2](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.2).
+The source repository is public. Portable version **0.10.4** is prepared for release. The first published portable release was [v0.10.2](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.2).
 
-1. Once published, open [v0.10.3](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.3) and download `RevolaMapDrawer-0.10.3-win-x64.zip`. GitHub's automatic **Source code** archives are for development and do not contain a runnable packaged app.
+1. Once published, open [v0.10.4](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.4) and download `RevolaMapDrawer-0.10.4-win-x64.zip`. GitHub's automatic **Source code** archives are for development and do not contain a runnable packaged app.
 2. Extract the ZIP completely to a folder you can write to. Keep the entire `RevolaMapDrawer-win32-x64` folder together, including `resources` and the supporting DLLs and license files.
 3. Run **`RevolaMapDrawer.exe`** inside that extracted folder.
 

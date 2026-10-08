@@ -9,7 +9,8 @@ import { shipPorts } from '../src/ship.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packaged = process.argv.includes('--packaged') || process.env.PACKAGED === '1';
-const prefix = packaged ? 'ship-port-packaged' : 'ship-port';
+const compact = process.argv.includes('--compact');
+const prefix = `${packaged ? 'ship-port-packaged' : 'ship-port'}${compact ? '-compact' : ''}`;
 const artifacts = path.join(root, 'artifacts');
 await fs.mkdir(artifacts, { recursive: true });
 const destination = name => path.join(artifacts, `${prefix}-${name}`);
@@ -28,9 +29,10 @@ const desktop = await electron.launch({ ...(packaged ? { executablePath } : { ar
 const page = await desktop.firstWindow({ timeout: 45_000 });
 page.setDefaultTimeout(20_000);
 const errors = []; page.on('pageerror', error => errors.push(error.message));
-const evidence = { packaged, matchingSourceFiles: packaged ? matchingSourceFiles : [], measuredPorts, placements: [], interactions: [], raster: [], rendererErrors: errors };
+const evidence = { packaged, compact, matchingSourceFiles: packaged ? matchingSourceFiles : [], measuredPorts, fixtureViews: [], placements: [], interactions: [], raster: [], rendererErrors: errors };
 
 try {
+  if (compact) await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1024, 700));
   await desktop.evaluate(({ dialog }) => {
     // Replace file choices only; native IPC, project validation and filesystem
     // reads/writes stay in use. This application instance is owned by this test.
@@ -102,11 +104,27 @@ try {
     await page.locator('[data-tool="wall"]').click();
     await expect(page.locator('#undo-button')).toBeDisabled();
     await expect(page.locator('#dirty-dot')).not.toHaveClass(/dirty/);
-    // Real wheel input increases the visible wall thickness for precise pointer
-    // placement and screenshot review. It changes the camera only.
-    const pivot = mapPoint(4110.5, 4700), scale = view.a / view.ratioX;
+    // Fit centers the full map, so this airlock pivot is below the canvas center.
+    // A fixed .35 zoom pushes the upward endpoints off smaller hosted displays.
+    // Bound real wheel zoom by the calibrated viewport and the complete fixture
+    // crop, keeping every drag endpoint and visible handle inside a 24 px inset.
+    const pivotWorld = { x: 4110.5, y: 4700 }, pivot = mapPoint(pivotWorld.x, pivotWorld.y);
+    const bounds = { left: 2850, top: 3820, right: 5365, bottom: 5360 }, inset = 24;
+    const scale = view.a / view.ratioX;
+    const targetScale = Math.min(.35,
+      (pivot.x - view.x - inset) / (pivotWorld.x - bounds.left),
+      (view.x + view.width - inset - pivot.x) / (bounds.right - pivotWorld.x),
+      (pivot.y - view.y - inset) / (pivotWorld.y - bounds.top),
+      (view.y + view.height - inset - pivot.y) / (bounds.bottom - pivotWorld.y));
+    assert.ok(targetScale >= .025, 'Fixture fits above the editor minimum zoom');
     await page.mouse.move(pivot.x, pivot.y);
-    await page.mouse.wheel(0, -Math.log(.35 / scale) / .0015); await calibrate();
+    await page.mouse.wheel(0, -Math.log(targetScale / scale) / .0015); await calibrate();
+    const a = mapPoint(bounds.left, bounds.top), b = mapPoint(bounds.right, bounds.bottom);
+    assert.ok(a.x >= view.x + inset - 1 && b.x <= view.x + view.width - inset + 1 &&
+      a.y >= view.y + inset - 1 && b.y <= view.y + view.height - inset + 1,
+    'Real wheel zoom keeps the complete fixture inside the calibrated canvas');
+    evidence.fixtureViews.push({ fixture: path.basename(filePath), width: view.width, height: view.height,
+      targetScale, actualScale: view.a / view.ratioX, inset });
   };
   const marker = async port => {
     await settled();

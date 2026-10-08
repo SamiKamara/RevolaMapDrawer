@@ -2,20 +2,54 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Airlock correction release — version 0.10.4
+
+- [x] Fit the focused airlock UI checks to smaller windows, retain actual preview,
+  pointer and persistence assertions, and prepare version 0.10.4.
+- [ ] Verify the complete local portable build and the compact-window regression.
+- [ ] Commit/push `main`, create immutable v0.10.4 and verify hosted checks/draft.
+- [ ] Publish verified v0.10.4 as latest and verify the public downloadable assets.
+- [ ] Inspect and launch the actual desktop shortcut for the final handoff.
+
+The owner's release-update request remains the authorization. The first hosted
+attempt exposed a fixed-zoom assumption in the new UI test, after v0.10.3 had
+already been tagged. Version 0.10.4 corrects test framing while retaining the
+same application geometry. The v0.10.3 tag remains unchanged and unpublished.
+
+### Version 0.10.4 viewport preparation — 2026-10-08
+
+- Reproduced the hosted out-of-canvas endpoint assertion in a real **1024 × 700**
+  Electron window. The fixed 35% zoom placed the upward endpoint above its
+  **715 × 448** canvas. The test now derives bounded real wheel zoom from the
+  calibrated viewport and full fixture bounds, with a **24 px** inset. Exact
+  pointer/preview/graph/persistence assertions remain unchanged.
+- Source checks pass in default **1094 × 708** canvas at **35%** zoom and compact
+  **715 × 448** canvas at **25.879%**. The same checks pass against the existing
+  0.10.3 package's matching runtime source; the 0.10.4 full build remains pending.
+  Each run verifies ten fixture views, eight placements, four compatibility/
+  facing groups, six native raster crops and zero renderer errors. Both aggregate
+  UI scripts now select `--compact`, so minimum-window coverage runs locally and
+  in hosted release verification. Default-size focused checks remain available.
+- `npm test`: **243/243 pass** with package/lockfile/changelog at **0.10.4**.
+  Dependencies and application geometry are unchanged. Maintained evidence:
+  `artifacts/ship-port-compact-results.json` and
+  `ship-port-packaged-compact-results.json`.
+
 ## Airlock correction release — version 0.10.3
 
 - [x] Select patch version 0.10.3, align both package files and the dated changelog,
   and include the focused source/packaged wall-start checks in the release flow.
 - [x] Verify the complete local portable ZIP and extracted offline persistence.
-- [ ] Commit and push clean `main`, create the immutable v0.10.3 tag through the
-  maintained release script, and verify hosted checks and draft assets.
-- [ ] Publish the verified v0.10.3 release as latest and verify its public assets.
-- [ ] Inspect and launch the rebuilt desktop shortcut at final handoff.
+- [x] Commit and push clean `main`, create the immutable v0.10.3 tag through the
+  maintained release script, and inspect hosted verification results.
+- [ ] Public v0.10.3 publication: superseded by v0.10.4 before draft creation.
+- [x] Inspect and launch the rebuilt desktop shortcut during local preparation.
 
 The owner's follow-up explicitly requests committing, pushing and updating the
 release. Version **0.10.3** is selected for the accepted airlock wall-start fix;
 the published v0.10.2 and its tag remain unchanged. No visibility change is needed.
-Publication and final verification are pending.
+Local preparation and tagging succeeded; hosted verification failed as recorded
+below. This version was not published and is superseded by the 0.10.4 preparation.
 
 ### Version 0.10.3 preparation verification — 2026-10-08
 
@@ -45,6 +79,15 @@ Publication and final verification are pending.
 - All **31** local relative Markdown links resolve. No user map, original source
   PNG, brief or bundled ship raster was changed. Commit/tag, hosted build and
   public publication evidence will be recorded after those operations succeed.
+- Implementation commit **cdffa726d177cebb5d2e75336ded3db2f53ad9de** was pushed
+  directly to synchronized `main`. The maintained create-release script repeated
+  all local checks successfully and created/pushed immutable **v0.10.3** at that
+  exact commit. [Verify application run 37774736330](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/37774736330)
+  and [Build release run 37774944092](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/37774944092)
+  fail in the focused UI test: its fixed zoom places an upward endpoint outside
+  the smaller hosted canvas. Geometry and prior UI suites pass; no draft is
+  created and no release is published. The correction is prepared as v0.10.4
+  without moving, deleting or recreating v0.10.3.
 
 ## Airlock wall-start correction — 2026-10-08
 

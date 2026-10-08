@@ -1,6 +1,6 @@
 # Revola Map Drawer — implementation design
 
-Implementation baseline: version 0.10.3. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
+Implementation baseline: version 0.10.4. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
 
 ## Product and first milestone
 
@@ -43,8 +43,9 @@ paste validation. Import never relocates existing walls. The floor barrier keeps
 its legacy paths and adds a 29 px horizontal bridge inside the upper white wall
 to the corrected right corner, allowing either generation to close a station in
 either facing. The ship anchor, raster, corridor doorway target, scale, canvas
-bounds and version 2 document schema remain unchanged. Version 0.10.3 prepares
-this correction as a patch release on the 0.10.2 baseline.
+bounds and version 2 document schema remain unchanged. Version 0.10.3 prepared
+this correction; version 0.10.4 fits release-test views to smaller windows before
+public distribution. The application geometry is identical between these patches.
 
 ### Version 0.10.2 fixed doorway mirror pivot
 
