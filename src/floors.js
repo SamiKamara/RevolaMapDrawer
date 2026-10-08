@@ -1,7 +1,7 @@
 /** Derived, transparent black floors for maps whose ship cannot reach space. */
 import { validateDocument } from './model.js';
 import { drawMap, segmentVisibleParts, SHIP_ANCHOR } from './render.js';
-import { shipWorldPoint } from './ship.js';
+import { shipWorldPoint, shipPorts, legacyShipPorts } from './ship.js';
 import { SHIP_FLOOR_OUTLINE, SHIP_FLOOR_BARRIER, SHIP_FLOOR_SEED } from '../assets/ship-floor-contour.js';
 
 export const FLOOR_RIM = 12;
@@ -56,6 +56,13 @@ function barrierSegments(document, { solid = false } = {}) {
   }
   const ship = SHIP_FLOOR_BARRIER.map(point => worldShipBarrierPoint(document, point));
   for (let index = 1; index < ship.length; index++) append(ship[index - 1], ship[index]);
+  // Extend the legacy upper barrier to the measured wall-start corners. Keep
+  // the saved-pin bridges intact so both old and new attachments close the map.
+  // These short runs stay inside the protected white upper airlock wall.
+  const ports = shipPorts(document.ship), legacy = legacyShipPorts(document.ship);
+  for (let index = 0; index < ports.length; index++) {
+    append({ x: legacy[index].x, y: ports[index].y }, ports[index]);
+  }
   return segments;
 }
 

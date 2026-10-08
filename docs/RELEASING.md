@@ -17,9 +17,9 @@ to create drafts for review; they do not publish automatically.
 
 ## Delivered files
 
-The two uploaded release assets for version `0.10.2` are:
+The two prepared release assets for version `0.10.3` are:
 
-- `RevolaMapDrawer-0.10.2-win-x64.zip` — the complete portable Windows x64 folder;
+- `RevolaMapDrawer-0.10.3-win-x64.zip` — the complete portable Windows x64 folder;
 - `SHA256SUMS.txt` — the SHA-256 checksum of that exact ZIP.
 
 Extract the entire ZIP and open
@@ -53,19 +53,19 @@ Map Drawer credit.
    prerelease suffix. For a later version, update both package files together:
 
    ```powershell
-   npm version 0.10.3 --no-git-tag-version
+   npm version 0.10.4 --no-git-tag-version
    ```
 
 3. Move accepted release changes from `[Unreleased]` into one populated dated
-   changelog entry with this exact format: `## [0.10.3] - YYYY-MM-DD`. Preserve
+   changelog entry with this exact format: `## [0.10.4] - YYYY-MM-DD`. Preserve
    an `[Unreleased]` section for subsequent changes. Do not invent verification
    results or imply a prepared version is already published.
 4. Validate the metadata and build the complete release locally using the actual
    selected version:
 
    ```powershell
-   npm run release:check -- --version 0.10.3
-   .\scripts\build-release.ps1 -Version 0.10.3
+   npm run release:check -- --version 0.10.4
+   .\scripts\build-release.ps1 -Version 0.10.4
    ```
 
 5. Record actual milestone evidence and limitations in `docs/CHECKLIST.md`.
@@ -75,8 +75,9 @@ Map Drawer credit.
 6. Commit the complete preparation on `main` and push `main` when authorized.
    Confirm clean local `main` exactly matches `origin/main` before tagging.
 
-The current package and lockfile remain at `0.10.2` until an actual later version
-is selected. Do not bump versions automatically merely to exercise this pipeline.
+The current selected package and lockfile version is `0.10.3`. The `0.10.4`
+examples above illustrate a later patch; version selection remains manual.
+Do not bump versions automatically merely to exercise this pipeline.
 
 ## Build assets without a tag or GitHub Release
 
@@ -85,10 +86,10 @@ dependencies in `package-lock.json`. GitHub Actions uses Node.js 24. A local bui
 does not require a clean Git worktree or any existing tag:
 
 ```powershell
-.\scripts\build-release.ps1 -Version 0.10.2
+.\scripts\build-release.ps1 -Version 0.10.3
 ```
 
-Output is written to `artifacts\release\v0.10.2`. An optional `-OutputDirectory`
+Output is written to `artifacts\release\v0.10.3`. An optional `-OutputDirectory`
 must point to a child of the repository's `artifacts\release` directory. The
 builder refuses junction/symlink output paths before clearing its generated
 output. It never deletes source directories or creates a Git tag.
@@ -122,7 +123,7 @@ Only do this when release tagging/pushing is authorized. From clean, synchronize
 `main`:
 
 ```powershell
-.\scripts\create-release.ps1 -Version 0.10.2 -Push
+.\scripts\create-release.ps1 -Version 0.10.3 -Push
 ```
 
 The script validates the package and lockfile version, populated dated changelog,
@@ -152,7 +153,7 @@ draft. This is the default manual invocation:
 gh workflow run release.yml --ref main
 gh run list --workflow release.yml --limit 5
 gh run watch RUN_ID --exit-status
-gh run download RUN_ID --name RevolaMapDrawer-0.10.2-win-x64
+gh run download RUN_ID --name RevolaMapDrawer-0.10.3-win-x64
 ```
 
 Use the real run ID returned by `gh run list`. This path leaves the verified ZIP,
@@ -163,13 +164,13 @@ workflows in this repository.
 To rebuild an existing version tag for inspection without uploading a draft:
 
 ```powershell
-gh workflow run release.yml --ref main -f tag=v0.10.2
+gh workflow run release.yml --ref main -f tag=v0.10.3
 ```
 
 To explicitly create or refresh a draft from that existing tag:
 
 ```powershell
-gh workflow run release.yml --ref main -f tag=v0.10.2 -f create_draft=true
+gh workflow run release.yml --ref main -f tag=v0.10.3 -f create_draft=true
 ```
 
 The workflow validates tag/version/changelog agreement and requires the tagged
@@ -185,8 +186,8 @@ When authorized, GitHub CLI can upload the same verified assets from an exact
 tagged checkout:
 
 ```powershell
-.\scripts\publish-release.ps1 -Version 0.10.2
-gh release view v0.10.2 --repo SamiKamara/RevolaMapDrawer
+.\scripts\publish-release.ps1 -Version 0.10.3
+gh release view v0.10.3 --repo SamiKamara/RevolaMapDrawer
 ```
 
 This requires a clean worktree, canonical `origin`, local and remote tags pointing
@@ -203,7 +204,7 @@ confirming the intended tag, assets, checksums, release notes and distribution
 status, the publication command is:
 
 ```powershell
-gh release edit v0.10.2 --repo SamiKamara/RevolaMapDrawer --draft=false
+gh release edit v0.10.3 --repo SamiKamara/RevolaMapDrawer --draft=false
 ```
 
 Run it only for the explicitly approved version after the draft and its assets
@@ -216,7 +217,7 @@ change still requires the owner's separate instruction.
 Place the ZIP and `SHA256SUMS.txt` in the same folder, then run:
 
 ```powershell
-$assetName = 'RevolaMapDrawer-0.10.2-win-x64.zip'
+$assetName = 'RevolaMapDrawer-0.10.3-win-x64.zip'
 $actual = (Get-FileHash -LiteralPath $assetName -Algorithm SHA256).Hash.ToLowerInvariant()
 $line = Get-Content -LiteralPath SHA256SUMS.txt |
     Where-Object { $_ -match "  $([regex]::Escape($assetName))$" }

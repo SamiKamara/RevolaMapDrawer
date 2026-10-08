@@ -1,6 +1,6 @@
 # Revola Map Drawer — implementation design
 
-Implementation baseline: version 0.10.2. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
+Implementation baseline: version 0.10.3. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
 
 ## Product and first milestone
 
@@ -27,6 +27,24 @@ The first runnable milestone established manual walls, fixed-width door cuts, un
 - `electron/`: native window and filesystem bridge. `scripts/`: preview/build utilities. `tests/`: geometry and persistence regression checks.
 
 ## Document and geometry contracts
+
+### Version 0.10.3 airlock wall-start correction
+
+Visible wall-start handles use the upper airlock corner centers: ship-relative
+**(-356.5,-40)** and **(+385.5,-40)**, world **(3739.5,4700)** and
+**(4481.5,4700)**. The measured upright centerlines and outer-door wall plane
+define these coordinates; the supplied feedback image is approximate. The
+door-centered mirror transform swaps these two points while retaining the same
+world positions. Wall hover, pointerdown and endpoint snapping share `shipPorts`.
+
+The original saved pins at **(3739.5,4740)** and **(4452.5,4740)** remain fixed.
+`isShipPort` protects both generations in movement, structural doorway spans and
+paste validation. Import never relocates existing walls. The floor barrier keeps
+its legacy paths and adds a 29 px horizontal bridge inside the upper white wall
+to the corrected right corner, allowing either generation to close a station in
+either facing. The ship anchor, raster, corridor doorway target, scale, canvas
+bounds and version 2 document schema remain unchanged. Version 0.10.3 prepares
+this correction as a patch release on the 0.10.2 baseline.
 
 ### Version 0.10.2 fixed doorway mirror pivot
 
@@ -118,7 +136,7 @@ Room primitives have fixed chamfers, configurable width/height and 0/45-degree o
 
 Connected editing must preserve shared vertices and allowed directions. A corner moves only along feasible constraint intersections; wall movement must extend adjoining walls. Never claim unrestricted network deformation if only a subset is implemented. Undo/redo stores complete validated snapshots at gesture boundaries, bounded to 100 states.
 
-Recognized room sides first attempt shape-preserving resizing. The room's other long sides stretch, the opposite side stays fixed, and its chamfers retain their lengths. Collinear split sides and compatible attached walls are supported; invalid recognized resizes reject without a fallback that would distort the room. Ordinary movement remains local to vertices with one or two incident walls: a wall translates perpendicular to itself and neighboring joints slide along their existing wall lines; a corner moves with adjacent joints; a terminal endpoint stretches its wall. Moves causing graph collisions, clipped doors or changes to fixed airlock ports are rejected atomically. The ship anchor is fixed at (4096,4740); ports are x ±356.5. General branched constraint propagation and dedicated detach/rejoin remain later milestones. Imported topology is checked using spatial buckets and a bounded candidate count, so disconnected crossings and collinear overlaps are rejected.
+Recognized room sides first attempt shape-preserving resizing. The room's other long sides stretch, the opposite side stays fixed, and its chamfers retain their lengths. Collinear split sides and compatible attached walls are supported; invalid recognized resizes reject without a fallback that would distort the room. Ordinary movement remains local to vertices with one or two incident walls: a wall translates perpendicular to itself and neighboring joints slide along their existing wall lines; a corner moves with adjacent joints; a terminal endpoint stretches its wall. Moves causing graph collisions, clipped doors or changes to fixed airlock ports are rejected atomically. The ship anchor is fixed at (4096,4740); legacy saved pins use x ±356.5 at y0, and new wall-start handles use (-356.5,-40)/(+385.5,-40) relative to that anchor. General branched constraint propagation and dedicated detach/rejoin remain later milestones. Imported topology is checked using spatial buckets and a bounded candidate count, so disconnected crossings and collinear overlaps are rejected.
 
 ## Reference fidelity
 

@@ -1,5 +1,6 @@
 import * as model from './model.js';
-import { drawMap, loadShip, SHIP_ANCHOR } from './render.js';
+import { drawMap, loadShip } from './render.js';
+import { shipPorts, isShipPort } from './ship.js';
 import { decodePngMetadata, MAX_PNG_BYTES, MAX_METADATA_BYTES } from './png.js';
 import { renderMapPng, renderFloorPng } from './export.js';
 import { renderMapSvg } from './svg.js';
@@ -197,7 +198,7 @@ function world(point) { return { x: (point.x - camera.x) / camera.scale, y: (poi
 function inside(point, source = doc) { const bounds = model.getMapBounds(source); return point.x >= bounds.left && point.y >= bounds.top && point.x <= bounds.right && point.y <= bounds.bottom; }
 function drawable(point) { return point.x >= -4096 && point.y >= -4096 && point.x <= 12288 && point.y <= 12288; }
 function eraserRadius() { return Number($('eraser-size').value) / 2; }
-function anchors() { return SHIP_ANCHOR.portOffsets.map(x => ({ x: doc.ship.x + x, y: doc.ship.y })); }
+function anchors() { return shipPorts(doc.ship); }
 function joinOptions() { return { joinTolerance: Math.min(100, Math.max(doc.style.wallWidth, 12 / camera.scale)) }; }
 function nearestVertex(point, max = 10 / camera.scale) {
   return doc.vertices.filter(v => distance(v, point) < max).sort((a, b) => distance(a, point) - distance(b, point))[0];
@@ -218,7 +219,10 @@ function corridorTarget(point) {
 }
 function snap(point, start) {
   const options = joinOptions();
-  const candidates = anchors().filter(v => distance(v, point) <= options.joinTolerance);
+  // Existing legacy attachments remain usable, without exposing obsolete
+  // empty-map handles. Pick the nearest exact pin before broader attraction.
+  const candidates = [...anchors(), ...doc.vertices.filter(v => isShipPort(doc.ship, v))]
+    .filter(v => distance(v, point) <= options.joinTolerance);
   candidates.sort((a, b) => distance(a, point) - distance(b, point));
   for (const candidate of candidates) {
     if (!start) return { x: candidate.x, y: candidate.y };

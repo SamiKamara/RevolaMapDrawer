@@ -164,19 +164,22 @@ test('package verification detects changed licenses, stale source, development m
 });
 
 test('portable ZIP verifier checks every archive file even when its outer checksum is valid', { skip: process.platform !== 'win32' }, async t => {
-  const directory = containedReleaseDirectory(root, '0.10.2', path.join(root, 'artifacts', 'release', `test-${process.pid}-${Date.now()}`));
+  // The real verifier validates this checkout's release metadata as well as ZIP
+  // contents, so its version must follow the active package rather than fixtures.
+  const { version } = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
+  const directory = containedReleaseDirectory(root, version, path.join(root, 'artifacts', 'release', `test-${process.pid}-${Date.now()}`));
   const packageDirectory = path.join(directory, 'fixture-package');
   await fs.mkdir(path.join(packageDirectory, 'resources'), { recursive: true });
   t.after(() => fs.rm(directory, { recursive: true, force: true }));
   await fs.writeFile(path.join(packageDirectory, 'RevolaMapDrawer.exe'), 'test executable bytes');
   await fs.writeFile(path.join(packageDirectory, 'resources', 'app.asar'), 'test runtime bytes');
-  const zip = path.join(directory, releaseAssetName('0.10.2'));
+  const zip = path.join(directory, releaseAssetName(version));
   const generator = path.join(directory, 'fixture.ps1');
   await fs.writeFile(generator, 'param([string]$PackageDirectory, [string]$Zip)\nAdd-Type -AssemblyName System.IO.Compression.FileSystem\n[IO.Compression.ZipFile]::CreateFromDirectory($PackageDirectory, $Zip, [IO.Compression.CompressionLevel]::Optimal, $true)\n');
   const create = spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', generator, '-PackageDirectory', packageDirectory, '-Zip', zip], { encoding: 'utf8', windowsHide: true });
   assert.equal(create.status, 0, create.stderr);
   await fs.writeFile(path.join(directory, 'SHA256SUMS.txt'), `${await sha256(zip)}  ${path.basename(zip)}\n`);
-  const verify = () => spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'scripts', 'verify-release-archive.ps1'), '-Version', '0.10.2', '-OutputDirectory', directory, '-PackageDirectory', packageDirectory], { encoding: 'utf8', windowsHide: true });
+  const verify = () => spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'scripts', 'verify-release-archive.ps1'), '-Version', version, '-OutputDirectory', directory, '-PackageDirectory', packageDirectory], { encoding: 'utf8', windowsHide: true });
   const valid = verify(); assert.equal(valid.status, 0, valid.stderr);
   await fs.writeFile(path.join(packageDirectory, 'resources', 'app.asar'), 'changed source after compression');
   const stale = verify(); assert.notEqual(stale.status, 0); assert.match(stale.stderr, /differs from verified package/);

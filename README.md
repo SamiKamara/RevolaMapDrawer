@@ -8,9 +8,9 @@ The application runs locally without an account, internet connection or developm
 
 ## Portable Windows package
 
-The source repository is public. The first portable release is [v0.10.2](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.2):
+The source repository is public. Portable version **0.10.3** is prepared for release. The first published portable release was [v0.10.2](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.2).
 
-1. Open [v0.10.2](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.2) and download `RevolaMapDrawer-0.10.2-win-x64.zip`. GitHub's automatic **Source code** archives are for development and do not contain a runnable packaged app.
+1. Once published, open [v0.10.3](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.3) and download `RevolaMapDrawer-0.10.3-win-x64.zip`. GitHub's automatic **Source code** archives are for development and do not contain a runnable packaged app.
 2. Extract the ZIP completely to a folder you can write to. Keep the entire `RevolaMapDrawer-win32-x64` folder together, including `resources` and the supporting DLLs and license files.
 3. Run **`RevolaMapDrawer.exe`** inside that extracted folder.
 
@@ -115,7 +115,7 @@ npm run package
 npm run test:packaged
 ```
 
-`test:ui` and `test:packaged` each include wall SVG and floor export checks. Focused checks are also available as `test:feedback`, `test:joining`, `test:diagonal`, `test:doors`, `test:selection`, `test:clipboard`, `test:corridors`, `test:corridor-end`, `test:airlock` and `test:raster`. Run the checks relevant to changed behavior and record actual results in [docs/CHECKLIST.md](docs/CHECKLIST.md).
+`test:ui` and `test:packaged` each include wall SVG, floor export and airlock wall-start checks. Focused checks are also available as `test:feedback`, `test:joining`, `test:diagonal`, `test:doors`, `test:selection`, `test:clipboard`, `test:corridors`, `test:corridor-end`, `test:airlock`, `test:ship-ports` and `test:raster`. Run the checks relevant to changed behavior and record actual results in [docs/CHECKLIST.md](docs/CHECKLIST.md).
 
 The Windows build is written to `dist/RevolaMapDrawer-win32-x64/`. Run **`RevolaMapDrawer.exe`** inside that folder; distribute the whole folder, not only the executable. Rebuild after source changes to refresh the packaged version used by the launcher and desktop shortcut. Build output, dependencies and generated test artifacts are excluded from source control.
 

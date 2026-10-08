@@ -1,5 +1,6 @@
 // Door targeting follows the visible straight run, not incidental graph splits.
 // Pure helpers shared by the preview and committed edit; no document mutation.
+import { isShipPort } from './ship.js';
 const EPS = 1e-6;
 const finitePoint = point => point && Number.isFinite(point.x) && Number.isFinite(point.y);
 const distance = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
@@ -10,8 +11,7 @@ const pointAt = (span, offset) => ({
   x: clean(span.a.x + span.direction.x * offset),
   y: clean(span.a.y + span.direction.y * offset),
 });
-const atShipPort = (doc, point) => doc.ship && Math.abs(point.y - doc.ship.y) < EPS
-  && Math.abs(Math.abs(point.x - doc.ship.x) - 356.5) < EPS;
+const atShipPort = (doc, point) => isShipPort(doc.ship, point, EPS);
 
 /**
  * Return the full straight structural span containing an edge. Only degree-two

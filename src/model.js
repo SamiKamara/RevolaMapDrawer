@@ -1,6 +1,7 @@
 // Geometry is expressed in native map pixels. This module has no DOM dependency.
 import { proposeRoomResize } from './rooms.js';
 import { resolveDoorPlacement } from './doors.js';
+import { isShipPort } from './ship.js';
 
 export const DEFAULTS = Object.freeze({ width: 8192, height: 8192, wallWidth: 50, doorWidth: 375, corridorWidth: 580, chamfer: 220, roughness: 2.25, grid: 25 });
 const EPS = 1e-6;
@@ -25,7 +26,7 @@ const inBounds = (doc, p) => {
   const bounds = getMapBounds(doc);
   return validPoint(p) && p.x >= bounds.left && p.y >= bounds.top && p.x <= bounds.right && p.y <= bounds.bottom;
 };
-const atShipPort = (doc, p) => Math.abs(p.y - doc.ship.y) < EPS && Math.abs(Math.abs(p.x - doc.ship.x) - 356.5) < EPS;
+const atShipPort = (doc, p) => isShipPort(doc.ship, p, EPS);
 
 export function createDocument() {
   const { width, height, ...style } = DEFAULTS;
@@ -377,6 +378,9 @@ function solidAt(doc, edge, t, clearance, vertices) {
 /** Pick a visible wall centerline, without attracting drawing into erased gaps. */
 export function snapWallStart(doc, point, options = {}) {
   if (!validPoint(point)) fail('Invalid wall point.');
+  // A resolved fixed handle must not jump to a nearby old attachment or wall
+  // face during insertion, otherwise the committed wall differs from preview.
+  if (atShipPort(doc, point)) return clean(point);
   const tolerance = joinTolerance(doc, options), vertices = new Map(doc.vertices.map(v => [v.id, v]));
   // Reuse a nearby solid graph endpoint before projecting onto a wall face.
   // A face can be closer than its corner; splitting there leaves a tiny extra

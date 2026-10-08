@@ -1,5 +1,6 @@
 import { ensureCanvasContains, validateDocument } from './model.js';
 import { selectionVertices } from './selection.js';
+import { isShipPort } from './ship.js';
 
 const EPS = 1e-6;
 const validPoint = point => point && Number.isFinite(point.x) && Number.isFinite(point.y);
@@ -75,8 +76,7 @@ export function pasteSelection(doc, fragment, delta) {
     // so arithmetic noise cannot change a pasted point on project reopen.
     return { id, x: clean(vertex.x + delta.x), y: clean(vertex.y + delta.y) };
   });
-  if (vertices.some(vertex => Math.abs(vertex.y - doc.ship.y) < EPS
-    && Math.abs(Math.abs(vertex.x - doc.ship.x) - 356.5) < EPS)) {
+  if (vertices.some(vertex => isShipPort(doc.ship, vertex, EPS))) {
     throw new Error('A pasted group must stay separate from the fixed ship ports.');
   }
   const edges = fragment.edges.map(edge => ({

@@ -5,6 +5,7 @@ export const SHIP_BOUNDS = Object.freeze({ width: 2459, height: 1931 });
 export const SHIP_ANCHOR = Object.freeze({
   x: 1269,
   y: 70,
+  // Legacy saved pins; visible wall-start corners are supplied by shipPorts.
   portOffsets: Object.freeze([-356.5, 356.5]),
 });
 

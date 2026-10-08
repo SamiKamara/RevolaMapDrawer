@@ -5,6 +5,18 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-10-08
+
+Airlock wall alignment correction for the specialized **Revola: Post Hyper**
+offline Windows map editor.
+
+- Align the airlock's wall-start handles with its upper wall and upright centers
+  in either ship facing, so new walls continue straight from the fixed artwork.
+- Keep old saved attachments pinned and preserve their exact geometry; both old
+  and corrected attachment points support closed-map floor detection.
+- Verify the actual wall previews, drawing, ship facing changes and native
+  save/reopen in both source and packaged application release checks.
+
 ## [0.10.2] - 2026-10-08
 
 First public Windows x64 portable release for the specialized **Revola: Post Hyper**

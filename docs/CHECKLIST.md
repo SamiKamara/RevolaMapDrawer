@@ -2,6 +2,109 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Airlock correction release — version 0.10.3
+
+- [x] Select patch version 0.10.3, align both package files and the dated changelog,
+  and include the focused source/packaged wall-start checks in the release flow.
+- [x] Verify the complete local portable ZIP and extracted offline persistence.
+- [ ] Commit and push clean `main`, create the immutable v0.10.3 tag through the
+  maintained release script, and verify hosted checks and draft assets.
+- [ ] Publish the verified v0.10.3 release as latest and verify its public assets.
+- [ ] Inspect and launch the rebuilt desktop shortcut at final handoff.
+
+The owner's follow-up explicitly requests committing, pushing and updating the
+release. Version **0.10.3** is selected for the accepted airlock wall-start fix;
+the published v0.10.2 and its tag remain unchanged. No visibility change is needed.
+Publication and final verification are pending.
+
+### Version 0.10.3 preparation verification — 2026-10-08
+
+- The full maintained `scripts/build-release.ps1 -Version 0.10.3` passes
+  installation, **243/243** geometry/persistence/release tests, source UI,
+  packaging, packaged UI, byte comparison of all **77** ZIP files and extracted
+  offline native save/reopen of the exact **36-wall** graph. Renderer errors and
+  HTTP(S) requests during extracted persistence are both **zero**. Both aggregate
+  UI scripts now run the eight focused wall-start placements and four facing/
+  legacy compatibility groups. The optional private floor fixture was not configured.
+- Local ZIP: **158,199,042 bytes**, SHA-256
+  **82c69ec3f18637267205b8e2ae03ea1ad4305891a99e6daf759337f570023312**.
+  The adjacent `SHA256SUMS.txt` agrees. All **20** runtime files and the minimal
+  manifest match source; the ASAR has **24 entries**. Generated output remains
+  under ignored `artifacts/release/v0.10.3/`.
+- The first preparation run exposed a version literal in the real-root Windows
+  ZIP regression. It now reads the selected package version, retaining the
+  tampered/missing-file checks; isolated unit fixtures are unchanged. The focused
+  release suite passes **10/10** and the full build above passes after this repair.
+- `postpackage` refreshed the real desktop shortcut. Fresh `-VerifyOnly` readback
+  confirmed the direct packaged executable target, empty arguments, repository
+  working directory and existing executable/directory/icon paths. Launched the
+  actual `.lnk` through Windows Shell; Computer Use verified its bundled
+  `resources/app.asar/index.html` editor, **8192 × 8192** canvas, upper-corner
+  handles, all image export controls and clean **0 walls / 0 doors**. Closed only
+  this clean agent-owned test instance normally before the tagging rebuild.
+- All **31** local relative Markdown links resolve. No user map, original source
+  PNG, brief or bundled ship raster was changed. Commit/tag, hosted build and
+  public publication evidence will be recorded after those operations succeed.
+
+## Airlock wall-start correction — 2026-10-08
+
+- [x] Move new wall handles to measured upper corners in both ship facings.
+- [x] Preserve legacy saved attachments and pin both generations across editing,
+  doorway spans, paste and closed-map floor analysis.
+- [x] Verify geometry/persistence and actual wall drawing, rebuild the package,
+  and inspect/launch the actual desktop shortcut.
+
+Scope: local unreleased correction on the **0.10.2** baseline. New handles are
+**(3739.5,4700)** and **(4481.5,4700)**; old saved vertices remain exact. The ship
+artwork, source references, doorway/corridor dimensions, world center/scale and
+document schema stay unchanged. Verified evidence is recorded below.
+
+### Airlock wall-start verification — 2026-10-08
+
+- `npm test`: **243/243 pass**, including **eight** new regressions for measured
+  corners, pinning, doorway-span boundaries, paste, exact JSON/editable PNG
+  persistence, old/new closed stations, exterior erasures and centered expansion.
+  Sixteen near-attachment construction combinations keep exact fixed starts,
+  endpoints and existing graph IDs; insertion cannot shift a resolved preview
+  onto a nearby old pin.
+- `npm run test:ui` and `npm run test:packaged` pass construction/history, native
+  project/PNG round trips, SVG fidelity, automatic floors and the compact window,
+  without renderer errors. The optional private floor fixture was not configured;
+  the generated interaction groups are the scope of this run.
+- `node scripts/ship-port-smoke.mjs` (also exposed as
+  `npm run test:ship-ports`) and
+  `node scripts/ship-port-smoke.mjs --packaged` pass **eight** real mouse wall
+  placements per run: upward and outward horizontal walls from both corners,
+  in both facings. Actual dashed previews agree with committed coordinates.
+  Both facing-toggle groups and both legacy/new compatibility groups preserve
+  exact graph, one-step history and native save/reopen. Six independent native
+  crops per run contain **484/484 opaque white joint samples**, no nonwhite wall
+  pixels and exact **375 px** outer/inner openings. Source and packaged editor
+  crops were visually inspected. Evidence: `artifacts/ship-port-results.json`,
+  `ship-port-packaged-results.json` and `ship-port-*-drawn-native.png`.
+- `npm run package` rebuilds the **0.10.2** executable. All **20** runtime
+  source/asset files and the minimal manifest match current source; the ASAR has
+  **24 entries**. The focused packaged test additionally compares its six relevant
+  drawing/runtime files byte-for-byte. The final rebuild after adding the named
+  test command retains these same verified runtime bytes.
+- `postpackage` refreshed the actual desktop shortcut. A fresh
+  `scripts/update-desktop-shortcut.ps1 -VerifyOnly` readback confirms the direct
+  `<repository root>\dist\RevolaMapDrawer-win32-x64\RevolaMapDrawer.exe` target,
+  empty arguments, repository working directory and existing target/directory/icon
+  paths. Launched that exact `<desktop>\RevolaMapDrawer - testattava versio.lnk`
+  through Windows Shell. Computer Use verified its process-backed English editor,
+  bundled `resources/app.asar/index.html`, **8192 × 8192** canvas and corrected
+  handles on both upper corners. Left its clean **Untitled map**, **0 walls / 0
+  doors**, disabled history, in Wall mode at **52%** zoom around the airlock.
+- Limits: existing walls are never automatically repositioned, including old
+  attachments with the previous offset; only new wall-start handles are corrected.
+  Legacy saved pins remain usable when present in the graph. Ship raster SHA-256
+  remains **30bcac47e18eb0f517ba2731e9cb11e4263a3c1bf8fad27e00b98c2c4bc0b804**;
+  the original brief and source PNGs are unchanged. No user map was opened or
+  modified. This fix is local and unreleased; no commit, tag, push or publication
+  was requested or performed. Generated evidence, builds and the shortcut remain
+  outside Git.
+
 ## Public release and MIT license — 2026-10-08
 
 - [x] Owner reviewed the private project and explicitly authorized the GitHub release and public repository.
