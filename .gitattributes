@@ -1,0 +1,14 @@
+* text=auto
+*.md text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.png binary
+"alustava toteutusohje.txt" -text

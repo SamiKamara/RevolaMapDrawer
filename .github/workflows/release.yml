@@ -1,0 +1,83 @@
+name: Build release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing vMAJOR.MINOR.PATCH tag, or leave empty to verify main without a release
+        required: false
+        default: ''
+        type: string
+      create_draft:
+        description: Create or update a draft for the existing tag after verification
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && (inputs.tag || 'main-build') || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-2025
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || (github.ref_type == 'tag' && github.ref_name || '') }}
+      BUILD_REF: ${{ github.event_name == 'workflow_dispatch' && (inputs.tag || 'main') || github.ref_name }}
+      CREATE_DRAFT: ${{ github.event_name == 'push' || inputs.create_draft }}
+    steps:
+      - name: Validate requested tag
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_TAG -and $env:RELEASE_TAG -notmatch '^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') {
+              throw 'Release tag must use vMAJOR.MINOR.PATCH.'
+          }
+          if ($env:CREATE_DRAFT -eq 'true' -and -not $env:RELEASE_TAG) {
+              throw 'Creating a draft requires an existing version tag.'
+          }
+      - name: Check out selected source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ env.BUILD_REF }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Validate version, changelog and source history
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $arguments = @('scripts/check-release.mjs', '--version', $version, '--reachable-main')
+          if ($env:RELEASE_TAG) { $arguments += @('--tag', $env:RELEASE_TAG, '--existing-tag') }
+          & node @arguments
+          if ($LASTEXITCODE -ne 0) { throw 'Release source validation failed.' }
+          "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
+      - name: Build, compress and verify extracted portable application
+        shell: pwsh
+        run: .\scripts\build-release.ps1 -Version $env:RELEASE_VERSION
+      - name: Keep verified assets for inspection
+        uses: actions/upload-artifact@v7
+        with:
+          name: RevolaMapDrawer-${{ env.RELEASE_VERSION }}-win-x64
+          path: |
+            artifacts/release/v${{ env.RELEASE_VERSION }}/RevolaMapDrawer-${{ env.RELEASE_VERSION }}-win-x64.zip
+            artifacts/release/v${{ env.RELEASE_VERSION }}/SHA256SUMS.txt
+            artifacts/release/v${{ env.RELEASE_VERSION }}/release-notes.md
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+      - name: Create or update draft only
+        if: env.CREATE_DRAFT == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: .\scripts\publish-release.ps1 -Version $env:RELEASE_VERSION

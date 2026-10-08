@@ -1,0 +1,41 @@
+{
+  "name": "revola-map-drawer",
+  "version": "0.10.2",
+  "private": true,
+  "description": "A specialized offline Windows map editor for Revola: Post Hyper",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "preview": "node scripts/preview.mjs",
+    "test": "node --test tests/*.test.js",
+    "test:ui": "node scripts/smoke.mjs && node scripts/svg-smoke.mjs && node scripts/floor-smoke.mjs",
+    "test:floors": "node scripts/floor-smoke.mjs",
+    "test:svg": "node scripts/svg-smoke.mjs",
+    "test:feedback": "node scripts/feedback-smoke.mjs",
+    "test:joining": "node scripts/joining-smoke.mjs",
+    "test:diagonal": "node scripts/diagonal-joining-smoke.mjs",
+    "test:doors": "node scripts/door-smoke.mjs",
+    "test:selection": "node scripts/selection-smoke.mjs",
+    "test:clipboard": "node scripts/clipboard-smoke.mjs",
+    "test:corridors": "node scripts/corridor-smoke.mjs",
+    "test:corridor-end": "node scripts/corridor-end-smoke.mjs",
+    "test:airlock": "node scripts/airlock-smoke.mjs",
+    "test:raster": "node scripts/check-export-raster.mjs",
+    "test:packaged": "node scripts/smoke-packaged.mjs && node scripts/svg-smoke.mjs --packaged && node scripts/floor-smoke.mjs --packaged",
+    "test:portable": "node scripts/verify-portable.mjs",
+    "test:release": "node --test tests/release.test.js",
+    "release:check": "node scripts/check-release.mjs",
+    "shortcut": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/update-desktop-shortcut.ps1",
+    "postpackage": "npm run shortcut",
+    "package": "node scripts/package-app.mjs"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "@playwright/test": "1.63.0",
+    "electron": "44.5.1"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

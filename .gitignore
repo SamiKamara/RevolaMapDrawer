@@ -1,0 +1,15 @@
+node_modules/
+dist/
+artifacts/
+docs/reference-analysis/
+test-results/
+playwright-report/
+coverage/
+__pycache__/
+*.py[cod]
+*.log
+*.lnk
+.DS_Store
+.env
+.env.*
+!.env.example

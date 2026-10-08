@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'none'">
+  <title>Revola Map Drawer</title>
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <nav aria-label="File actions"><button id="new-button">New</button><button id="open-button">Open<span class="keyhint">Ctrl O</span></button><button id="project-button">Save project</button></nav>
+    <div class="document-title"><span id="dirty-dot"></span><span id="document-title">Untitled map</span></div>
+    <div class="image-export-actions" role="group" aria-label="Image exports">
+      <button id="export-button" class="image-export export-png" title="Save transparent wall PNG (Ctrl+S)">Save wall PNG</button>
+      <button id="svg-button" class="image-export export-svg" title="Save transparent wall SVG">Save wall SVG</button>
+      <button id="floor-png-button" class="image-export export-png" title="Save transparent floor PNG" disabled>Save floor PNG</button>
+      <button id="floor-svg-button" class="image-export export-svg" title="Save transparent floor SVG" disabled>Save floor SVG</button>
+    </div>
+  </header>
+  <div class="optionsbar">
+    <div class="active-tool"><span class="tiny-dot"></span><strong id="active-tool-name">Wall tool</strong></div>
+    <span class="option-separator"></span><label class="check-option"><input type="checkbox" id="grid-toggle" checked> Grid</label>
+    <label class="check-option" id="rotate-option" hidden><input type="checkbox" id="rotate-room"> Rotate 45°</label>
+    <label class="check-option" id="eraser-option" hidden>Brush <select id="eraser-size" aria-label="Eraser diameter"><option value="100">100 px</option><option value="200" selected>200 px</option><option value="400">400 px</option><option value="800">800 px</option></select></label>
+    <div class="options-spacer"></div><button id="undo-button" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button><button id="redo-button" title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
+  </div>
+  <main class="workspace">
+    <aside class="toolrail" aria-label="Drawing tools">
+      <button data-tool="select" title="Select / move (V)" aria-label="Select tool"><svg viewBox="0 0 24 24"><path d="M6 3l13 10-7 1-3 7z"/></svg><kbd>V</kbd></button>
+      <button data-tool="wall" class="active" title="Wall (W)" aria-label="Wall tool"><svg viewBox="0 0 24 24"><path d="M5 19V6h14M5 11h6M14 6v6"/><path d="M3 19h4M17 4v4"/></svg><kbd>W</kbd></button>
+      <button data-tool="door" title="Door opening (D)" aria-label="Door tool"><svg viewBox="0 0 24 24"><path d="M4 19V5h5m6 0h5v14M9 5v14l6-3V5"/><path d="M12 12h.1"/></svg><kbd>D</kbd></button>
+      <button data-tool="eraser" title="Eraser (E)" aria-label="Eraser tool"><svg viewBox="0 0 24 24"><path d="M4 13l9-9 7 7-9 9H8zM9 8l7 7M11 20h10"/></svg><kbd>E</kbd></button>
+      <span class="rail-divider"></span>
+      <button data-tool="room" title="Chamfered room (R)" aria-label="Room tool"><svg viewBox="0 0 24 24"><path d="M8 4h8l4 4v8l-4 4H8l-4-4V8z"/></svg><kbd>R</kbd></button>
+      <button data-tool="corridor" title="Freehand corridor (C)" aria-label="Corridor tool"><svg viewBox="0 0 24 24"><path d="M3 8h9l5 5v8M3 3h11l8 8v10"/></svg><kbd>C</kbd></button>
+      <span class="rail-divider"></span>
+      <button data-tool="hand" title="Hand / pan (H, or hold Space)" aria-label="Hand tool"><svg viewBox="0 0 24 24"><path d="M7 12V7a1.5 1.5 0 013 0v4-7a1.5 1.5 0 013 0v7-5a1.5 1.5 0 013 0v6-3a1.5 1.5 0 013 0v7c0 4-3 6-6 6h-1c-3 0-4-2-6-5l-2-4c-1-2 1-3 2-2z"/></svg><kbd>H</kbd></button>
+      <div class="rail-bottom"><span class="swatch" title="Walls are always white"></span><span class="rail-caption">WALL</span></div>
+    </aside>
+    <section class="canvas-panel" aria-label="Map workspace">
+      <div class="canvas-heading"><span><span class="tiny-dot"></span> <span id="canvas-title">Untitled map</span></span><span id="canvas-dimensions">8192 × 8192 px</span></div>
+      <div id="canvas-container"><canvas id="map-canvas" tabindex="0" aria-label="Map drawing canvas"></canvas></div>
+      <div class="canvas-bottom"><div class="zoom-controls"><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-value" title="Reset zoom to 100%">10%</button><button id="zoom-in" aria-label="Zoom in">+</button><span></span><button id="fit-button" title="Fit map (F)">Fit</button></div></div>
+    </section>
+    <aside class="inspector">
+      <section class="inspector-section"><div class="section-title">DOCUMENT <span>01</span></div><label class="field-label" for="map-name">Map name</label><input id="map-name" type="text" value="Untitled map" maxlength="80"></section>
+      <section class="inspector-section tool-guide"><div class="section-title">QUICK GUIDE <span>?</span></div><p id="tool-guide">Click a start point, then click to place each wall. Press Escape to end the chain.</p><div class="room-rotation-guide"><strong>45° rooms</strong><p>Select Room (R), then enable <b>Rotate 45°</b> in the top options bar. <b>Shift + R</b> toggles rotation.</p><button id="guide-rotate-room" class="wide-button" aria-pressed="false">Draw a 45° room</button></div><div class="shortcut-row"><kbd>Scroll</kbd><span>Zoom at cursor</span></div><div class="shortcut-row"><kbd>Space + drag</kbd><span>Pan canvas</span></div><div class="shortcut-row"><kbd>Esc</kbd><span>Finish / cancel</span></div></section>
+      <section class="inspector-section"><div class="section-title">SHIP & AIRLOCK <span class="anchor-badge">ANCHOR</span></div><p class="subtle">Your map’s fixed point of arrival.</p><button id="mirror-button" class="wide-button"><span>⇄</span> <span id="mirror-label">Ship facing right</span></button><p class="small-note">Flip the ship while keeping the airlock in place.</p></section>
+      <section class="inspector-section selection-section"><div class="section-title">SELECTION <span id="selection-badge">—</span></div><p id="selection-info" class="subtle" hidden></p><div class="clipboard-actions"><button id="copy-button" class="wide-button" title="Copy selected walls and walls between selected points (Ctrl+C)" disabled>Copy <kbd>Ctrl C</kbd></button><button id="paste-button" class="wide-button" title="Preview a copy, then click to place (Ctrl+V)" disabled>Paste <kbd>Ctrl V</kbd></button></div><button id="delete-button" class="wide-button danger" disabled>Delete selection <kbd>Del</kbd></button></section>
+    </aside>
+  </main>
+  <footer class="statusbar"><span id="status-message" role="status">Preparing workspace…</span><span class="status-right"><span id="graph-stats">0 walls · 0 doors</span><span id="pointer-position">X — &nbsp; Y —</span></span></footer>
+  <input id="file-input" type="file" accept=".png,.json" hidden>
+  <dialog id="confirm-dialog"><form method="dialog"><span class="eyebrow">UNSAVED CHANGES</span><h2>Replace the current map?</h2><p>Save your map first if you want to keep your changes.</p><div class="dialog-actions"><button value="cancel">Keep editing</button><button value="discard" class="primary">Discard changes</button></div></form></dialog>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
