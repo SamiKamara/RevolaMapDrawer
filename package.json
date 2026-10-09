@@ -30,7 +30,9 @@
     "release:check": "node scripts/check-release.mjs",
     "shortcut": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/update-desktop-shortcut.ps1",
     "postpackage": "npm run shortcut",
-    "package": "node scripts/package-app.mjs"
+    "package": "node scripts/package-app.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "test:web": "node scripts/web-smoke.mjs"
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",

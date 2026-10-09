@@ -6,6 +6,35 @@ Draw on an **8192 × 8192** canvas and export transparent wall PNG/SVG images. D
 
 The application runs locally without an account, internet connection or development server. The supported distribution is **Windows x64**. Other operating systems and architectures have not been packaged or verified. See the [changelog](CHANGELOG.md) for version history and the [verification checklist](docs/CHECKLIST.md) for completed checks and exact limitations.
 
+## Browser build (proposed)
+
+The editor's renderer already supports browsers without Electron. The static build copies only
+`index.html`, `src/`, `assets/` and the MIT `LICENSE` into `dist/web/`. It includes no
+Electron runtime, original reference PNGs, development scripts or Node dependencies.
+
+```sh
+npm ci
+npm run build:web
+npx playwright install chromium
+npm run test:web
+```
+
+Serve `dist/web/` from any static HTTPS web host. It must be served over HTTP(S), not opened
+directly as a `file://` page. The existing `npm run preview` command serves the source tree
+for local development and is not the distributable build.
+
+The [browser workflow](.github/workflows/web.yml) verifies a production-style subpath,
+import/download of editable maps and SVG/PNG export. When merged into `main`, it can deploy
+the same bundle to GitHub Pages. To enable the public site, configure repository **Settings →
+Pages → Build and deployment → Source: GitHub Actions**. The expected address is
+`https://samikamara.github.io/RevolaMapDrawer/` after a successful Pages deployment.
+
+The hosted editor processes maps locally in the user's browser; it does not upload map files
+to a server. Saving uses browser downloads rather than native Save dialogs; browser downloads
+cannot confirm that a user kept the file, so the unsaved indicator may remain visible.
+An internet connection is required to load or refresh the hosted page. Desktop releases are
+unchanged. Modern Chromium is the browser smoke-test target; other browsers are not yet verified.
+
 ## Portable Windows package
 
 The source repository is public. The latest portable release is [v0.10.4](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.4). The first published portable release was [v0.10.2](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.2).

@@ -1,5 +1,18 @@
 # Implementation checklist
 
+## Proposed browser build — not yet deployed
+
+- [-] Create a separate static web build using the existing browser-mode renderer,
+  with browser file-picker imports and downloadable projects/PNG/SVG.
+- [ ] Run the new Playwright browser smoke test on a clean runner. Its expected
+  coverage includes the GitHub Pages subpath, static asset loading, project
+  save/reopen and SVG/PNG downloads with editable PNG metadata.
+- [ ] Configure GitHub Pages to use GitHub Actions, merge the reviewed change,
+  check the published HTTPS site and do a manual browser pass.
+- [ ] Cross-browser, touch layout and large-map performance remain unverified.
+  Windows portable distribution and its desktop shortcut are unchanged.
+
+
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
 ## Airlock correction release — version 0.10.4
