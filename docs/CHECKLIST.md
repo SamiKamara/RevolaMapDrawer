@@ -31,11 +31,13 @@ This browser milestone leaves native release metadata at **0.10.4** with changes
 
 - [x] Put the public web app link immediately below the README title alongside the Windows release link; include the web URL in the changelog.
 - [x] Update the GitHub repository homepage/description to identify both browser and offline Windows availability.
-- [-] Commit the verified web implementation and documentation to `main`, push to `origin/main`, and verify the published repository content.
+- [x] Commit the verified web implementation and documentation to `main`, push to `origin/main`, and verify the published repository content.
 
 The owner's Git update request authorizes this source handoff. The runtime is unchanged from the verified browser milestone above; these follow-up edits update documentation and repository presentation. Generated builds, test artifacts, dependencies and the machine-only shortcut remain excluded from Git.
 
 GitHub metadata readback confirms homepage `https://revolamapdrawer.vercel.app` and description “Specialized map editor for Revola: Post Hyper, available in your browser and offline on Windows.” All **24** local documentation links in the changed presentation documents resolve, and `git diff --check` passes. Rechecked the actual shortcut's exact target, empty arguments, working directory and existing paths; package verification still matches all **20** runtime files and the **0.10.4** manifest. Launched the actual `.lnk` again and Computer Use verified the clean **8192 × 8192** editor, fixed ship, export controls and **0 walls / 0 doors**. Closed only this new blank verification instance; the earlier editor was preserved.
+
+Source commit [aa850da](https://github.com/SamiKamara/RevolaMapDrawer/commit/aa850dafd8fea04074b4e81d9261308481445154) (`feat: add browser version and vercel deployment`) was pushed directly to synchronized `main`; local/remote SHA readback agrees. The published README API response confirms the web link immediately below its title. Exactly **17** maintained source/configuration/test/documentation files were committed; generated outputs and original references were excluded or unchanged. [Verify application run 38002662003](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/38002662003) completed successfully for that exact source commit: geometry/persistence/release guards, native editor, static browser build/UI, packaging and packaged application checks all pass. This documentation-only evidence follow-up uses the established `[skip ci]` commit convention; the tested runtime is unchanged.
 
 ## Airlock correction release — version 0.10.4
 
