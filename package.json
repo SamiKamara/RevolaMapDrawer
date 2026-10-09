@@ -9,6 +9,8 @@
   "scripts": {
     "start": "electron .",
     "preview": "node scripts/preview.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "test:web": "node scripts/web-smoke.mjs",
     "test": "node --test tests/*.test.js",
     "test:ui": "node scripts/smoke.mjs && node scripts/svg-smoke.mjs && node scripts/floor-smoke.mjs && node scripts/ship-port-smoke.mjs --compact",
     "test:floors": "node scripts/floor-smoke.mjs",
@@ -35,7 +37,8 @@
   "devDependencies": {
     "@electron/packager": "20.3.0",
     "@playwright/test": "1.63.0",
-    "electron": "44.5.1"
+    "electron": "44.5.1",
+    "esbuild": "0.28.2"
   },
   "engines": {
     "node": ">=22.12.0"

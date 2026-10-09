@@ -5,6 +5,10 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+- Add a static browser build for the specialized Revola: Post Hyper editor at [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app), with local file import/downloads, content-hashed assets and offline application caching.
+- Load the optional star background only when a closed map needs it; preserve native offline files, geometry and transparent exports.
+- Add Vercel configuration and browser transfer/offline verification alongside the maintained Windows package checks.
+
 ## [0.10.4] - 2026-10-08
 
 Airlock wall alignment correction for the specialized **Revola: Post Hyper**

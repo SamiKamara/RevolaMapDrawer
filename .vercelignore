@@ -1,0 +1,33 @@
+# Upload only maintained inputs required by the static build. Personal maps,
+# references, desktop/runtime files and future unrelated files remain excluded.
+*
+!src
+!src/app.js
+!src/clipboard.js
+!src/corridors.js
+!src/doors.js
+!src/export.js
+!src/floors.js
+!src/model.js
+!src/png.js
+!src/render.js
+!src/rooms.js
+!src/selection.js
+!src/ship.js
+!src/svg.js
+!src/style.css
+!assets
+!assets/ship.png
+!assets/editor-stars.png
+!assets/ship-floor-contour.js
+!web
+!web/register.js
+!web/service-worker.js
+!scripts
+!scripts/build-web.mjs
+!index.html
+!package.json
+!package-lock.json
+!LICENSE
+!vercel.json
+!.vercelignore

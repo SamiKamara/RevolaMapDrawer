@@ -26,6 +26,14 @@ The first runnable milestone established manual walls, fixed-width door cuts, un
 - `src/app.js`, `index.html`, `src/style.css`: tool interactions, history, file actions, inspector, keyboard shortcuts and status feedback.
 - `electron/`: native window and filesystem bridge. `scripts/`: preview/build utilities. `tests/`: geometry and persistence regression checks.
 
+## Browser distribution
+
+The browser version uses the same `index.html`, `src/` geometry, rendering and local file-input/download paths as the native application. `npm run build:web` emits a separate allowlisted static build in ignored `web-dist/`, with minified content-hashed JavaScript/CSS and byte-identical hashed ship/background PNGs. Vercel serves only this output, without server functions, map uploads, analytics, remote fonts or external runtime dependencies. Keep the native file-based loading contract unchanged.
+
+Hashed assets have one-year immutable browser caching. A web-only service worker caches the complete editor shell and fixed ship, serves repeat/offline loads locally, and caches the optional star background on first use. Load that background only after floor analysis finds a closed map. It can be unavailable on a first offline closure; floor analysis and exports do not depend on the background. Offline caching stores application files only; there is no automatic map persistence. Downloads preserve the existing conservative dirty-state behavior because their completion cannot be confirmed.
+
+An updated worker waits until every previous editor tab closes, preventing a running editor from switching source versions. Reopening online allows the browser to discover an update; the first reopening may still use the previous worker until it finishes installing. Cached versions and browser storage can be evicted. See [WEB.md](WEB.md) for deployment, measured transfer sizes and exact verification scope.
+
 ## Document and geometry contracts
 
 ### Version 0.10.3 airlock wall-start correction

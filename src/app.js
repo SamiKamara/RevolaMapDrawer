@@ -25,7 +25,16 @@ let spaceHeld = false, busy = false, scheduled = false;
 // Map fragments stay local to this editor session, including across New/Open.
 let clipboard = null, paste = null;
 let shipDataUrl;
-let floor = null, floorKey = '', floorPendingKey = '', starsPattern;
+let floor = null, floorKey = '', floorPendingKey = '', starsPattern, starsRequested = false;
+function loadStars() {
+  if (starsRequested || starsPattern) return;
+  starsRequested = true;
+  const image = new Image();
+  image.onload = () => { starsPattern = ctx.createPattern(image, 'repeat'); renderSoon(); };
+  // The optional background may not be cached on a first offline closure.
+  // Floor analysis and exports remain available; reconnecting retries it.
+  image.src = new URL('../assets/editor-stars.png', import.meta.url).href;
+}
 function floorGeometryKey() {
   return JSON.stringify([doc.width, doc.height, doc.originX, doc.originY, doc.seed, doc.style, doc.vertices, doc.edges, doc.ship]);
 }
@@ -45,6 +54,7 @@ function refreshFloor() {
       try { floor = generateFloor(doc); }
       catch (error) { floor = { closed: null, reason: `Floor check unavailable: ${error.message}` }; }
       floorKey = key; floorPendingKey = '';
+      if (floor?.closed) loadStars();
       floorControls(); renderSoon();
     }, 0);
   }
@@ -777,7 +787,7 @@ window.addEventListener('beforeunload', event => { if (!window.revolaDesktop && 
 new ResizeObserver(renderSoon).observe(container);
 try { shipImage = await loadShip(); status('Ready.'); }
 catch (error) { status(error.message, true); }
-const starsImage = new Image();
-starsImage.onload = () => { starsPattern = ctx.createPattern(starsImage, 'repeat'); renderSoon(); };
-starsImage.src = new URL('../assets/editor-stars.png', import.meta.url).href;
+window.addEventListener('online', () => {
+  if (!starsPattern && floor?.closed) { starsRequested = false; loadStars(); }
+});
 fit(); refresh(); setTool('wall');

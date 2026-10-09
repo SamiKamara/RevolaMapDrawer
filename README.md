@@ -1,10 +1,22 @@
 # Revola Map Drawer
 
-Revola Map Drawer is a specialized, offline Windows tool for making maps for **Revola: Post Hyper**. It follows the game's supplied map references, with white walls, fixed wall/door/corridor dimensions, 45-degree directions and a fixed ship and airlock. It is **not a general-purpose drawing application**.
+**Web app:** [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app) · **Windows app:** [latest portable release](https://github.com/SamiKamara/RevolaMapDrawer/releases/latest)
+
+Revola Map Drawer is a specialized map editor for **Revola: Post Hyper**, available as an offline Windows application and a browser application. It follows the game's supplied map references, with white walls, fixed wall/door/corridor dimensions, 45-degree directions and a fixed ship and airlock. It is **not a general-purpose drawing application**.
 
 Draw on an **8192 × 8192** canvas and export transparent wall PNG/SVG images. Drawing beyond its edge automatically expands the canvas to **16384 × 16384**, around the same world center, without moving or scaling existing geometry. Wall PNGs retain the editable map graph; JSON project files provide an image-independent editable copy. Closed maps also produce separate black floor PNG/SVG images.
 
-The application runs locally without an account, internet connection or development server. The supported distribution is **Windows x64**. Other operating systems and architectures have not been packaged or verified. See the [changelog](CHANGELOG.md) for version history and the [verification checklist](docs/CHECKLIST.md) for completed checks and exact limitations.
+The Windows application runs locally without an account, internet connection or development server. The supported native distribution is **Windows x64**. Other native operating systems and architectures have not been packaged or verified. See the [changelog](CHANGELOG.md) for version history and the [verification checklist](docs/CHECKLIST.md) for completed checks and exact limitations.
+
+## Browser application
+
+Open [Revola Map Drawer in your browser](https://revolamapdrawer.vercel.app).
+
+The web build uses the same editor and geometry as the Windows application. Open maps with the browser's local file picker and save them through downloads. Drawing, imported files, generated floors and PNG/SVG exports stay on your computer; maps are never uploaded. Downloads cannot confirm that a file reached its destination, so the editor keeps its unsaved-changes reminder. Keep downloaded projects or editable wall PNGs before closing the tab; browser caching stores the application, not your maps.
+
+After the first successful load and offline cache installation, the application can reopen without a connection in the same browser profile. Hashed application files are cached locally. The optional star background downloads only when a closed map needs it; offline it is available after its first use. New application versions take over after all editor tabs close and the application reopens online. Browser cache eviction or clearing site data requires another online load. Desktop Chrome is verified; mobile touch layouts and other browsers have not been independently verified.
+
+Build, test and deployment instructions, including measured transfer sizes and caching behavior, are in [docs/WEB.md](docs/WEB.md).
 
 ## Portable Windows package
 

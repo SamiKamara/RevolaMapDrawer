@@ -28,6 +28,10 @@ jobs:
         run: npm test
       - name: Verify native offline editor
         run: npm run test:ui
+      - name: Build and verify static browser editor
+        run: |
+          npm run build:web
+          npm run test:web
       - name: Package without hosted-runner desktop integration
         run: npm run package --ignore-scripts
       - name: Verify packaged application

@@ -2,6 +2,41 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Static browser build and Vercel — 2026-10-10
+
+- [x] Keep the same native/browser geometry, project schema and export implementation; load optional stars only when a closed map needs them.
+- [x] Build a minified allowlisted browser runtime with independently hashed immutable assets and the project license.
+- [x] Verify browser local persistence, actual transfer accounting, offline use and worker updates.
+- [x] Deploy the verified static output to Vercel and check the public application and response headers.
+- [x] Run native source UI, rebuild Windows package, and run packaged UI checks after the shared runtime change.
+- [x] Inspect and launch the actual refreshed desktop shortcut, verifying the latest packaged editor visibly opens.
+
+Native verification: `npm run test:ui`, `npm run package` and `npm run test:packaged` pass with no renderer errors. Packaging verifies all **20** runtime files and the minimal **0.10.4** manifest against current source. The postpackage hook refreshes the actual desktop `.lnk`; a separate `-VerifyOnly` readback confirms target `<repository root>\\dist\\RevolaMapDrawer-win32-x64\\RevolaMapDrawer.exe`, empty arguments, repository working directory and existing target/icon paths. Launched the real link through Windows Shell. Computer Use verified the clean visible editor with **8192 × 8192** canvas, fixed ship/upper-corner handles, export controls and **0 walls / 0 doors**. No user map was opened or changed.
+
+### Verified web evidence
+
+- `npm test`: **249/249 pass**, with no skipped tests. Six added web checks cover deterministic builds, runtime/input allowlists, exact PNG bytes, content hashes, Vercel caching/security configuration, bounded build-output cleanup, local worker caching, failed installation cleanup and mismatched HTML rejection. Build cleanup rejects repository ancestors, case variants, unrelated directories and Windows junctions before recursive deletion.
+- `npm run build:web`: build **b0b7a3f8919f5522**, app **9cf54f17536d1f39**, eight generated files, **400,043 total bytes** including the deferred **69,321-byte** star image. The initial response-body estimate includes the installer's additional HTML request: **192,573 bytes** with Brotli text/raw PNGs or **207,615 bytes** with gzip text/raw PNGs. Ship/background PNG bytes are unchanged. The deployed runtime contains no originals, personal maps, Electron, external fonts or analytics.
+- `npm run test:web`: real desktop Chrome passes connected-wall drawing, measured doors, undo/redo, exact project/editable-PNG reopening, embedded ship SVG, invalid/oversized import preservation, automatic floors, offline exports and **1024 × 700** layout. Raster evidence: **8192 × 8192**, **761,674 visible white pixels**, **66,347,190 transparent pixels**, **374 px** clear door raster run with the exact **375 px** vector interval. No renderer errors, uploads or third-party requests.
+- Local host accounting measures **192,573 body bytes / eight requests** for first loading plus installation; controlled reload makes **zero host requests / zero bytes**. Drawing/import/export makes **zero resource requests / zero body bytes**, aside from one independent worker-script **304** revalidation with no body. First closed-map stars load once (**69,321 bytes**). Offline reload and project/PNG/SVG/floor-SVG actions require no host resource bytes. Chromium can perform background worker checks even during Playwright offline emulation; these are recorded separately rather than attributed to map actions.
+- A first closure offline, before stars have ever loaded, retains floor SVG export; reconnecting loads/caches stars. A real updated worker waits with **two** existing editor tabs, keeps the unsaved map and old shell intact after the first closes, activates only after the last closes, and opens its next visit offline. Test updates override only the local test host's worker response; they do not alter the production source or trigger release tags.
+- The installed Vercel CLI's actual upload matcher selects exactly **26** maintained build inputs. Known originals and personal-map probes in root/source/assets/web, native files/scripts, docs, agent instructions, environment files and generated output are excluded. Production deployment **dpl_4oAFQHpEAU2hphwYxqPTY34UtHAm** returned **READY**, with canonical public URL [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app). Anonymous HTTP checks return 200 for every generated file, with SHA-256 bytes matching the local build; hashed assets have one-year immutable caching and HTML/worker revalidate. Original references, brief, source paths and missing assets return **404**. Public security headers match the maintained configuration.
+- `npm run test:web -- --url https://revolamapdrawer.vercel.app` passes against the actual HTTPS production application: cache headers, locally served warm reload, exact **36-wall / two-door** project and PNG reopen, byte-exact ship SVG embedding, offline cached reload/reopen/downloads, and no uploads or other-domain requests. Production and local screenshots were visually reviewed. Maintained generated evidence: `artifacts/web-build.json`, `web-results.json`, `web-production-results.json`, web screenshots and native check logs; all remain ignored.
+
+Limitations: verified browser is desktop Chrome, at **1440 × 960** and **1024 × 700**; mobile/touch and other browsers are unverified. Browser downloads cannot verify destination/completion and retain unsaved-change reminders. Maps are not automatically persisted in browser storage. Offline use requires successful initial installation in the same profile and retained browser cache; the optional stars require prior use or reconnection. Browser update discovery may first reopen the previous worker until the new one installs and all old tabs close. Initial visits, changed application files and small worker checks still incur host traffic.
+
+This browser milestone leaves native release metadata at **0.10.4** with changes in `[Unreleased]`; no new version tag or Windows release was created. Browser-specific deployment instructions and cache limitations are in [WEB.md](WEB.md).
+
+### GitHub web-version handoff — 2026-10-10
+
+- [x] Put the public web app link immediately below the README title alongside the Windows release link; include the web URL in the changelog.
+- [x] Update the GitHub repository homepage/description to identify both browser and offline Windows availability.
+- [-] Commit the verified web implementation and documentation to `main`, push to `origin/main`, and verify the published repository content.
+
+The owner's Git update request authorizes this source handoff. The runtime is unchanged from the verified browser milestone above; these follow-up edits update documentation and repository presentation. Generated builds, test artifacts, dependencies and the machine-only shortcut remain excluded from Git.
+
+GitHub metadata readback confirms homepage `https://revolamapdrawer.vercel.app` and description “Specialized map editor for Revola: Post Hyper, available in your browser and offline on Windows.” All **24** local documentation links in the changed presentation documents resolve, and `git diff --check` passes. Rechecked the actual shortcut's exact target, empty arguments, working directory and existing paths; package verification still matches all **20** runtime files and the **0.10.4** manifest. Launched the actual `.lnk` again and Computer Use verified the clean **8192 × 8192** editor, fixed ship, export controls and **0 walls / 0 doors**. Closed only this new blank verification instance; the earlier editor was preserved.
+
 ## Airlock correction release — version 0.10.4
 
 - [x] Fit the focused airlock UI checks to smaller windows, retain actual preview,
