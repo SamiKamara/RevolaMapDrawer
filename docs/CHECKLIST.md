@@ -2,6 +2,38 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Version 0.11.0 release and web update — 2026-10-11
+
+The owner's request authorizes committing/pushing `main`, updating the Windows release and deploying the web application. Version **0.11.0** is selected manually for the new room/corridor features and browser distribution. Older tags and releases remain unchanged.
+
+- [x] Prepare matching package/lockfile/changelog metadata and verify the complete portable build.
+- [ ] Commit/push the verified source on `main`, create immutable v0.11.0 and verify hosted checks and draft assets.
+- [ ] Publish the verified v0.11.0 release as latest and check its downloadable assets.
+- [-] Verify the new drawing behavior in desktop Chrome, deploy the web build and check production/offline behavior.
+- [ ] Inspect and launch the actual refreshed desktop test shortcut for the final handoff.
+
+Preparation evidence: `scripts/build-release.ps1 -Version 0.11.0` passes source/packaged UI, all **21** runtime byte comparisons, minimal manifest, checksum and every byte of **77** ZIP files. The extracted portable application opens offline and saves/reopens exact editable geometry with **zero network requests**. After the Vercel guard was added, final `npm test` passes **289/289**, no skips. The real refreshed desktop shortcut's target/arguments/working directory/paths were inspected and its clean 8192 editor with new Shift Room guidance was visibly opened; only that blank test instance was closed before the tagging rebuild. Logs: ignored `artifacts/release-0110-preparation.log`, `release-0110-unit-final.log` and shortcut readback.
+
+Local browser verification: build **4ce877f769893f3a**, app hash **31f9a354b05878df**, eight generated files, **413,387 total bytes**, measured first install **196,391 response-body bytes** and controlled reload **zero host requests**. Local/offline real Chrome verifies Shift square previews/placement/downloads, a **50 px** short corridor from an offset fixed doorway, exact graph/history and existing exports/reopen. Added drawing actions incur **zero requests / zero bytes**, with no uploads, third-party requests or renderer errors. The Vercel upload allowlist now explicitly includes `src/room-start.js`; its new test compares all transitive esbuild inputs with standard Gitignore semantics, checks excluded private/native/generated paths and reproduces the missing-module failure. Evidence: ignored web build/results JSON and `artifacts/release-0.11.0-web-build.log`, `release-0.11.0-web-test.log`.
+
+## Shift square rooms and short corridors — 2026-10-11
+
+- [x] Commit the verified corridor continuation/attached-room work on `main`: `0392b10` (`feat: add corridor continuation and attached rooms`).
+- [x] Hold Shift to keep Room width and depth equal, including rotated free rooms and exact attached door centers; update previews when Shift changes during a drag.
+- [x] Remove the width-based 348 px corridor route filter so a short straight grid step can draw; retain safe bend geometry and click cancellation.
+- [x] Verify geometry/persistence and source/packaged UI, rebuild and launch the actual refreshed desktop shortcut.
+
+This is unreleased local work; the new Shift/short-corridor changes remain in the working tree after the requested initial commit. Version selection is unchanged.
+
+Verified evidence and current limits:
+
+- `npm test`: **288/288 pass**, no skips. Thirteen new geometry checks cover square free rooms in every quadrant with optional 45° rotation, attached square rooms in all eight directions, legal minima, exact centered **375 px** doors/IDs, rail junctions, atomic collisions and expansion. Short **25/75/150 px** straight corridors retain **580 px** separation, original graph junctions/openings, both ship facings and exact JSON reopen. Tight turns and reversals still reject atomically.
+- `npm run test:ui` and `npm run test:packaged` pass the complete maintained suites without renderer errors. Both connection runs cover **87** screenshot states with actual ship hull pixels (minimum **2,398**), **15** attached room placements, two additional free square placements and seven short-corridor placements. Six Shift cases verify held-before-press, live keydown/keyup at a stationary pointer, held release, exact square dimensions, original door centers and one-step undo/redo; Shift+R still toggles rotation. Short free/door/END routes verify exact rails at **25/50/75/100/125 px**, positive previews and no terminal spurs. The one-grid-step free drag measures **3.75 screen pixels at 15% zoom**; the offset editable-door case measures **4 screen pixels at 16%**. A press 180 px along an editable opening, a press 100 px beside the ship opening and a single raw release exactly at its attracted anchor retain the intended normal displacement. Stationary attracted clicks and release back at the actual press make no edit. Native save/reopen and original obstruction checks also pass. Evidence: ignored `artifacts/square-short-unit-tests.log`, `square-short-ui-suite.log`, `square-short-packaged-suite.log`, connection results JSON and screenshots.
+- Packaged screenshots were visually inspected for the rotated square preview, centered square room at an existing corridor mouth and one-grid-step doorway corridor. The live shortcut check below also confirmed visible short corridor placement.
+- `npm run test:corridors` and `npm run test:corridor-end` pass the existing source start/end alignment checks. The raw-release fallback fixture independently accounts for its (-15,-35) start correction; receiving attraction still uses the raw release position, while direction-preserving fitting retains the exact start. Evidence: `artifacts/square-short-prior-corridors.log` and `square-short-prior-corridor-end.log`.
+- `npm run package` rebuilt and verified all **21** runtime files and the minimal **0.10.4** manifest against current source. The `postpackage` hook refreshed the actual desktop `.lnk`; separate `-VerifyOnly` inspection confirmed the direct packaged executable, empty arguments, repository working directory and existing target/icon paths. Launched the real shortcut through Windows Shell. Computer Use observed the new Shift Room guidance and then an **8 screen-pixel** upward corridor drag at **16%** from the default outer DOOR: successful placement, **2 walls / 0 doors** and an **END** marker. Undo restored the clean **8192 × 8192**, **0 walls / 0 doors** map. Room remains active at 16%; no user map was opened or modified. Evidence: `artifacts/square-short-package.log` and `square-short-shortcut-corridor.png`.
+- Limits: Shift equalizes the footprint's width/depth while keeping the fixed chamfer inset, rather than equalizing all eight chamfered edge lengths. Attached squares use the larger requested extent and legal doorway minimum, rounded up to twice the grid; existing collisions, host orientation and outward ship/corridor requirements remain enforced. Short straight corridor runs follow the document grid (default **25 px**), and drawing requires more than **3 screen pixels** of actual movement, so zoom in for the smallest pieces. Bends still require enough space for the fixed **580 px** corridor width; reversals, tight corners and self-overlap remain unsupported. Route attraction preserves the actual drag displacement from its exact anchored start. Original references, artwork, world scale, pins and saved schema remain unchanged.
+
 ## Attached room straight-drag correction — 2026-10-10
 
 - [x] Reproduce the reported doorway/chamfer error on normal-only and tangent-only attached-room drags.

@@ -11,6 +11,19 @@ const clean = value => Math.round(value * 1e9) / 1e9;
 const finitePoint = p => p && Number.isFinite(p.x) && Number.isFinite(p.y);
 const other = (edge, id) => edge.a === id ? edge.b : edge.a;
 
+/** Constrain a free room's sizing rectangle before its existing optional 45°
+ * rotation. The larger drag dimension determines the square's side, preserving
+ * the starting corner and the drag quadrant. A zero component grows positively.
+ * Endpoints are already grid-snapped by the caller; this helper never mutates.
+ */
+export function constrainRoomEnd(start, end, options = {}) {
+  if (!finitePoint(start) || !finitePoint(end)) throw new Error('Invalid room geometry.');
+  if (!options.square) return { ...end };
+  const delta = sub(end, start), side = Math.max(Math.abs(delta.x), Math.abs(delta.y));
+  return { x: clean(start.x + (Math.sign(delta.x) || 1) * side),
+    y: clean(start.y + (Math.sign(delta.y) || 1) * side) };
+}
+
 function graphIndex(doc) {
   if (!Array.isArray(doc?.vertices) || !Array.isArray(doc.edges)) return null;
   const vertices = new Map(doc.vertices.map(vertex => [vertex.id, vertex]));

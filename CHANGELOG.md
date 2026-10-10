@@ -5,6 +5,13 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-11
+
+Room and corridor drawing improvements for the specialized **Revola: Post Hyper**
+editor, shared by the offline Windows application and browser version.
+
+- Hold Shift during room drawing to keep width and depth equal, including rotated rooms and centered doorway attachments; pressing or releasing Shift updates the preview immediately.
+- Allow short straight corridor pieces by removing the width-based route length filter; preserve bend clearance and prevent stationary attracted clicks from placing corridors.
 - Fix attached rooms disappearing during straight drags by supplying the missing dimension and showing the minimum legal outline during sizing; stationary clicks remain unchanged.
 - Continue an existing corridor from its exact open-end midpoint, including saved maps.
 - Attach chamfered rooms to the outer airlock door, editable doors, open corridor ends and clear wall midpoints, keeping the adjoining side and 375 px doorway centered on the start.

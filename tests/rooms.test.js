@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addWall, addRoom, addDoor, createDocument } from '../src/model.js';
-import { detectRoom, proposeRoomResize } from '../src/rooms.js';
+import { addWall, addRoom, addDoor, createDocument, roomSegments, validateDocument } from '../src/model.js';
+import { detectRoom, proposeRoomResize, constrainRoomEnd } from '../src/rooms.js';
 
 const EPS = 1e-5;
 const distance = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
@@ -14,6 +14,58 @@ function applyProposal(doc, proposal) {
   for (const vertex of copy.vertices) if (proposal.positions.has(vertex.id)) Object.assign(vertex, proposal.positions.get(vertex.id));
   return copy;
 }
+
+test('square sizing preserves the free start corner and drag signs for upright and rotated rooms', () => {
+  for (const rotated of [false, true]) for (const xSign of [-1, 1]) for (const ySign of [-1, 1]) {
+    const start = { x: 3000.5, y: 3000.25 }, aim = { x: start.x + xSign * 1100, y: start.y + ySign * 600 };
+    const inputs = structuredClone([start, aim]);
+    const end = constrainRoomEnd(start, aim, { square: true });
+    assert.deepEqual(end, { x: start.x + xSign * 1100, y: start.y + ySign * 1100 });
+    assert.deepEqual([start, aim], inputs);
+    const doc = createDocument(); addRoom(doc, start, end, rotated);
+    const room = detectRoom(doc, doc.edges[0].id);
+    assert.equal(room.orientation, rotated ? 45 : 0);
+    near(room.bounds.right - room.bounds.left, 1100); near(room.bounds.bottom - room.bounds.top, 1100);
+    near(room.chamfer, 220);
+    assert.deepEqual(validateDocument(JSON.parse(JSON.stringify(doc))), doc);
+  }
+});
+
+test('square constraint follows either dominant dimension and uses a stable sign for an absent axis', () => {
+  const start = { x: 2000, y: 2000 };
+  for (const [aim, expected] of [
+    [{ x: 2500, y: 3400 }, { x: 3400, y: 3400 }],
+    [{ x: 2000, y: 600 }, { x: 3400, y: 600 }],
+    [{ x: 600, y: 2000 }, { x: 600, y: 3400 }],
+    [{ x: 2000, y: 2000 }, { x: 2000, y: 2000 }],
+  ]) assert.deepEqual(constrainRoomEnd(start, aim, { square: true }), expected);
+});
+
+test('toggling square sizing is pure and restores the same unconstrained free geometry', () => {
+  const start = { x: 2000, y: 1200 }, aim = { x: 3100, y: 1800 }, inputs = structuredClone([start, aim]);
+  for (const rotated of [false, true]) {
+    const original = roomSegments(start, aim, rotated);
+    assert.deepEqual(roomSegments(start, constrainRoomEnd(start, aim), rotated), original);
+    assert.deepEqual(roomSegments(start, constrainRoomEnd(start, aim, { square: false }), rotated), original);
+    assert.notDeepEqual(roomSegments(start, constrainRoomEnd(start, aim, { square: true }), rotated), original);
+    assert.deepEqual(roomSegments(start, constrainRoomEnd(start, aim), rotated), original);
+  }
+  assert.deepEqual([start, aim], inputs);
+  assert.throws(() => constrainRoomEnd(start, { x: NaN, y: 1800 }, { square: true }), /Invalid room geometry/);
+});
+
+test('free squares retain primitive minimum/bounds validation and centered expansion behavior', () => {
+  const tiny = createDocument(), savedTiny = structuredClone(tiny);
+  assert.throws(() => addRoom(tiny, { x: 1000, y: 1000 }, constrainRoomEnd({ x: 1000, y: 1000 }, { x: 1200, y: 1100 }, { square: true })), /wider and taller/);
+  assert.deepEqual(tiny, savedTiny);
+  const doc = createDocument(), start = { x: 1000, y: 1000 };
+  addRoom(doc, start, constrainRoomEnd(start, { x: 500, y: -500 }, { square: true }));
+  assert.deepEqual([doc.width, doc.height, doc.originX, doc.originY], [16384, 16384, -4096, -4096]);
+  assert.deepEqual(doc.ship, createDocument().ship);
+  const invalid = createDocument(), before = structuredClone(invalid);
+  assert.throws(() => addRoom(invalid, start, constrainRoomEnd(start, { x: -5000, y: 800 }, { square: true })), /16384/);
+  assert.deepEqual(invalid, before);
+});
 
 test('axis room wall resize translates all four near corners and preserves fixed chamfers', () => {
   const doc = createDocument();

@@ -165,13 +165,88 @@ test('ship/corridor substantial inward drags and stale mouths preserve all origi
   const before = structuredClone(doc); assert.throws(() => addAttachedRoom(doc, target, { x: 3000, y: 4000 }), /mouth/); assert.deepEqual(doc, before);
 });
 
-function previewDimensions(doc, target, aim) {
-  const points = attachedRoomSegments(doc, target, aim).flatMap(segment => [segment.a, segment.b]);
+function previewDimensions(doc, target, aim, options = {}) {
+  const points = attachedRoomSegments(doc, target, aim, options).flatMap(segment => [segment.a, segment.b]);
   const normal = { x: -target.direction.y, y: target.direction.x };
   const along = points.map(point => (point.x - target.point.x) * target.direction.x + (point.y - target.point.y) * target.direction.y);
   const across = points.map(point => (point.x - target.point.x) * normal.x + (point.y - target.point.y) * normal.y);
   return { width: Math.max(...along) - Math.min(...along), depth: Math.max(...across) - Math.min(...across) };
 }
+
+test('constrained ship rooms use the larger full dimension and preserve the fixed door in both facings', () => {
+  for (const mirrored of [false, true]) for (const [aim, side] of [
+    [{ x: 5510.5, y: 2700 }, 2800],
+    [{ x: 4610.5, y: 2700 }, 2000],
+    [{ x: 4110.5, y: 3475 }, 1250],
+    [{ x: 4120.5, y: 4690 }, 900],
+  ]) {
+    const doc = createDocument(); doc.ship.mirrored = mirrored;
+    const target = resolveRoomStart(doc, { x: 4110.5, y: 4700 }), before = structuredClone(doc);
+    const dimensions = previewDimensions(doc, target, aim, { square: true });
+    near(dimensions.width, side); near(dimensions.depth, side); assert.deepEqual(doc, before);
+    addAttachedRoom(doc, target, aim, { square: true });
+    near(Math.min(...doc.vertices.map(point => point.x)), target.point.x - side / 2);
+    near(Math.max(...doc.vertices.map(point => point.x)), target.point.x + side / 2);
+    near(Math.min(...doc.vertices.map(point => point.y)), target.point.y - side);
+    near(Math.max(...doc.vertices.map(point => point.y)), target.point.y);
+    pointNear(doorRecords(doc)[0].point, target.point);
+    assert.deepEqual(validateDocument(JSON.parse(JSON.stringify(doc))), doc);
+  }
+});
+
+test('constrained wall/door rooms stay square in all host directions while keeping their doorway IDs', () => {
+  for (let index = 0; index < 8; index++) for (const existingDoor of [false, true]) {
+    const angle = index * Math.PI / 4, tangent = { x: Math.cos(angle), y: Math.sin(angle) };
+    const normal = { x: -tangent.y, y: tangent.x }, center = { x: 2000.5, y: 2000.25 };
+    const doc = createDocument(); add(doc, at(center, tangent, -1200), at(center, tangent, 1200));
+    if (existingDoor) addDoor(doc, doc.edges[0].id, center);
+    const target = resolveRoomStart(doc, center), originalDoor = existingDoor ? doorRecords(doc)[0] : null;
+    const aim = aimAt(center, tangent, normal, 800, 1200), dimensions = previewDimensions(doc, target, aim, { square: true });
+    near(dimensions.width, 1600); near(dimensions.depth, 1600);
+    addAttachedRoom(doc, target, aim, { square: true });
+    pointNear(doorRecords(doc)[0].point, target.point);
+    if (originalDoor) assert.equal(doorRecords(doc)[0].id, originalDoor.id);
+    const edge = doc.edges.find(edge => edge.doors.length), a = doc.vertices.find(vertex => vertex.id === edge.a), b = doc.vertices.find(vertex => vertex.id === edge.b);
+    const parts = segmentVisibleParts(a, b, edge.doors, doc.style.doorWidth, edge.gaps);
+    near(Math.hypot(parts[1].a.x - parts[0].b.x, parts[1].a.y - parts[0].b.y), 375);
+    assert.deepEqual(validateDocument(JSON.parse(JSON.stringify(doc))), doc);
+  }
+});
+
+test('constrained mouth rooms preserve rail junctions and raise both dimensions to legal square minima', () => {
+  for (let index = 0; index < 8; index++) for (const tiny of [false, true]) {
+    const angle = index * Math.PI / 4, direction = { x: Math.cos(angle), y: Math.sin(angle) };
+    const doc = createDocument(), center = { x: 2000.5, y: 2000.25 }, end = at(center, direction, 500);
+    addCorridor(doc, [center, end]);
+    const target = corridorEndTargets(doc).find(target => Math.hypot(target.point.x - end.x, target.point.y - end.y) < EPS);
+    const aim = aimAt(target.point, target.direction, target.outwardDirection, tiny ? 10 : 800, tiny ? 10 : 1200);
+    const dimensions = previewDimensions(doc, target, aim, { square: true }), side = tiny ? 1050 : 1600;
+    near(dimensions.width, side); near(dimensions.depth, side);
+    const endpoints = target.vertexIds.map(id => structuredClone(doc.vertices.find(vertex => vertex.id === id)));
+    addAttachedRoom(doc, target, aim, { square: true });
+    for (const endpoint of endpoints) {
+      assert.deepEqual(doc.vertices.find(vertex => vertex.id === endpoint.id), endpoint);
+      assert.equal(doc.edges.filter(edge => edge.a === endpoint.id || edge.b === endpoint.id).length, 3);
+    }
+    pointNear(doorRecords(doc)[0].point, target.point);
+    assert.deepEqual(validateDocument(JSON.parse(JSON.stringify(doc))), doc);
+  }
+});
+
+test('square modifier toggles without mutation and validates the enlarged footprint atomically', () => {
+  const doc = createDocument(); add(doc, { x: 1000, y: 2000 }, { x: 3000, y: 2000 });
+  add(doc, { x: 1800, y: 500 }, { x: 2200, y: 500 });
+  const target = resolveRoomStart(doc, { x: 2000, y: 2000 }), aim = { x: 2900, y: 1000 }, before = structuredClone(doc);
+  const original = attachedRoomSegments(doc, target, aim);
+  assert.deepEqual(attachedRoomSegments(doc, target, aim, { square: false }), original);
+  assert.notDeepEqual(attachedRoomSegments(doc, target, aim, { square: true }), original);
+  assert.deepEqual(attachedRoomSegments(doc, target, aim), original); assert.deepEqual(doc, before);
+  addAttachedRoom(structuredClone(doc), target, aim);
+  assert.throws(() => addAttachedRoom(doc, target, aim, { square: true }), /enclose/); assert.deepEqual(doc, before);
+  const ship = createDocument(), shipTarget = resolveRoomStart(ship, { x: 4110.5, y: 4700 }), saved = structuredClone(ship);
+  assert.throws(() => addAttachedRoom(ship, shipTarget, { x: 5510.5, y: 5500 }, { square: true }), /outward/);
+  assert.deepEqual(ship, saved);
+});
 
 test('straight outward and tangent-only ship drags produce centered square rooms', () => {
   for (const mirrored of [false, true]) for (const [aim, width, depth, left, top] of [

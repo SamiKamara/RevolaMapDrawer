@@ -1,6 +1,6 @@
 # Revola Map Drawer — implementation design
 
-Implementation baseline: version 0.10.4. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
+Implementation baseline: version 0.11.0. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
 
 ## Product and first milestone
 
@@ -35,6 +35,12 @@ Hashed assets have one-year immutable browser caching. A web-only service worker
 An updated worker waits until every previous editor tab closes, preventing a running editor from switching source versions. Reopening online allows the browser to discover an update; the first reopening may still use the previous worker until it finishes installing. Cached versions and browser storage can be evicted. See [WEB.md](WEB.md) for deployment, measured transfer sizes and exact verification scope.
 
 ## Document and geometry contracts
+
+### Unreleased Shift square rooms and short corridors
+
+Holding Shift during a Room gesture constrains the footprint's width and depth to the larger requested dimension, preserving the drag quadrant and existing 220 px chamfers. Free rooms constrain their endpoint before the existing optional 45° rotation. Attached rooms use the host's local frame, preserve the exact receiving-side/door midpoint and apply legal doorway/chamfer minima; their equal side is rounded up to twice the document grid so both half-width and depth remain grid-valid. Pointerdown, pointermove and release read the modifier, while Shift keydown/keyup recompute the current preview without requiring another pointer movement. Releasing Shift returns to the original unconstrained pointer aim. Shift+R retains its rotation shortcut.
+
+Corridor route quantization retains any nonzero grid step instead of discarding steps shorter than 60% of corridor width (348 px at width580). This permits short straight pieces, including fixed/editable doorway starts and continuations. Default axis-aligned steps can be 25 px; diagonal steps retain the ordinary 45° grid rules. The pure boundary geometry continues rejecting reversed or overlapping offsets at tight turns. Track the actual corridor pointer press and require more than three screen pixels of movement for previews and placement; attraction offsets alone and returning to the press point make no edit. When a press attracts to a target, translate sampled/release route aims by the same start correction, so a short outward drag beside a door keeps its actual direction and distance. Receiving-target lookup still uses the raw release aim before fitting. Endpoint attraction cannot collapse a short route into its own start.
 
 ### Unreleased corridor continuation and attached rooms
 

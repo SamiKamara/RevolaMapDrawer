@@ -11,6 +11,7 @@
 !src/model.js
 !src/png.js
 !src/render.js
+!src/room-start.js
 !src/rooms.js
 !src/selection.js
 !src/ship.js

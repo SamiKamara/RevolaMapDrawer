@@ -5,7 +5,7 @@ import { decodePngMetadata, MAX_PNG_BYTES, MAX_METADATA_BYTES } from './png.js';
 import { renderMapPng, renderFloorPng } from './export.js';
 import { renderMapSvg } from './svg.js';
 import { generateFloor, drawFloor, renderFloorSvg } from './floors.js';
-import { detectRoom } from './rooms.js';
+import { detectRoom, constrainRoomEnd } from './rooms.js';
 import { resolveDoorPlacement } from './doors.js';
 import { resolveCorridorStart, fitCorridorEnd, corridorPreservesOpenings } from './corridors.js';
 import { resolveRoomStart, attachedRoomSegments, addAttachedRoom } from './room-start.js';
@@ -67,7 +67,7 @@ const descriptions = {
   wall: ['Wall tool', 'Click to chain walls, or drag to draw. Nearby ends join automatically. Draw along a wall to extend it or fill an opening. Escape ends the chain.'],
   door: ['Door tool', 'Click a wall to cut a 375 px opening. Aim near the middle between corners or branches to snap exactly to CENTER. Click an existing opening to restore the wall.'],
   eraser: ['Eraser tool', 'Drag to erase any length of wall. Choose Brush size in the top bar. One stroke is one undo step. The fixed ship stays protected.'],
-  room: ['Room tool', 'Start at DOOR, END or CENTER to attach a room with a centered door. Drag straight outward for a square room, or diagonally to set width and depth. A sideways drag supplies a default depth. The adjoining side stays centered on the start. Free rooms use Rotate 45° or Shift + R.'],
+  room: ['Room tool', 'Hold Shift while dragging to keep width and depth equal. Start at DOOR, END or CENTER for a centered door. Drag outward, sideways or diagonally to size the room; the adjoining side stays centered on the start. Free rooms use Rotate 45° or Shift + R.'],
   corridor: ['Corridor tool', 'Drag a route to draw a 580 px corridor. CENTER or DOOR aligns the start; from END, continue outward before turning. The ship’s outer airlock door also aligns. Finish near a target to align the endpoint while keeping your start and turn directions. Use broad turns.'],
   hand: ['Hand tool', 'Drag to move around the map. Scroll to zoom at your cursor, or press F to fit the whole map.'],
 };
@@ -285,20 +285,23 @@ function roomPreview() {
   if (gesture.target) return gesture.segments || [];
   return model.roomSegments(gesture.start, gesture.end, $('rotate-room').checked, doc.style.chamfer);
 }
-function updateRoom(current, aim) {
-  current.end = current.target ? { ...aim } : model.snapPoint(aim, doc.style.grid);
+function updateRoom(current, aim, square = current.square) {
+  current.square = Boolean(square); current.aim = { ...aim };
+  current.end = current.target ? { ...aim }
+    : constrainRoomEnd(current.start, model.snapPoint(aim, doc.style.grid), { square: current.square });
   if (!current.target) return;
   if (distance(current.pointerStart, aim) * camera.scale <= 3) {
     current.segments = []; current.valid = false; current.previewKey = null;
     status(`Room start aligned to the ${targetName(current.target)}. Drag to size the room.`);
     return;
   }
-  const key = JSON.stringify(current.end);
+  const key = JSON.stringify([current.end, current.square]);
   if (key === current.previewKey) return;
   current.previewKey = key; current.segments = []; current.valid = false;
   try {
-    current.segments = attachedRoomSegments(doc, current.target, current.end);
-    addAttachedRoom(clone(doc), current.target, current.end);
+    const options = { square: current.square };
+    current.segments = attachedRoomSegments(doc, current.target, current.end, options);
+    addAttachedRoom(clone(doc), current.target, current.end, options);
     current.valid = true;
     status('Release to place the room with its centered door.');
   } catch (error) { status(error.message, true); }
@@ -330,7 +333,9 @@ function corridorPath(points, startTarget = null) {
       if (run <= 0) continue;
       next = { x: result[0].x + direction.x * run, y: result[0].y + direction.y * run };
     } else next = model.snapEndpoint(result.at(-1), point, doc.style.grid);
-    if (distance(next, result.at(-1)) >= doc.style.corridorWidth * .6) result.push(next);
+    // Straight runs can be one grid step long. Only actual bend geometry
+    // imposes a width-dependent clearance requirement.
+    if (distance(next, result.at(-1)) > 1e-6) result.push(next);
   }
   return result;
 }
@@ -343,11 +348,22 @@ function placeCorridor(path, startTarget, endTarget = null) {
     : 'Corridor placed. Use the Door tool to connect through existing walls.');
 }
 function corridorRoute(current, release) {
+  if (distance(current.pointerStart, release) * camera.scale <= 3) {
+    return { path: [{ ...current.points[0] }], endTarget: null };
+  }
   // The release is the user's actual aim, including a final movement smaller
   // than the sampling threshold. Attraction must precede route quantization.
   const points = [...current.points];
-  if (distance(points.at(-1), release) > 1e-6) points.push(release);
-  const path = corridorPath(points, current.target), target = corridorTarget(release);
+  // The sole initial point is a synthetic anchor, not a sampled raw aim.
+  // An offset press can intentionally release exactly at that anchor.
+  if (points.length === 1 || distance(points.at(-1), release) > 1e-6) points.push(release);
+  // Keep the drag's displacement when the press attracts to a different
+  // center. Otherwise a small outward drag beside a door can turn sideways.
+  const offset = current.target ? {
+    x: points[0].x - current.pointerStart.x, y: points[0].y - current.pointerStart.y,
+  } : { x: 0, y: 0 };
+  const adjusted = points.map((point, index) => index ? { x: point.x + offset.x, y: point.y + offset.y } : point);
+  const path = corridorPath(adjusted, current.target), target = corridorTarget(release);
   // Pointer sampling and grid quantization often produce the same route over
   // several frames. Reuse its insertion check while the document is unchanged.
   const key = target && JSON.stringify([path, target.edgeId, target.kind, target.point]);
@@ -547,12 +563,12 @@ canvas.addEventListener('pointerdown', event => {
   } else if (tool === 'room') {
     const target = roomTarget(point);
     const start = target?.point ?? model.snapPoint(point, doc.style.grid);
-    gesture = { type: 'room', target, start, pointerStart: { ...point }, end: { ...start }, valid: false, segments: [] };
+    gesture = { type: 'room', target, start, pointerStart: { ...point }, end: { ...start }, square: event.shiftKey, valid: false, segments: [] };
     status(target ? `Room start aligned to the ${targetName(target)}. Drag toward clear space to size the room.` : 'Drag to size a room.');
     canvas.setPointerCapture(event.pointerId); refresh();
   } else if (tool === 'corridor') {
     const target = corridorTarget(point);
-    gesture = { type: 'corridor', target, points: [target?.point ?? model.snapPoint(point, doc.style.grid)] };
+    gesture = { type: 'corridor', target, pointerStart: { ...point }, points: [target?.point ?? model.snapPoint(point, doc.style.grid)] };
     status(target ? `Corridor start aligned to the ${targetName(target)}. Drag the route.` : 'Drag a route to draw a 580 px corridor.');
     canvas.setPointerCapture(event.pointerId); refresh();
   } else if (tool === 'select') {
@@ -591,7 +607,7 @@ canvas.addEventListener('pointermove', event => {
   } else if (gesture?.type === 'erase') {
     try { model.eraseWalls(gesture.preview, gesture.previous, pointer, gesture.radius); gesture.previous = { ...pointer }; }
     catch (error) { status(error.message, true); }
-  } else if (gesture?.type === 'room') updateRoom(gesture, pointer);
+  } else if (gesture?.type === 'room') updateRoom(gesture, pointer, event.shiftKey);
   else if (gesture?.type === 'corridor') {
     if (distance(gesture.points.at(-1), pointer) > 35 && gesture.points.length < 2000) gesture.points.push(pointer);
     gesture.route = corridorRoute(gesture, pointer);
@@ -638,13 +654,13 @@ function finishPointer(event) {
     commit(() => model.addWall(doc, current.start, end, joinOptions()), 'Wall drawn. Nearby ends joined; covered openings filled.'); wallStart = null;
   } else if (current.type === 'erase') commit(() => { doc = current.preview; }, 'Wall erased. Draw over the gap to restore it.');
   else if (current.type === 'room') {
-    updateRoom(current, world(local(event)));
+    updateRoom(current, world(local(event)), event.shiftKey);
     if (distance(current.pointerStart, world(local(event))) * camera.scale > 3 && distance(current.start, current.end) > 5) commit(() => current.target
-      ? addAttachedRoom(doc, current.target, current.end)
+      ? addAttachedRoom(doc, current.target, current.end, { square: current.square })
       : model.addRoom(doc, current.start, current.end, $('rotate-room').checked),
     current.target ? `Room placed with its door at the ${targetName(current.target)}.` : 'Room placed. Drag a side to resize it while keeping its chamfers.');
   }
-  else if (current.type === 'corridor' && distance(current.points[0], world(local(event))) > 5) {
+  else if (current.type === 'corridor' && distance(current.pointerStart, world(local(event))) * camera.scale > 3) {
     const route = corridorRoute(current, world(local(event)));
     placeCorridor(route.path, current.target, route.endTarget);
   }
@@ -819,6 +835,9 @@ window.addEventListener('keydown', event => {
     return;
   }
   if (typing || busy) return;
+  if (event.key === 'Shift' && gesture?.type === 'room') {
+    updateRoom(gesture, gesture.aim ?? pointer ?? gesture.pointerStart, true); renderSoon();
+  }
   if (event.shiftKey && event.key.toLowerCase() === 'r') {
     event.preventDefault(); if (tool !== 'room') setTool('room');
     $('rotate-room').checked = !$('rotate-room').checked; refreshRotation(); return;
@@ -829,7 +848,12 @@ window.addEventListener('keydown', event => {
   else if (event.key.toLowerCase() === 'f') fit();
   else if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); deleteSelected(); }
 });
-window.addEventListener('keyup', event => { if (event.code === 'Space') { spaceHeld = false; canvas.style.cursor = tool === 'hand' ? 'grab' : tool === 'select' ? 'default' : 'crosshair'; } });
+window.addEventListener('keyup', event => {
+  if (event.key === 'Shift' && gesture?.type === 'room') {
+    updateRoom(gesture, gesture.aim ?? pointer ?? gesture.pointerStart, event.shiftKey); renderSoon();
+  }
+  if (event.code === 'Space') { spaceHeld = false; canvas.style.cursor = tool === 'hand' ? 'grab' : tool === 'select' ? 'default' : 'crosshair'; }
+});
 window.addEventListener('blur', () => { spaceHeld = false; gesture = null; refresh(); });
 window.addEventListener('beforeunload', event => { if (!window.revolaDesktop && dirty()) { event.preventDefault(); event.returnValue = ''; } });
 new ResizeObserver(renderSoon).observe(container);

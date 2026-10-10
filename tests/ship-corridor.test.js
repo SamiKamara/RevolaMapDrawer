@@ -65,6 +65,23 @@ test('ship doorway targeting keeps the exact fractional corridor origin through 
   }
 });
 
+test('short outer-airlock corridors preserve the exact fractional center and ship in both facings', () => {
+  for (const mirrored of [false, true]) for (const length of [25, 75, 150]) {
+    const doc = createDocument(); doc.ship.mirrored = mirrored;
+    const ship = structuredClone(doc.ship), target = resolveCorridorStart(doc, { x: 4210.5, y: 4690 });
+    assert.deepEqual(target.point, { x: 4110.5, y: 4700 });
+    addCorridor(doc, [target.point, { x: target.point.x, y: target.point.y - length }]);
+    assert.equal(doc.edges.length, 2);
+    const starts = doc.vertices.filter(vertex => vertex.y === 4700).sort((a, b) => a.x - b.x);
+    const ends = doc.vertices.filter(vertex => vertex.y === 4700 - length).sort((a, b) => a.x - b.x);
+    assert.equal(starts.length, 2); assert.equal(ends.length, 2);
+    assert.equal(starts[1].x - starts[0].x, 580); assert.equal(ends[1].x - ends[0].x, 580);
+    assert.equal((starts[0].x + starts[1].x) / 2, 4110.5); assert.equal((ends[0].x + ends[1].x) / 2, 4110.5);
+    assert.deepEqual(doc.ship, ship); assert.equal(doc.edges.flatMap(edge => edge.doors).length, 0);
+    assert.deepEqual(validateDocument(JSON.parse(JSON.stringify(doc))), doc);
+  }
+});
+
 test('a corridor remains centered on the outer airlock after facing changes in either direction', () => {
   for (const initiallyMirrored of [false, true]) {
     const doc = createDocument(); doc.ship.mirrored = initiallyMirrored;

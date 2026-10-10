@@ -6,10 +6,52 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { createHash, webcrypto } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+import * as esbuild from 'esbuild';
 import { buildWeb } from '../scripts/build-web.mjs';
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+
+test('Vercel upload includes every transitive browser input while excluding unrelated files', async t => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'revola-vercel-inputs-'));
+  t.after(async () => {
+    assert.ok(path.resolve(temporary).startsWith(path.resolve(os.tmpdir()) + path.sep));
+    await fs.rm(temporary, { recursive: true, force: true });
+  });
+  const git = (args, input) => {
+    const result = spawnSync('git', ['-c', 'core.excludesFile=', '-c', 'core.ignoreCase=false', ...args], {
+      cwd: temporary, input, encoding: 'utf8', windowsHide: true,
+    });
+    assert.ok([0, 1].includes(result.status), result.error?.message ?? result.stderr);
+    return result.stdout.trim().split(/\r?\n/).filter(Boolean);
+  };
+  git(['init', '--quiet']);
+  const policy = await fs.readFile(path.join(root, '.vercelignore'), 'utf8');
+  // Vercel documents Gitignore syntax and uses node-ignore. Exercise those
+  // semantics with Git's standard matcher, including excluded parent folders.
+  await fs.writeFile(path.join(temporary, '.gitignore'), policy);
+  const bundle = await esbuild.build({ absWorkingDir: root, entryPoints: ['src/app.js'], bundle: true,
+    write: false, format: 'esm', platform: 'browser', metafile: true });
+  const imported = Object.keys(bundle.metafile.inputs);
+  assert.ok(imported.includes('src/room-start.js'), 'The dependency scan must include the attached-room module');
+  const required = [...new Set([...imported, 'src/style.css', 'assets/ship.png', 'assets/editor-stars.png',
+    'web/register.js', 'web/service-worker.js', 'scripts/build-web.mjs', 'index.html',
+    'package.json', 'package-lock.json', 'LICENSE', 'vercel.json', '.vercelignore'])];
+  assert.deepEqual(git(['check-ignore', '--no-index', '--stdin'], required.join('\n') + '\n'), [],
+    'Every browser dependency and build input must survive the real upload policy');
+  const excluded = ['AGENTS.md', '.git/config', '.github/workflows/release.yml', '.vercel/project.json',
+    'docs/DESIGN.md', 'tests/web.test.js', 'electron/main.cjs', 'scripts/create-release.ps1',
+    'node_modules/esbuild/package.json', 'artifacts/local-map.revola.json', 'dist/RevolaMapDrawer.exe',
+    'web-dist/index.html', 'personal.revola.json', 'RevolaCandiMapASample.png', 'alustava toteutusohje.txt',
+    'src/private-map.json', 'src/future-unreviewed.js', 'src/nested/private.js', 'assets/personal.png',
+    'web/private.js', 'scripts/private.js'];
+  assert.deepEqual(git(['check-ignore', '--no-index', '--stdin'], excluded.join('\n') + '\n'), excluded,
+    'Opening maintained source folders must not upload private, native, generated or future files');
+  await fs.writeFile(path.join(temporary, '.gitignore'), policy.replace(/^!src\/room-start\.js\r?\n/m, ''));
+  assert.deepEqual(git(['check-ignore', '--no-index', '--stdin'], 'src/room-start.js\n'), ['src/room-start.js'],
+    'Removing the new module entry must reproduce the hosted-build exclusion');
+});
 
 test('web build contains only hashed browser runtime, notices and a bounded offline shell', async t => {
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'revola-web-test-'));

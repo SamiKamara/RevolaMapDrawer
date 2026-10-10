@@ -43,7 +43,7 @@ export function resolveRoomStart(doc, point, options = {}) {
   return placement && same(placement.point, target.point) ? target : null;
 }
 
-function frame(doc, target, aim) {
+function frame(doc, target, aim, options = {}) {
   if (!finite(target?.point) || !finite(target.direction) || !finite(aim)) fail('Invalid attached room geometry.');
   const length = Math.hypot(target.direction.x, target.direction.y);
   const tx = Math.abs(target.direction.x), ty = Math.abs(target.direction.y);
@@ -83,8 +83,16 @@ function frame(doc, target, aim) {
   // A missing component follows the dragged dimension to form a square.
   // Clamp early previews to legal minima; click-only cancellation is the
   // caller's gesture responsibility. Existing two-axis dimensions stay exact.
-  const halfWidth = Math.max(minimumHalfWidth, tangentSize || Math.round(normalSize / (2 * grid)) * grid);
-  const depth = Math.max(minimumDepth, normalSize || tangentSize * 2);
+  let halfWidth = Math.max(minimumHalfWidth, tangentSize || Math.round(normalSize / (2 * grid)) * grid);
+  let depth = Math.max(minimumDepth, normalSize || tangentSize * 2);
+  if (options.square) {
+    // A centered base needs a grid-aligned half-width as well as full depth.
+    // Round upward to two grid steps so both dimensions are exactly equal
+    // without shortening either requested extent or the doorway clearances.
+    const side = Math.ceil(Math.max(halfWidth * 2, depth) / (2 * grid)) * 2 * grid;
+    halfWidth = side / 2;
+    depth = side;
+  }
   const baseHalf = halfWidth - chamfer;
   const toWorld = (x, y) => ({ x: clean(target.point.x + tangent.x * x + normal.x * y),
     y: clean(target.point.y + tangent.y * x + normal.y * y) });
@@ -99,9 +107,10 @@ function frame(doc, target, aim) {
 
 /** Preview the proposed room's actual doorway gap, with the base midpoint fixed
  * exactly at the target. Host orientation takes precedence over free rotation.
+ * options.square makes width/depth equal without moving the attachment.
  */
-export function attachedRoomSegments(doc, target, aim) {
-  const shape = frame(doc, target, aim), halfDoor = doc.style.doorWidth / 2;
+export function attachedRoomSegments(doc, target, aim, options = {}) {
+  const shape = frame(doc, target, aim, options), halfDoor = doc.style.doorWidth / 2;
   return [{ a: shape.points[0], b: shape.toWorld(-halfDoor, 0) },
     { a: shape.toWorld(halfDoor, 0), b: shape.points[1] }, ...shape.segments.slice(1)];
 }
@@ -226,8 +235,8 @@ function missingBase(doc, shape) {
  * Reuse existing solid base geometry/door IDs; drawing never fills saved cuts.
  * A failed preview or placement preserves graph, bounds, ship and all IDs.
  */
-export function addAttachedRoom(doc, target, aim) {
-  const shape = frame(doc, target, aim);
+export function addAttachedRoom(doc, target, aim, options = {}) {
+  const shape = frame(doc, target, aim, options);
   checkConnection(doc, target, shape);
   const draft = structuredClone(doc), result = [];
   if (target.kind !== 'door' && target.source !== 'corridor') {

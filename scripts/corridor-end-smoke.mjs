@@ -215,8 +215,10 @@ try {
   const rawBase = await fixture('raw-outside-midpoint-zone', straightWalls);
   await drag('raw-outside-midpoint-zone', [[1628.5, 2637.5], [4940, 2658]]);
   const raw = await snapshot('raw-outside-midpoint-zone');
-  verifyPath(rawBase, raw, [[1613.5, 2602.5], [4938.5, 2602.5]], 'raw endpoint target semantics');
-  evidence.interactions.push('Raw release 55.5 px along the wall stays outside midpoint attraction even though the quantized horizontal endpoint would lie inside the zone');
+  // The attracted press moves (-15,-35) from the raw press. Apply that same
+  // correction to the route aim: 4940-15-1613.5=3311.5 rounds to 3300.
+  verifyPath(rawBase, raw, [[1613.5, 2602.5], [4913.5, 2602.5]], 'raw endpoint target semantics with press correction');
+  evidence.interactions.push('Raw release 55.5 px along the wall stays outside midpoint attraction even though the corrected quantized horizontal endpoint lies inside the zone; the route retains the actual drag displacement from its exact start');
 
   const tinyReleaseBase = await fixture('final-unsampled-movement', straightWalls);
   await drag('final-unsampled-movement', [[1628.5, 2637.5], [4940, 2660], [4940, 2640]], { target: center });

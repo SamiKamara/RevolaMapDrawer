@@ -152,6 +152,86 @@ const physicalOpenings = doc => doc.edges.flatMap(edge => {
     ...edge.doors.map(door => ({ id: door.id, center: at(door.t) }))];
 }).sort((a, b) => a.id.localeCompare(b.id));
 
+test('short straight corridor pieces keep the fixed width and exact persistence in all directions', () => {
+  for (const direction of directions) for (const length of [25, 75, 150]) {
+    const doc = createDocument(), start = { x: 2400.5, y: 2400.25 }, end = translated(start, direction, length);
+    const rails = corridorSegments([start, end], doc.style.corridorWidth);
+    assert.equal(rails.length, 2);
+    for (const rail of rails) near(Math.hypot(rail.b.x - rail.a.x, rail.b.y - rail.a.y), length);
+    near(Math.hypot(rails[1].a.x - rails[0].a.x, rails[1].a.y - rails[0].a.y), 580);
+    near(Math.hypot(rails[1].b.x - rails[0].b.x, rails[1].b.y - rails[0].b.y), 580);
+    addCorridor(doc, [start, end]);
+    assert.equal(doc.edges.length, 2);
+    assert.ok(mouthAt(doc, start)); assert.ok(mouthAt(doc, end));
+    assert.deepEqual(validateDocument(JSON.parse(JSON.stringify(doc))), doc);
+  }
+});
+
+test('short corridor continuations reuse both original terminals and preserve original cuts', () => {
+  for (const direction of directions) for (const length of [25, 75, 150]) {
+    const { doc, end } = straightCorridor(direction), target = mouthAt(doc, end);
+    const originalEnds = target.vertexIds.map(id => structuredClone(doc.vertices.find(vertex => vertex.id === id)));
+    doc.edges[0].gaps.push({ id: 'retained-short-extension-gap', start: .2, end: .25 });
+    addDoor(doc, doc.edges[1].id, translated(doc.vertices.find(vertex => vertex.id === doc.edges[1].a), direction, 600));
+    const originalCuts = physicalOpenings(doc), next = translated(target.point, target.outwardDirection, length);
+    assert.equal(corridorPreservesOpenings(doc, [target.point, next]), true);
+    addCorridor(doc, [target.point, next]);
+    for (const vertex of originalEnds) {
+      assert.deepEqual(doc.vertices.find(saved => saved.id === vertex.id), vertex);
+      assert.equal(doc.edges.filter(edge => edge.a === vertex.id || edge.b === vertex.id).length, 2);
+    }
+    assert.equal(mouthAt(doc, end), undefined); assert.ok(mouthAt(doc, next));
+    assert.deepEqual(physicalOpenings(doc), originalCuts);
+    assert.deepEqual(validateDocument(JSON.parse(JSON.stringify(doc))), doc);
+  }
+});
+
+test('short editable-door starts keep the exact doorway and shared rail-wall junctions', () => {
+  for (const direction of directions) for (const length of [25, 75, 150]) {
+    const doc = createDocument(), center = { x: 2400.5, y: 2400.25 }, tangent = { x: -direction.y, y: direction.x };
+    const [host] = addWall(doc, translated(center, tangent, -1000), translated(center, tangent, 1000));
+    addDoor(doc, host.id, center);
+    const target = resolveCorridorStart(doc, center), openings = physicalOpenings(doc);
+    assert.equal(target.kind, 'door');
+    const path = [target.point, translated(target.point, direction, length)], rails = corridorSegments(path);
+    assert.equal(corridorPreservesOpenings(doc, path), true);
+    // A nearby finish can still see the starting doorway. Endpoint fitting must
+    // reject collapse to that origin instead of imposing a longer minimum run.
+    assert.equal(fitCorridorEnd(path, target.point), null);
+    addCorridor(doc, path);
+    for (const rail of rails) {
+      const joint = doc.vertices.find(vertex => Math.hypot(vertex.x - rail.a.x, vertex.y - rail.a.y) < 1e-6);
+      assert.ok(joint); assert.equal(doc.edges.filter(edge => edge.a === joint.id || edge.b === joint.id).length, 3);
+    }
+    const savedOpenings = physicalOpenings(doc);
+    assert.equal(savedOpenings.length, openings.length);
+    for (let index = 0; index < openings.length; index++) {
+      assert.equal(savedOpenings[index].id, openings[index].id);
+      near(savedOpenings[index].center.x, openings[index].center.x);
+      near(savedOpenings[index].center.y, openings[index].center.y);
+    }
+    assert.deepEqual(validateDocument(JSON.parse(JSON.stringify(doc))), doc);
+  }
+});
+
+test('short straight endpoint fits stay allowed while tight bends and reversals reject atomically', () => {
+  for (const direction of directions) for (const length of [25, 75, 150]) {
+    const start = { x: 2400.5, y: 2400.25 }, end = translated(start, direction, length);
+    const path = [start, end], target = translated(start, direction, length - 5), fit = fitCorridorEnd(path, target);
+    assert.ok(fit); assert.deepEqual(fit.path, [start, target]);
+    assert.equal(fitCorridorEnd(path, target, { minSegmentLength: length }), null);
+  }
+  for (const path of [
+    [{ x: 1500, y: 1500 }, { x: 1575, y: 1500 }, { x: 1575, y: 1575 }],
+    [{ x: 1500, y: 1500 }, { x: 2500, y: 1500 }, { x: 2500, y: 1575 }],
+    [{ x: 1500, y: 1500 }, { x: 1575, y: 1500 }, { x: 1500, y: 1500 }],
+  ]) {
+    const doc = createDocument(), before = structuredClone(doc);
+    assert.throws(() => addCorridor(doc, path)); assert.deepEqual(doc, before);
+    assert.equal(fitCorridorEnd(path, path.at(-1)), null);
+  }
+});
+
 test('open corridor ends infer precise free mouths in all eight orientations without mutation', () => {
   for (const direction of directions) {
     const { doc, start, end } = straightCorridor(direction), before = structuredClone(doc);

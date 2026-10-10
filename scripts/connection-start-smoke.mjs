@@ -230,7 +230,7 @@ try {
   const corridorBase = await fixture('corridor-open-end', corridorFixture, 'corridor');
   await expect(page.locator('#tool-guide')).toContainText('END');
   const continuationEnd = { x: 4110.5, y: 2000 };
-  await drag('corridor-continued', { tool: 'corridor', aim: { x: 4130.5, y: 3514 }, end: continuationEnd, center: mouth, label: 'END', kind: 'corridor end',
+  await drag('corridor-continued', { tool: 'corridor', aim: { x: 4130.5, y: 3514 }, end: { x: continuationEnd.x + 20, y: continuationEnd.y + 14 }, center: mouth, label: 'END', kind: 'corridor end',
     expectedPreview: [{ x: 3820.5, y: 3500 }, { x: 4400.5, y: 3500 }, { x: 3820.5, y: 2000 }, { x: 4400.5, y: 2000 }] });
   const continued = await snapshot('corridor-continued'); sameBase(corridorBase, continued); assert.equal(cuts(continued).length, 0, 'Continuation creates no doorway or cap');
   for (const x of [3820.5, 4400.5]) {
@@ -334,6 +334,146 @@ try {
     attachedRoom(natural.name, before, after, natural.center, natural.bounds, { existingDoor: natural.existingDoor });
     await history(natural.name, before, after);
   }
+
+  const chamferOutline = (bounds, rotated = false) => {
+    const { left, right, top, bottom } = bounds, chamfer = 220;
+    const points = [{ x: left + chamfer, y: top }, { x: right - chamfer, y: top }, { x: right, y: top + chamfer }, { x: right, y: bottom - chamfer },
+      { x: right - chamfer, y: bottom }, { x: left + chamfer, y: bottom }, { x: left, y: bottom - chamfer }, { x: left, y: top + chamfer }];
+    if (!rotated) return points;
+    const center = { x: (left + right) / 2, y: (top + bottom) / 2 };
+    return points.map(point => ({ x: center.x + ((point.x - center.x) - (point.y - center.y)) * Math.SQRT1_2,
+      y: center.y + ((point.x - center.x) + (point.y - center.y)) * Math.SQRT1_2 }));
+  };
+  const expectPreview = async (name, points) => {
+    await settled();
+    const draws = await page.evaluate(() => window.__revolaConnectionDraws.paths);
+    for (const point of points) assert.ok(draws.some(draw => draw.color === '#b5e8c6' && draw.points?.some(candidate => Math.hypot(candidate.x - point.x, candidate.y - point.y) < 1e-6)),
+      `${name}: the actual green Canvas preview contains the independently specified corner (${point.x},${point.y})`);
+    await expect(page.locator('#status-message')).not.toHaveClass(/error/);
+    await screenshot(name);
+  };
+  const freeBounds = { left: 2000, right: 3100, top: 1200, bottom: 1800 };
+  const freeSquareBounds = { left: 2000, right: 3100, top: 1200, bottom: 2300 };
+  for (const rotated of [false, true]) {
+    const name = `shift-free-room-${rotated ? 'rotated' : 'axis'}`, before = await fixture(name, createDocument(), 'room');
+    await page.locator('#rotate-room').uncheck();
+    // Preserve the existing Shift+R rotation shortcut while adding Shift's
+    // independent drawing modifier. The keyboard toggles the real UI control.
+    await page.keyboard.press('Shift+r'); await expect(page.locator('#rotate-room')).toBeChecked();
+    await page.keyboard.press('Shift+r'); await expect(page.locator('#rotate-room')).not.toBeChecked();
+    if (rotated) { await page.keyboard.press('Shift+r'); await expect(page.locator('#rotate-room')).toBeChecked(); }
+    const a = assertVisible({ x: 2000, y: 1200 }), b = assertVisible({ x: 3100, y: 1800 });
+    await page.mouse.move(a.x, a.y); await page.keyboard.down('Shift'); await resetDraws();
+    await page.mouse.down(); await page.mouse.move(b.x, b.y);
+    await expectPreview(`${name}-held-before-press`, chamferOutline(freeSquareBounds, rotated));
+    // No pointer movement accompanies these keyboard transitions. This checks
+    // immediate preview recomputation from the original rectangular drag aim.
+    await resetDraws(); await page.keyboard.up('Shift');
+    await expectPreview(`${name}-shift-released`, chamferOutline(freeBounds, rotated));
+    await resetDraws(); await page.keyboard.down('Shift');
+    await expectPreview(`${name}-shift-pressed`, chamferOutline(freeSquareBounds, rotated));
+    await page.mouse.up(); await expect(page.locator('#status-message')).toContainText('Room placed'); await page.keyboard.up('Shift');
+    const after = await snapshot(`${name}-placed`), expectedPoints = chamferOutline(freeSquareBounds, rotated);
+    sameBase(before, after); assert.equal(after.edges.length, 8); assert.equal(after.vertices.length, 8); assert.equal(cuts(after).length, 0);
+    for (const point of expectedPoints) assert.ok(after.vertices.some(vertex => Math.hypot(vertex.x - point.x, vertex.y - point.y) < 1e-6), 'The saved free room is exactly the previewed 1100 px square, including optional 45° rotation');
+    await history(name, before, after); await screenshot(`${name}-placed`);
+    evidence.interactions.push({ name, squareSide: 1100, rotated, heldBeforePress: true, keyTransitionsAtStationaryPointer: true,
+      releasedWithShiftHeld: true, shiftRShortcutPreserved: true, oneStepUndoRedo: true });
+  }
+  await page.locator('#rotate-room').uncheck();
+  const shiftAttachments = [
+    { name: 'shift-ship-door-room', document: createDocument(), center: shipCenter, end: { x: 5510.5, y: 2700 }, label: 'DOOR', kind: 'door center',
+      rectangle: { left: 2710.5, right: 5510.5, top: 2700, bottom: 4700 }, square: { left: 2710.5, right: 5510.5, top: 1900, bottom: 4700 } },
+    { name: 'shift-corridor-end-room', document: structuredClone(corridorFixture), center: mouth, end: { x: 5310.5, y: 1900 }, label: 'END', kind: 'corridor end',
+      rectangle: { left: 2910.5, right: 5310.5, top: 1900, bottom: 3500 }, square: { left: 2910.5, right: 5310.5, top: 1100, bottom: 3500 } },
+    { name: 'shift-wall-center-room', document: structuredClone(wall), center: wallCenter, end: { x: 5013, y: 4313 }, label: 'CENTER', kind: 'wall midpoint',
+      rectangle: { left: 2413, right: 5013, top: 1513, bottom: 4313 }, square: { left: 2413, right: 5213, top: 1513, bottom: 4313 } },
+    { name: 'shift-existing-door-room', document: structuredClone(withDoor), center: doorCenter, end: { x: 4013, y: 2547 }, label: 'DOOR', kind: 'door center', existingDoor: true,
+      rectangle: { left: 2413, right: 4013, top: 1347, bottom: 2547 }, square: { left: 2413, right: 4013, top: 1147, bottom: 2747 } },
+  ];
+  for (const attachment of shiftAttachments) {
+    const before = await fixture(attachment.name, attachment.document, 'room');
+    const a = assertVisible(attachment.center), b = assertVisible(attachment.end);
+    await page.mouse.move(a.x, a.y); await marker(attachment.center, attachment.label); await page.keyboard.down('Shift'); await resetDraws();
+    await page.mouse.down(); await expect(page.locator('#status-message')).toContainText(`Room start aligned to the ${attachment.kind}`); await page.mouse.move(b.x, b.y);
+    await expectPreview(`${attachment.name}-held-before-press`, chamferOutline(attachment.square));
+    await resetDraws(); await page.keyboard.up('Shift');
+    await expectPreview(`${attachment.name}-shift-released`, chamferOutline(attachment.rectangle));
+    await resetDraws(); await page.keyboard.down('Shift');
+    await expectPreview(`${attachment.name}-shift-pressed`, chamferOutline(attachment.square));
+    await marker(attachment.center, attachment.label);
+    await page.mouse.up(); await expect(page.locator('#status-message')).toContainText('Room placed'); await page.keyboard.up('Shift');
+    const after = await snapshot(`${attachment.name}-placed`);
+    attachedRoom(attachment.name, before, after, attachment.center, attachment.square, { existingDoor: attachment.existingDoor });
+    close(attachment.square.right - attachment.square.left, attachment.square.bottom - attachment.square.top, 'Attached Shift room has equal sides');
+    await history(attachment.name, before, after); await screenshot(`${attachment.name}-placed`);
+    evidence.interactions.push({ name: attachment.name, heldBeforePress: true, keyTransitionsAtStationaryPointer: true, releasedWithShiftHeld: true,
+      exactDoorAndBaseCenterPreserved: true, oneStepUndoRedo: true });
+  }
+
+  const shortCorridors = [
+    { name: 'one-grid-step-free-corridor', document: createDocument(), center: { x: 3100, y: 2600 }, aim: { x: 3100, y: 2600 }, end: { x: 3125, y: 2600 }, direction: { x: 1, y: 0 }, length: 25, zoom: .15 },
+    { name: 'short-free-corridor', document: createDocument(), center: { x: 3100, y: 2600 }, aim: { x: 3103, y: 2603 }, end: { x: 3200, y: 2600 }, direction: { x: 1, y: 0 }, length: 100 },
+    { name: 'short-door-corridor', document: structuredClone(withDoor), center: doorCenter, aim: { x: 2435, y: 2070 }, release: { x: 2560, y: 2070 }, end: { x: 2538, y: 1947 }, direction: { x: 1, y: 0 }, length: 125, label: 'DOOR', kind: 'door center', hostWall: true },
+    { name: 'short-end-corridor', document: structuredClone(corridorFixture), center: mouth, aim: { x: 4130.5, y: 3514 }, release: { x: 4130.5, y: 3439 }, end: { x: 4110.5, y: 3425 }, direction: { x: 0, y: -1 }, length: 75, label: 'END', kind: 'corridor end' },
+    { name: 'offset-door-one-grid-step-corridor', document: structuredClone(withDoor), center: doorCenter, aim: { x: 2413, y: 2127 }, release: { x: 2438, y: 2127 }, end: { x: 2438, y: 1947 },
+      direction: { x: 1, y: 0 }, length: 25, zoom: .16, zoomAt: { x: 3261.75, y: 3100 }, label: 'DOOR', kind: 'door center', hostWall: true },
+    { name: 'offset-ship-door-short-corridor', document: createDocument(), center: shipCenter, aim: { x: 4210.5, y: 4700 }, release: { x: 4210.5, y: 4650 }, end: { x: 4110.5, y: 4650 },
+      direction: { x: 0, y: -1 }, length: 50, zoom: .15, label: 'DOOR', kind: 'door center' },
+    { name: 'offset-ship-raw-release-at-anchor', document: createDocument(), center: shipCenter, aim: { x: 4110.5, y: 4750 }, release: { x: 4110.5, y: 4700 }, end: { x: 4110.5, y: 4650 },
+      direction: { x: 0, y: -1 }, length: 50, zoom: .15, steps: 1, label: 'DOOR', kind: 'door center' },
+  ];
+  for (const short of shortCorridors) {
+    const before = await fixture(short.name, short.document, 'corridor');
+    if (short.zoom) {
+      // A 25 px map-space drag must exceed the intentional three-screen-pixel
+      // gesture threshold. Zoom through the real wheel at a calibrated world
+      // pivot, retaining visible hull pixels and the short fixture's rails.
+      const pivot = mapPoint(short.zoomAt ?? { x: 4110.5, y: 4700 }), scale = view.a / view.ratioX;
+      await page.mouse.move(pivot.x, pivot.y); await page.mouse.wheel(0, -Math.log(short.zoom / scale) / .0015); await calibrate();
+    }
+    // Resolved starts retain the exact center while the actual drag displacement
+    // supplies its direction/length. A raw press far along a doorway must not
+    // turn a small normal drag into a much longer diagonal corridor.
+    const a = assertVisible(short.aim), b = assertVisible(short.release ?? short.end), normal = { x: -short.direction.y, y: short.direction.x };
+    assert.ok(Math.hypot(b.x - a.x, b.y - a.y) > 3, 'The short drag exceeds the real screen-space placement threshold');
+    const rails = [-1, 1].map(sign => ({ a: { x: short.center.x + normal.x * 290 * sign, y: short.center.y + normal.y * 290 * sign },
+      b: { x: short.end.x + normal.x * 290 * sign, y: short.end.y + normal.y * 290 * sign } }));
+    await page.mouse.move(a.x, a.y); if (short.label) await marker(short.center, short.label);
+    await resetDraws(); await page.mouse.down();
+    await expect(page.locator('#status-message')).toContainText(short.kind ? `Corridor start aligned to the ${short.kind}` : 'Drag a route');
+    await page.mouse.move(b.x, b.y, { steps: short.steps ?? 5 });
+    await expectPreview(`${short.name}-preview`, rails.flatMap(rail => [rail.a, rail.b]));
+    await page.mouse.up(); await expect(page.locator('#status-message')).toContainText('Corridor placed');
+    const after = await snapshot(`${short.name}-placed`), vertices = vertexMap(after); sameBase(before, after);
+    assert.equal(cuts(after).length, cuts(before).length, 'A short corridor neither fills nor adds a door');
+    for (const rail of rails) {
+      const edges = after.edges.filter(edge => {
+        const a = vertices.get(edge.a), b = vertices.get(edge.b);
+        return (Math.hypot(a.x - rail.a.x, a.y - rail.a.y) < 1e-6 && Math.hypot(b.x - rail.b.x, b.y - rail.b.y) < 1e-6)
+          || (Math.hypot(b.x - rail.a.x, b.y - rail.a.y) < 1e-6 && Math.hypot(a.x - rail.b.x, a.y - rail.b.y) < 1e-6);
+      });
+      assert.equal(edges.length, 1, 'Each short drag adds exactly one full-length boundary on each side');
+      close(Math.hypot(rail.b.x - rail.a.x, rail.b.y - rail.a.y), short.length, 'The short corridor has its requested map-space length');
+      const terminal = after.vertices.find(vertex => Math.hypot(vertex.x - rail.b.x, vertex.y - rail.b.y) < 1e-6);
+      assert.equal(after.edges.filter(edge => edge.a === terminal.id || edge.b === terminal.id).length, 1, 'A short corridor end has no extra branch or terminal spur');
+    }
+    assert.equal(after.edges.length, short.hostWall ? 5 : before.edges.length + 2, 'Only the two rails and necessary host-wall splits are added');
+    await history(short.name, before, after); await screenshot(`${short.name}-placed`);
+    evidence.interactions.push({ name: short.name, length: short.length, width: 580, actualZoom: view.a / view.ratioX,
+      screenDragPixels: Math.hypot(b.x - a.x, b.y - a.y), rawPress: short.aim, rawRelease: short.release ?? short.end,
+      resolvedCenter: short.center, exactRails: rails, positivePreview: true, noExtraBranch: true, oneStepUndoRedo: true });
+  }
+  const shortClickBase = await fixture('short-corridor-click-protection', structuredClone(withDoor), 'corridor');
+  const shortClickAim = assertVisible({ x: 2435, y: 2070 }), shortClickEnd = assertVisible({ x: 2560, y: 2070 });
+  await page.mouse.move(shortClickAim.x, shortClickAim.y); await page.mouse.down(); await page.mouse.up();
+  assert.deepEqual(await snapshot('short-corridor-click-only'), shortClickBase, 'An offset click attracted to a door cannot create an accidental short corridor');
+  await expect(page.locator('#undo-button')).toBeDisabled(); await expect(page.locator('#dirty-dot')).not.toHaveClass(/dirty/);
+  await page.mouse.move(shortClickAim.x, shortClickAim.y); await page.mouse.down(); await page.mouse.move(shortClickEnd.x, shortClickEnd.y); await settled();
+  await page.mouse.move(shortClickAim.x, shortClickAim.y); await page.mouse.up();
+  assert.deepEqual(await snapshot('short-corridor-return-to-press'), shortClickBase, 'Returning to the raw corridor press before release discards the short preview');
+  await expect(page.locator('#undo-button')).toBeDisabled(); await expect(page.locator('#dirty-dot')).not.toHaveClass(/dirty/);
+  evidence.interactions.push({ name: 'short-corridor-click-protection', inaccurateStationaryClickClean: true, returnToRawPressClean: true });
 
   const blocked = createDocument(); addWall(blocked, { x: 5000, y: 1800 }, { x: 5000, y: 4900 }, { joinTolerance: 0 });
   const blockedBase = await fixture('blocked-attached-room', blocked, 'room');

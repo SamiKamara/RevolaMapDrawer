@@ -20,6 +20,98 @@ const destination = name => path.join(artifacts, `web-${name}`);
 await fs.access(path.join(output, 'index.html'));
 await fs.mkdir(artifacts, { recursive: true });
 
+// Exercise the current browser bundle through real mouse/keyboard events and
+// downloaded projects. This shared check also runs against the published site
+// while offline, so release behavior adds no resource requests or map uploads.
+async function verifyDrawingModifiers(page, snapshot, open, prefix = '') {
+  const canvas = page.locator('#map-canvas');
+  const settle = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const calibrate = async () => {
+    await settle();
+    const view = await canvas.evaluate(element => {
+      const rect = element.getBoundingClientRect(), transform = element.getContext('2d').getTransform();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, ratioX: element.width / rect.width, ratioY: element.height / rect.height,
+        a: transform.a, d: transform.d, e: transform.e, f: transform.f };
+    });
+    return { view, point: point => ({ x: view.x + (point.x * view.a + view.e) / view.ratioX, y: view.y + (point.y * view.d + view.f) / view.ratioY }) };
+  };
+  const resetPreview = () => page.evaluate(() => { window.__revolaWebPreview.length = 0; });
+  await page.evaluate(() => {
+    window.__revolaWebPreview = [];
+    const prototype = CanvasRenderingContext2D.prototype;
+    for (const method of ['beginPath', 'moveTo', 'lineTo', 'stroke']) {
+      const original = prototype[method];
+      prototype[method] = function (...args) {
+        if (this.canvas.id === 'map-canvas') {
+          if (method === 'beginPath') this.__revolaWebPath = [];
+          if (method === 'moveTo' || method === 'lineTo') this.__revolaWebPath?.push({ x: args[0], y: args[1] });
+          if (method === 'stroke' && this.strokeStyle === '#b5e8c6' && this.getLineDash().length) window.__revolaWebPreview.push(this.__revolaWebPath?.map(point => ({ ...point })));
+        }
+        return original.apply(this, args);
+      };
+    }
+  });
+  const preview = async (name, expectedPoints) => {
+    await settle();
+    const paths = await page.evaluate(() => window.__revolaWebPreview);
+    for (const point of expectedPoints) assert.ok(paths.some(points => points?.some(candidate => Math.hypot(candidate.x - point.x, candidate.y - point.y) < 1e-6)),
+      `${name}: actual browser Canvas preview includes (${point.x},${point.y})`);
+    await expect(page.locator('#status-message')).not.toHaveClass(/error/);
+    await page.screenshot({ path: destination(`${prefix}${name}.png`) });
+  };
+  const loadBlank = async name => {
+    const fixture = createDocument(); fixture.name = name;
+    const file = destination(`${prefix}${name}-fixture.revola.json`); await fs.writeFile(file, JSON.stringify(fixture));
+    await open(file, name); await page.locator('#fit-button').click();
+    await expect(page.locator('#undo-button')).toBeDisabled(); await expect(page.locator('#dirty-dot')).not.toHaveClass(/dirty/);
+    return fixture;
+  };
+  const history = async (name, before, after) => {
+    await page.locator('#undo-button').click(); assert.deepEqual(await snapshot(`${name}-undone`), before, 'Browser undo restores the complete previous project');
+    await expect(page.locator('#undo-button')).toBeDisabled();
+    await page.locator('#redo-button').click(); assert.deepEqual(await snapshot(`${name}-redone`), after, 'Browser redo restores the exact modifier geometry');
+  };
+
+  const squareBase = await loadBlank('shift-square-web');
+  await page.locator('[data-tool="room"]').click(); await page.locator('#rotate-room').uncheck();
+  let camera = await calibrate();
+  const start = camera.point({ x: 2000, y: 1200 }), end = camera.point({ x: 3100, y: 1800 });
+  await page.mouse.move(start.x, start.y); await page.keyboard.down('Shift'); await page.mouse.down();
+  await resetPreview(); await page.mouse.move(end.x, end.y);
+  await preview('shift-square-held-before-press', [{ x: 2000, y: 1420 }, { x: 3100, y: 2080 }, { x: 2220, y: 2300 }, { x: 2880, y: 2300 }]);
+  await resetPreview(); await page.keyboard.up('Shift');
+  await preview('shift-square-key-released', [{ x: 2000, y: 1420 }, { x: 3100, y: 1580 }, { x: 2220, y: 1800 }, { x: 2880, y: 1800 }]);
+  await resetPreview(); await page.keyboard.down('Shift');
+  await preview('shift-square-key-pressed', [{ x: 2000, y: 1420 }, { x: 3100, y: 2080 }, { x: 2220, y: 2300 }, { x: 2880, y: 2300 }]);
+  await page.mouse.up(); await page.keyboard.up('Shift'); await expect(page.locator('#status-message')).toContainText('Room placed');
+  const square = await snapshot('shift-square-placed');
+  assert.equal(square.vertices.length, 8); assert.equal(square.edges.length, 8);
+  assert.equal(Math.min(...square.vertices.map(vertex => vertex.x)), 2000); assert.equal(Math.max(...square.vertices.map(vertex => vertex.x)), 3100);
+  assert.equal(Math.min(...square.vertices.map(vertex => vertex.y)), 1200); assert.equal(Math.max(...square.vertices.map(vertex => vertex.y)), 2300);
+  assert.deepEqual(square.ship, squareBase.ship); await history('shift-square', squareBase, square);
+
+  const corridorBase = await loadBlank('short-offset-airlock-web');
+  await page.locator('[data-tool="corridor"]').click(); camera = await calibrate();
+  const pivot = camera.point({ x: 4110.5, y: 4700 }), scale = camera.view.a / camera.view.ratioX;
+  await page.mouse.move(pivot.x, pivot.y); await page.mouse.wheel(0, -Math.log(.15 / scale) / .0015); camera = await calibrate();
+  const aim = camera.point({ x: 4210.5, y: 4700 }), release = camera.point({ x: 4210.5, y: 4650 });
+  assert.ok(Math.hypot(release.x - aim.x, release.y - aim.y) > 3, 'The short browser drag exceeds the real placement threshold');
+  await page.mouse.move(aim.x, aim.y); await page.mouse.down();
+  await expect(page.locator('#status-message')).toContainText('Corridor start aligned to the door center');
+  await resetPreview(); await page.mouse.move(release.x, release.y);
+  await preview('short-offset-airlock-preview', [{ x: 3820.5, y: 4700 }, { x: 3820.5, y: 4650 }, { x: 4400.5, y: 4700 }, { x: 4400.5, y: 4650 }]);
+  await page.mouse.up(); await expect(page.locator('#status-message')).toContainText('Corridor placed');
+  const corridor = await snapshot('short-offset-airlock-placed'), vertices = new Map(corridor.vertices.map(vertex => [vertex.id, vertex]));
+  assert.equal(corridor.edges.length, 2); assert.equal(corridor.vertices.length, 4);
+  for (const x of [3820.5, 4400.5]) assert.equal(corridor.edges.filter(edge => {
+    const a = vertices.get(edge.a), b = vertices.get(edge.b);
+    return a.x === x && b.x === x && Math.min(a.y, b.y) === 4650 && Math.max(a.y, b.y) === 4700 && !edge.doors.length && !edge.gaps.length;
+  }).length, 1, 'Offset press preserves the exact 50 px vertical rail from the 580 px centered airlock start');
+  assert.deepEqual(corridor.ship, corridorBase.ship); await history('short-offset-airlock', corridorBase, corridor);
+  return { offline: true, shiftSquare: { side: 1100, keyTransitionsAtStationaryPointer: true, heldBeforePressAndAtRelease: true, exactDownloadAndHistory: true },
+    shortCorridor: { length: 50, width: 580, rawPressOffset: 100, exactDoorCenter: { x: 4110.5, y: 4700 }, positivePreview: true, exactDownloadAndHistory: true } };
+}
+
 // Optional production check uses a separate fresh browser and evidence files.
 // It performs only downloads, local imports and cached reloads on the given site.
 if (process.argv.length > 2) {
@@ -82,9 +174,21 @@ if (process.argv.length > 2) {
     assert.deepEqual(validateDocument(JSON.parse((await write('#project-button', 'offline-project.revola.json')).toString('utf8'))), fixture);
     assert.equal((await write('#svg-button', 'offline-walls.svg')).toString('utf8'), svg);
     await page.screenshot({ path: destination('production-offline.png') });
+    const snapshot = async name => validateDocument(JSON.parse((await write('#project-button', `${name}.revola.json`)).toString('utf8')));
+    const open = async (file, expectedName) => {
+      const dirty = await page.locator('#dirty-dot').evaluate(element => element.classList.contains('dirty'));
+      const chooser = page.waitForEvent('filechooser'); await page.locator('#open-button').click(); await (await chooser).setFiles(file);
+      if (dirty) { await expect(page.locator('#confirm-dialog')).toBeVisible(); await page.locator('#confirm-dialog button[value="discard"]').click(); }
+      await expect(page.locator('#document-title')).toHaveText(expectedName);
+      await expect(page.locator('#status-message')).toContainText('All walls and doors are editable');
+    };
+    const drawingStart = finished.length;
+    result.drawingModifiers = await verifyDrawingModifiers(page, snapshot, open, 'production-'); await settle();
+    result.drawingActions = finished.slice(drawingStart);
+    assert.ok(result.drawingActions.filter(item => !item.fromServiceWorker).every(item => new URL(item.url).pathname === '/sw.js'), 'Production Shift and short corridor drawing use no host resources while offline');
     assert.ok(requests.every(item => ['GET', 'HEAD'].includes(item.method) && (!/^https?:/.test(item.url) || new URL(item.url).origin === deployed.origin)), 'Production editor sends no uploads and contacts no other domain');
     assert.deepEqual(errors, []);
-    result.interactions.push('Published cache/security headers match the static deployment', 'Warm controlled reload uses cached resources', 'Local browser JSON/PNG/SVG downloads preserve exact fixture topology and embed ship bytes without resource traffic', 'Installed production app reloads offline and reopens editable PNG with exact JSON/SVG downloads', 'No map uploads or third-party requests');
+    result.interactions.push('Published cache/security headers match the static deployment', 'Warm controlled reload uses cached resources', 'Local browser JSON/PNG/SVG downloads preserve exact fixture topology and embed ship bytes without resource traffic', 'Installed production app reloads offline and reopens editable PNG with exact JSON/SVG downloads', 'Shift square and short offset airlock corridor previews, downloads and undo/redo work offline', 'No map uploads or third-party requests');
     result.files = { projectBytes: Buffer.byteLength(JSON.stringify(fixture)), pngBytes: png.length, svgBytes: Buffer.byteLength(svg) };
     await fs.writeFile(destination('production-results.json'), JSON.stringify(result, null, 2));
     console.log(JSON.stringify({ ...result, evidenceFile: destination('production-results.json') }, null, 2));
@@ -300,6 +404,13 @@ try {
   assert.ok(offlineRequests.every(item => item.path === '/sw.js' && item.bodyBytes === 0), 'Offline reload and save/reopen use only local resources; Chromium may independently revalidate its worker outside page offline emulation');
   evidence.transfers.offline = summarize(offlineRequests);
   evidence.interactions.push('Stars load once on first closure; installed editor reloads offline and saves/reopens local PNG, JSON, wall SVG and closed-map floor SVG');
+
+  const drawingStart = hostRequests.length;
+  evidence.drawingModifiers = await verifyDrawingModifiers(page, snapshot, open);
+  const drawingRequests = hostRequests.slice(drawingStart);
+  assert.ok(drawingRequests.every(item => item.path === '/sw.js' && item.bodyBytes === 0), 'Shift square and short corridor drawing operate offline with no host resource traffic');
+  evidence.transfers.drawingModifiers = summarize(drawingRequests);
+  evidence.interactions.push('Browser Shift square modifier updates previews immediately at a stationary pointer; held-release square and short offset airlock corridor download exact geometry with one-step history, all offline');
 
   await page.setViewportSize({ width: 1024, height: 700 }); await page.locator('#fit-button').click();
   const compact = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, overflow: document.documentElement.scrollWidth > innerWidth,
