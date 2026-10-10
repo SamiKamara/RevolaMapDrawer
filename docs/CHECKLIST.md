@@ -9,12 +9,16 @@ The owner's request authorizes committing/pushing `main`, updating the Windows r
 - [x] Prepare matching package/lockfile/changelog metadata and verify the complete portable build.
 - [ ] Commit/push the verified source on `main`, create immutable v0.11.0 and verify hosted checks and draft assets.
 - [ ] Publish the verified v0.11.0 release as latest and check its downloadable assets.
-- [-] Verify the new drawing behavior in desktop Chrome, deploy the web build and check production/offline behavior.
+- [x] Verify the new drawing behavior in desktop Chrome, deploy the web build and check production/offline behavior.
 - [ ] Inspect and launch the actual refreshed desktop test shortcut for the final handoff.
 
 Preparation evidence: `scripts/build-release.ps1 -Version 0.11.0` passes source/packaged UI, all **21** runtime byte comparisons, minimal manifest, checksum and every byte of **77** ZIP files. The extracted portable application opens offline and saves/reopens exact editable geometry with **zero network requests**. After the Vercel guard was added, final `npm test` passes **289/289**, no skips. The real refreshed desktop shortcut's target/arguments/working directory/paths were inspected and its clean 8192 editor with new Shift Room guidance was visibly opened; only that blank test instance was closed before the tagging rebuild. Logs: ignored `artifacts/release-0110-preparation.log`, `release-0110-unit-final.log` and shortcut readback.
 
 Local browser verification: build **4ce877f769893f3a**, app hash **31f9a354b05878df**, eight generated files, **413,387 total bytes**, measured first install **196,391 response-body bytes** and controlled reload **zero host requests**. Local/offline real Chrome verifies Shift square previews/placement/downloads, a **50 px** short corridor from an offset fixed doorway, exact graph/history and existing exports/reopen. Added drawing actions incur **zero requests / zero bytes**, with no uploads, third-party requests or renderer errors. The Vercel upload allowlist now explicitly includes `src/room-start.js`; its new test compares all transitive esbuild inputs with standard Gitignore semantics, checks excluded private/native/generated paths and reproduces the missing-module failure. Evidence: ignored web build/results JSON and `artifacts/release-0.11.0-web-build.log`, `release-0.11.0-web-test.log`.
+
+Production web verification: Vercel deployment **dpl_EnGwtNCuv8aeLgGwLRYfKhtiJita** is READY at [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app). Real Chrome production checks pass including Shift square rooms, the offset 50 px doorway corridor, exact downloadable/reopened geometry, exports and offline cached reload, with zero renderer errors, uploads or third-party requests. Anonymous HTTP checks compare all eight deployed file hashes with build **4ce877f769893f3a**, verify cache/security headers and confirm private/native/source probes return 404. Evidence: ignored `artifacts/release-0110-vercel-deploy.log`, `release-0110-web-production.log`, `web-production-results.json` and `release-0110-web-http.json`.
+
+Hosted preflight correction: [Verify application run 38088408545](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/38088408545) passed all 289 unit checks but exposed a short-corridor test viewport assumption. At 16% zoom the original high doorway fixture and real ship hull could not both fit the compact canvas; the pointer failed the test's visibility assertion before drawing. Only the smoke fixture changed: move the two synthetic high-zoom starts nearer the hull, then use real wheel zoom/middle-button pan fitted to measured canvas bounds. Exact lengths, screen-motion thresholds, topology, history and actual white hull pixel assertions remain. All six focused source/packaged normal/compact/compact-small commands pass, each with **87** screenshots and zero renderer errors. Normal canvas is **1094 × 708**; Electron's minimum window size clamps both compact requests to outer **1024 × 700**, content **1008 × 661**, canvas **715 × 448**. Hull minima are **2,398** normal and **725** compact white pixels. No tag was created by the interrupted preflight. Evidence: ignored `artifacts/connection-release-{source,packaged,compact-source,compact-packaged,compact-small-source,compact-small-packaged}.log` and matching results JSON. Complete clean-source release checks are being rerun before tagging.
 
 ## Shift square rooms and short corridors — 2026-10-11
 
@@ -23,7 +27,7 @@ Local browser verification: build **4ce877f769893f3a**, app hash **31f9a354b0587
 - [x] Remove the width-based 348 px corridor route filter so a short straight grid step can draw; retain safe bend geometry and click cancellation.
 - [x] Verify geometry/persistence and source/packaged UI, rebuild and launch the actual refreshed desktop shortcut.
 
-This is unreleased local work; the new Shift/short-corridor changes remain in the working tree after the requested initial commit. Version selection is unchanged.
+The feature work was subsequently committed/pushed on `main` as `ec30982` (`feat: add square rooms and short corridors for 0.11.0`). Publication evidence is recorded in the version 0.11.0 milestone above; the checks below describe its original local handoff.
 
 Verified evidence and current limits:
 

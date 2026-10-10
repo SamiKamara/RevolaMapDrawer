@@ -8,7 +8,8 @@ import { createDocument, addWall, addDoor, addCorridor, validateDocument } from 
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packaged = process.argv.includes('--packaged') || process.env.PACKAGED === '1';
-const prefix = packaged ? 'connection-start-packaged' : 'connection-start';
+const compact = process.argv.includes('--compact'), compactSmall = process.argv.includes('--compact-small');
+const prefix = `${packaged ? 'connection-start-packaged' : 'connection-start'}${compactSmall ? '-compact-small' : compact ? '-compact' : ''}`;
 const artifacts = path.join(root, 'artifacts');
 await fs.mkdir(artifacts, { recursive: true });
 const destination = name => path.join(artifacts, `${prefix}-${name}`);
@@ -23,7 +24,7 @@ const desktop = await electron.launch({ ...(packaged ? { executablePath } : { ar
 const page = await desktop.firstWindow({ timeout: 45_000 });
 page.setDefaultTimeout(20_000);
 const errors = []; page.on('pageerror', error => errors.push(error.message));
-const evidence = { packaged, matchingSourceFiles: packaged ? matchingSourceFiles : [], placements: [], interactions: [], fixtureViews: [], screenshots: [], rendererErrors: errors };
+const evidence = { packaged, compact, compactSmall, matchingSourceFiles: packaged ? matchingSourceFiles : [], placements: [], interactions: [], fixtureViews: [], screenshots: [], rendererErrors: errors };
 const close = (actual, expected, message) => assert.ok(Math.abs(actual - expected) < 1e-6, `${message}: expected ${expected}, received ${actual}`);
 const vertexMap = document => new Map(document.vertices.map(vertex => [vertex.id, vertex]));
 const cuts = document => {
@@ -48,6 +49,10 @@ const sameBase = (before, after) => {
 };
 
 try {
+  if (compact || compactSmall) await desktop.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0].setSize(...size), compactSmall ? [1008, 661] : [1024, 700]);
+  evidence.window = await desktop.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]; return { outer: window.getSize(), content: window.getContentSize() };
+  });
   await desktop.evaluate(({ dialog }) => {
     // Only file choices are supplied. Production IPC, validation and native
     // filesystem saves/reopens execute unchanged in this test-owned window.
@@ -411,13 +416,18 @@ try {
       exactDoorAndBaseCenterPreserved: true, oneStepUndoRedo: true });
   }
 
+  // Keep the high-zoom 25 px fixtures close enough to the fixed hull that both
+  // rails and actual ship pixels fit compact displays. The original y1947 door
+  // and its upper rail y1657 are physically too far from hull y5390 at16% zoom.
+  const nearbyDoor = createDocument(); addWall(nearbyDoor, { x: 2413, y: 2600 }, { x: 2413, y: 4600 }, { joinTolerance: 0 });
+  addDoor(nearbyDoor, nearbyDoor.edges[0].id, { x: 2413, y: 3500 }, { centerTolerance: 0 });
   const shortCorridors = [
-    { name: 'one-grid-step-free-corridor', document: createDocument(), center: { x: 3100, y: 2600 }, aim: { x: 3100, y: 2600 }, end: { x: 3125, y: 2600 }, direction: { x: 1, y: 0 }, length: 25, zoom: .15 },
+    { name: 'one-grid-step-free-corridor', document: createDocument(), center: { x: 3100, y: 3600 }, aim: { x: 3100, y: 3600 }, end: { x: 3125, y: 3600 }, direction: { x: 1, y: 0 }, length: 25, zoom: .15 },
     { name: 'short-free-corridor', document: createDocument(), center: { x: 3100, y: 2600 }, aim: { x: 3103, y: 2603 }, end: { x: 3200, y: 2600 }, direction: { x: 1, y: 0 }, length: 100 },
     { name: 'short-door-corridor', document: structuredClone(withDoor), center: doorCenter, aim: { x: 2435, y: 2070 }, release: { x: 2560, y: 2070 }, end: { x: 2538, y: 1947 }, direction: { x: 1, y: 0 }, length: 125, label: 'DOOR', kind: 'door center', hostWall: true },
     { name: 'short-end-corridor', document: structuredClone(corridorFixture), center: mouth, aim: { x: 4130.5, y: 3514 }, release: { x: 4130.5, y: 3439 }, end: { x: 4110.5, y: 3425 }, direction: { x: 0, y: -1 }, length: 75, label: 'END', kind: 'corridor end' },
-    { name: 'offset-door-one-grid-step-corridor', document: structuredClone(withDoor), center: doorCenter, aim: { x: 2413, y: 2127 }, release: { x: 2438, y: 2127 }, end: { x: 2438, y: 1947 },
-      direction: { x: 1, y: 0 }, length: 25, zoom: .16, zoomAt: { x: 3261.75, y: 3100 }, label: 'DOOR', kind: 'door center', hostWall: true },
+    { name: 'offset-door-one-grid-step-corridor', document: nearbyDoor, center: { x: 2413, y: 3500 }, aim: { x: 2413, y: 3680 }, release: { x: 2438, y: 3680 }, end: { x: 2438, y: 3500 },
+      direction: { x: 1, y: 0 }, length: 25, zoom: .16, label: 'DOOR', kind: 'door center', hostWall: true },
     { name: 'offset-ship-door-short-corridor', document: createDocument(), center: shipCenter, aim: { x: 4210.5, y: 4700 }, release: { x: 4210.5, y: 4650 }, end: { x: 4110.5, y: 4650 },
       direction: { x: 0, y: -1 }, length: 50, zoom: .15, label: 'DOOR', kind: 'door center' },
     { name: 'offset-ship-raw-release-at-anchor', document: createDocument(), center: shipCenter, aim: { x: 4110.5, y: 4750 }, release: { x: 4110.5, y: 4700 }, end: { x: 4110.5, y: 4650 },
@@ -425,20 +435,35 @@ try {
   ];
   for (const short of shortCorridors) {
     const before = await fixture(short.name, short.document, 'corridor');
+    const normal = { x: -short.direction.y, y: short.direction.x };
+    const rails = [-1, 1].map(sign => ({ a: { x: short.center.x + normal.x * 290 * sign, y: short.center.y + normal.y * 290 * sign },
+      b: { x: short.end.x + normal.x * 290 * sign, y: short.end.y + normal.y * 290 * sign } }));
     if (short.zoom) {
       // A 25 px map-space drag must exceed the intentional three-screen-pixel
-      // gesture threshold. Zoom through the real wheel at a calibrated world
-      // pivot, retaining visible hull pixels and the short fixture's rails.
-      const pivot = mapPoint(short.zoomAt ?? { x: 4110.5, y: 4700 }), scale = view.a / view.ratioX;
+      // threshold. Use the real wheel and middle-button pan, then recalibrate
+      // the actual viewport. The crop includes a white band of the fixed hull.
+      const focusPoints = [short.aim, short.release ?? short.end, ...rails.flatMap(rail => [rail.a, rail.b]), { x: 3300, y: 5390 }, { x: 4750, y: 5500 }];
+      const focus = { left: Math.min(...focusPoints.map(point => point.x)), right: Math.max(...focusPoints.map(point => point.x)),
+        top: Math.min(...focusPoints.map(point => point.y)), bottom: Math.max(...focusPoints.map(point => point.y)) };
+      const inset = 20;
+      assert.ok((focus.right - focus.left) * short.zoom <= view.width - 2 * inset && (focus.bottom - focus.top) * short.zoom <= view.height - 2 * inset,
+        'The short fixture and visible hull band physically fit the actual canvas at the required zoom');
+      const pivot = { x: view.x + view.width / 2, y: view.y + view.height / 2 }, scale = view.a / view.ratioX;
       await page.mouse.move(pivot.x, pivot.y); await page.mouse.wheel(0, -Math.log(short.zoom / scale) / .0015); await calibrate();
+      const actualCenter = mapPoint({ x: (focus.left + focus.right) / 2, y: (focus.top + focus.bottom) / 2 });
+      const desiredCenter = { x: view.x + view.width / 2, y: view.y + view.height / 2 };
+      await page.mouse.move(desiredCenter.x, desiredCenter.y); await page.mouse.down({ button: 'middle' });
+      await page.mouse.move(desiredCenter.x + desiredCenter.x - actualCenter.x, desiredCenter.y + desiredCenter.y - actualCenter.y);
+      await page.mouse.up({ button: 'middle' }); await calibrate();
+      for (const point of focusPoints) assertVisible(point);
+      evidence.fixtureViews.push({ fixture: short.name, width: view.width, height: view.height, requiredZoom: short.zoom, actualScale: view.a / view.ratioX,
+        focus, realWheelZoomAndMiddlePan: true });
     }
     // Resolved starts retain the exact center while the actual drag displacement
     // supplies its direction/length. A raw press far along a doorway must not
     // turn a small normal drag into a much longer diagonal corridor.
-    const a = assertVisible(short.aim), b = assertVisible(short.release ?? short.end), normal = { x: -short.direction.y, y: short.direction.x };
+    const a = assertVisible(short.aim), b = assertVisible(short.release ?? short.end);
     assert.ok(Math.hypot(b.x - a.x, b.y - a.y) > 3, 'The short drag exceeds the real screen-space placement threshold');
-    const rails = [-1, 1].map(sign => ({ a: { x: short.center.x + normal.x * 290 * sign, y: short.center.y + normal.y * 290 * sign },
-      b: { x: short.end.x + normal.x * 290 * sign, y: short.end.y + normal.y * 290 * sign } }));
     await page.mouse.move(a.x, a.y); if (short.label) await marker(short.center, short.label);
     await resetDraws(); await page.mouse.down();
     await expect(page.locator('#status-message')).toContainText(short.kind ? `Corridor start aligned to the ${short.kind}` : 'Drag a route');
