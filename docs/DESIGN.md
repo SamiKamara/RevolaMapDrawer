@@ -36,6 +36,14 @@ An updated worker waits until every previous editor tab closes, preventing a run
 
 ## Document and geometry contracts
 
+### Unreleased corridor continuation and attached rooms
+
+Infer an open corridor mouth from an unambiguous pair of solid, unpinned degree-one rail endpoints exactly one corridor width apart, with parallel incident rails extending into the same side and no conflicting wall across the opening. No persistent primitive metadata is required, so existing saved graphs qualify. `corridorEndTargets` supplies its exact midpoint, mouth tangent and outward continuation direction. `resolveCorridorStart` shares nearest-geometry precedence and bounded attraction with editable wall centers/doors and the fixed outer doorway. END marks a mouth. A continuation's first run follows its outward direction; subsequent runs use ordinary eight-direction route quantization. Endpoint arrival at a mouth must approach along its normal from outside.
+
+`src/room-start.js` shares this resolver for Room hover and pointerdown, with structural doorway-clearance checks. An attached room's receiving side midpoint stays exactly at the resolved point, including fractional/diagonal coordinates. The pointer's tangent displacement sets half-width and its normal displacement sets depth, rounded in the local frame to the document grid. A negligible component (within 75 map pixels) receives a square-room default from the other dimension, and legal grid-rounded chamfer/doorway minima apply during sizing. Normal-only and tangent-only drags therefore show and place rooms; tangent-only graph-wall drags choose a deterministic upward/left side, while ship/corridor growth follows the fixed outward normal. Actual inward ship/corridor drags remain blocked. Its 220 px chamfers and orientation follow the host. Editable walls/doors allow either clear side. The rotation checkbox continues controlling free room construction.
+
+The attachment reuses an existing doorway and its ID or creates a centered 375 px doorway at a solid midpoint/open mouth. Shared base geometry retains original cuts and rail junctions. Validate the complete placement in a cloned document before mutation, rejecting unrelated boundary touches, wall intersections, enclosed geometry and competing openings. Preview shows the cut base and uses red for blocked placements. Track the actual pointer press separately from the attracted anchor and require more than three screen pixels of movement for preview/placement; stationary clicks and returning to the press point create no room. Hover, preview and cancellation leave history, document bounds and geometry unchanged; actual release is recomputed and a successful attachment, including centered expansion, is one undo action. Ship geometry/pins and the version 2 schema remain unchanged.
+
 ### Version 0.10.3 airlock wall-start correction
 
 Visible wall-start handles use the upper airlock corner centers: ship-relative

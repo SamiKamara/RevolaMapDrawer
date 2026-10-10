@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveCorridorStart, fitCorridorEnd, corridorPreservesOpenings } from '../src/corridors.js';
+import { corridorEndTargets, resolveCorridorStart, fitCorridorEnd, corridorPreservesOpenings } from '../src/corridors.js';
 import { createDocument, addWall, addDoor, addCorridor, corridorSegments, validateDocument } from '../src/model.js';
 
 const make = (points, links) => ({
@@ -134,6 +134,169 @@ test('invalid points, empty documents and aims beyond wall endpoints do not attr
   assert.equal(resolveCorridorStart(horizontal(), { x: 99, y: 100 }), null);
   assert.equal(resolveCorridorStart(make([], []), { x: 100, y: 100 }), null);
   assert.equal(resolveCorridorStart(null, { x: 100, y: 100 }), null);
+});
+
+const directions = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
+  .map(([x, y]) => ({ x: x / Math.hypot(x, y), y: y / Math.hypot(x, y) }));
+const translated = (point, direction, distance) => ({ x: point.x + direction.x * distance, y: point.y + direction.y * distance });
+const mouthAt = (doc, point) => corridorEndTargets(doc).find(target => Math.hypot(target.point.x - point.x, target.point.y - point.y) < 1e-6);
+function straightCorridor(direction = directions[0]) {
+  const doc = createDocument(), start = { x: 2400.5, y: 2400.25 }, end = translated(start, direction, 1200);
+  addCorridor(doc, [start, end]);
+  return { doc, start, end, direction };
+}
+const physicalOpenings = doc => doc.edges.flatMap(edge => {
+  const a = doc.vertices.find(vertex => vertex.id === edge.a), b = doc.vertices.find(vertex => vertex.id === edge.b);
+  const at = t => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+  return [...edge.gaps.map(gap => ({ id: gap.id, start: at(gap.start), end: at(gap.end) })),
+    ...edge.doors.map(door => ({ id: door.id, center: at(door.t) }))];
+}).sort((a, b) => a.id.localeCompare(b.id));
+
+test('open corridor ends infer precise free mouths in all eight orientations without mutation', () => {
+  for (const direction of directions) {
+    const { doc, start, end } = straightCorridor(direction), before = structuredClone(doc);
+    const targets = corridorEndTargets(doc);
+    assert.equal(targets.length, 2);
+    const target = mouthAt(doc, end), initial = mouthAt(doc, start);
+    assert.equal(target.kind, 'end');
+    assert.equal(target.source, 'corridor');
+    assert.equal(target.spanLength, doc.style.corridorWidth);
+    assert.equal(target.vertexIds.length, 2);
+    near(target.point.x, end.x);
+    near(target.point.y, end.y);
+    near(target.outwardDirection.x, direction.x);
+    near(target.outwardDirection.y, direction.y);
+    near(initial.outwardDirection.x, -direction.x);
+    near(initial.outwardDirection.y, -direction.y);
+    near(target.direction.x * direction.x + target.direction.y * direction.y, 0);
+    near(Math.hypot(target.direction.x, target.direction.y), 1);
+    assert.ok(target.direction.x > -1e-6 && (target.direction.x > 1e-6 || target.direction.y > 0));
+    assert.deepEqual(doc, before);
+  }
+});
+
+test('corridor mouth attraction shares perpendicular and short-midpoint tolerances', () => {
+  for (const direction of directions) {
+    const { doc, end } = straightCorridor(direction), target = mouthAt(doc, end);
+    const aim = translated(translated(end, direction, 74), target.direction, 28);
+    const resolved = resolveCorridorStart(doc, aim);
+    assert.equal(resolved.kind, 'end');
+    assert.deepEqual(resolved.point, target.point);
+    near(resolved.distance, 74);
+    near(resolved.projectedPoint.x, end.x + target.direction.x * 28);
+    near(resolved.projectedPoint.y, end.y + target.direction.y * 28);
+    assert.equal(resolveCorridorStart(doc, translated(end, target.direction, 29.01)), null);
+    assert.equal(resolveCorridorStart(doc, translated(end, direction, 75.01)), null);
+    assert.equal(resolveCorridorStart(doc, end, { centerTolerance: 0 }), null);
+    assert.equal(resolveCorridorStart(doc, translated(end, direction, 51), { wallTolerance: 50 }), null);
+    assert.equal(resolveCorridorStart(doc, translated(end, direction, 90), { wallTolerance: 100 }).kind, 'end');
+  }
+});
+
+test('corridor continuation joins the existing two rails exactly and preserves cuts in all orientations', () => {
+  for (const direction of directions) {
+    const { doc, end } = straightCorridor(direction);
+    const target = resolveCorridorStart(doc, end), ends = target.vertexIds.map(id => doc.vertices.find(vertex => vertex.id === id));
+    doc.edges[0].gaps.push({ id: 'kept-rail-gap', start: .2, end: .25 });
+    addDoor(doc, doc.edges[1].id, translated(doc.vertices.find(vertex => vertex.id === doc.edges[1].a), direction, 600));
+    const originalCuts = physicalOpenings(doc);
+    const path = [target.point, translated(target.point, direction, 1000)];
+    assert.equal(corridorPreservesOpenings(doc, path), true);
+    addCorridor(doc, path);
+    validateDocument(doc);
+    for (const vertex of ends) {
+      assert.ok(doc.vertices.some(saved => saved.id === vertex.id && saved.x === vertex.x && saved.y === vertex.y));
+      assert.equal(doc.edges.filter(edge => edge.a === vertex.id || edge.b === vertex.id).length, 2);
+    }
+    assert.equal(corridorEndTargets(doc).length, 2);
+    assert.equal(mouthAt(doc, end), undefined);
+    assert.ok(mouthAt(doc, path.at(-1)));
+    assert.deepEqual(physicalOpenings(doc), originalCuts);
+  }
+});
+
+test('incidental rail splits and bent paths retain their free corridor mouths', () => {
+  const { doc, end } = straightCorridor();
+  const original = doc.edges[0], a = doc.vertices.find(vertex => vertex.id === original.a), b = doc.vertices.find(vertex => vertex.id === original.b);
+  const middle = { id: 'split-rail', x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  doc.vertices.push(middle);
+  doc.edges.splice(0, 1, { ...original, b: middle.id }, { ...original, id: 'second-rail', a: middle.id });
+  validateDocument(doc);
+  assert.ok(mouthAt(doc, end));
+  assert.equal(corridorEndTargets(doc).length, 2);
+  const bent = createDocument(), path = [{ x: 1800.5, y: 1500.25 }, { x: 3000.5, y: 1500.25 }, { x: 4200.5, y: 2700.25 }];
+  addCorridor(bent, path);
+  assert.equal(corridorEndTargets(bent).length, 2);
+  assert.ok(mouthAt(bent, path[0]));
+  assert.ok(mouthAt(bent, path.at(-1)));
+});
+
+test('fitted corridor arrivals retain the receiving tangent and join both rail ends', () => {
+  for (const direction of directions) {
+    const { doc, end } = straightCorridor(direction), target = mouthAt(doc, end);
+    const outside = translated(end, direction, 1000), approximateEnd = translated(end, direction, 40);
+    const fit = fitCorridorEnd([outside, approximateEnd], target.point);
+    assert.ok(fit);
+    assert.equal(corridorPreservesOpenings(doc, fit.path), true);
+    addCorridor(doc, fit.path);
+    validateDocument(doc);
+    for (const id of target.vertexIds) assert.equal(doc.edges.filter(edge => edge.a === id || edge.b === id).length, 2);
+    assert.equal(mouthAt(doc, end), undefined);
+  }
+});
+
+test('branches, erased or doorway rail ends and sealed mouths do not become corridor targets', () => {
+  for (const modification of ['branch', 'gap', 'door', 'seal']) {
+    const { doc, end } = straightCorridor(), target = mouthAt(doc, end);
+    const terminal = doc.vertices.find(vertex => vertex.id === target.vertexIds[0]);
+    const rail = doc.edges.find(edge => edge.id === target.edgeIds[0]);
+    if (modification === 'branch') addWall(doc, terminal, { x: terminal.x, y: terminal.y - 500 });
+    if (modification === 'gap') rail.gaps.push({ id: 'erased-end', start: .9, end: 1 });
+    if (modification === 'door') rail.doors.push({ id: 'invalid-import-end', t: 1 });
+    if (modification === 'seal') addWall(doc, terminal, doc.vertices.find(vertex => vertex.id === target.vertexIds[1]));
+    assert.equal(mouthAt(doc, end), undefined, modification);
+  }
+});
+
+test('only unique perpendicular same-sided pairs at the fixed corridor width form mouths', () => {
+  const ambiguous = make([[1000, 1000], [2200, 1000], [1000, 1580], [2200, 1580], [1000, 2160], [2200, 2160]], [[0, 1], [2, 3], [4, 5]]);
+  ambiguous.style.corridorWidth = 580;
+  assert.deepEqual(corridorEndTargets(ambiguous), []);
+  for (const points of [
+    [[1000, 1000], [2200, 1000], [1000, 1579.99], [2200, 1579.99]],
+    [[1000, 1000], [2200, 1000], [1001, 1580], [2201, 1580]],
+    [[1000, 1000], [2200, 1000], [3400, 1580], [2200, 1580]],
+    [[1000, 1000], [2200, 1000], [1000, 1580], [2200, 1590]],
+  ]) {
+    const doc = make(points, [[0, 1], [2, 3]]);
+    doc.style.corridorWidth = 580;
+    assert.deepEqual(corridorEndTargets(doc), []);
+  }
+});
+
+test('solid crossing mouths are excluded while an actual crossing-wall erasure remains open', () => {
+  const { doc, end } = straightCorridor();
+  const [crossing] = addWall(doc, { x: end.x - 100, y: end.y }, { x: end.x + 100, y: end.y });
+  assert.equal(mouthAt(doc, end), undefined);
+  crossing.gaps.push({ id: 'open-mouth', start: .25, end: .75 });
+  assert.ok(mouthAt(doc, end));
+  assert.equal(resolveCorridorStart(doc, end).kind, 'end');
+});
+
+test('a corridor mouth follows nearest-geometry precedence beside unrelated walls', () => {
+  const { doc, end } = straightCorridor();
+  addWall(doc, { x: end.x + 60, y: end.y - 1000 }, { x: end.x + 60, y: end.y + 1000 });
+  assert.equal(resolveCorridorStart(doc, end).kind, 'end');
+  assert.equal(resolveCorridorStart(doc, { x: end.x + 50, y: end.y }).kind, 'center');
+  assert.equal(resolveCorridorStart(doc, { x: end.x + 50, y: end.y + 80 }), null);
+});
+
+test('pinned endpoints and malformed or unconfigured documents do not infer corridor mouths', () => {
+  const doc = make([[3739.5, 4700], [3739.5, 3700], [4319.5, 4700], [4319.5, 3700]], [[0, 1], [2, 3]]);
+  doc.style.corridorWidth = 580;
+  assert.equal(mouthAt(doc, { x: 4029.5, y: 4700 }), undefined);
+  for (const invalid of [null, {}, make([], []), { ...doc, style: { ...doc.style, corridorWidth: 0 } },
+    { ...doc, vertices: doc.vertices.slice(1) }]) assert.deepEqual(corridorEndTargets(invalid), []);
 });
 
 const bentPath = () => [{ x: 1000, y: 1000 }, { x: 2000, y: 1000 }, { x: 3000, y: 2000 }, { x: 3000, y: 3000 }];

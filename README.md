@@ -46,9 +46,9 @@ Start above the airlock. The two upper airlock wall ports are the attachment poi
 | Wall | W | Click to chain walls, or drag to draw one wall. Drawing along an opening fills just the covered portion. Only 0°, 45°, 90° and equivalent directions are allowed. |
 | Door | D | Click to place a fixed-size opening; aim near the middle to center it between corners or branches. CENTER in the preview confirms snapping. Click an existing opening to restore the wall. |
 | Eraser | E | Drag across walls to erase freely; choose the brush diameter in the top bar. One stroke is one undo action. The ship artwork stays protected. |
-| Room | R | Drag a room with fixed-size 45° chamfers. Enable **Rotate 45°** in the top options bar or click **Draw a 45° room** in Quick Guide. |
-| Rotate room | Shift+R | Select the Room tool and toggle its 45° orientation; also works during room placement. |
-| Corridor | C | Drag a route for two parallel walls. CENTER or DOOR aligns the start; finish near either target to fit the endpoint automatically. |
+| Room | R | Start at DOOR, END or CENTER to attach a room with a centered door. Drag straight outward for a square room, sideways for a default depth, or diagonally to set both dimensions. Free rooms use **Rotate 45°** or **Draw a 45° room** in Quick Guide. |
+| Rotate room | Shift+R | Toggle a free room's 45° orientation, including during placement. Attached rooms align with their receiving wall or corridor mouth. |
+| Corridor | C | Drag a route for two parallel walls. CENTER or DOOR aligns the start; END continues an open corridor outward before turning. Finish near a target to fit the endpoint automatically. |
 | Hand | H | Pan the canvas. Space + drag or the middle mouse button also pans. |
 | Zoom | Mouse wheel | Zoom around the pointer. The bottom controls also adjust zoom. |
 | Fit map | F | Fit the map in the workspace. |
@@ -59,6 +59,8 @@ Start above the airlock. The two upper airlock wall ports are the attachment poi
 | Open | Ctrl+O | Open a saved map PNG or JSON project. |
 
 Use **Ship facing right/left** in the inspector to flip the ship around the exact center of its airlock door. The center stays fixed when changing direction after drawing a corridor. Both door openings remain exactly **375 px** wide and the saved ship anchor and graph ports stay fixed. In Corridor mode, hover over the outer airlock door for **DOOR**, then drag outward to start at its exact center; this also works with the ship mirrored. All walls in a map use the same nominal dimensions: **50 px wall thickness**, **375 px clear doorway**, **580 px corridor wall-center separation** (530 px nominal clear space), and **220 px room chamfer inset**. Small deterministic edge variations approximate the reference's irregular white silhouettes.
+
+Room mode uses the same start markers. The clicked point becomes the center of the adjoining side and its **375 px** door, rather than a room corner. At the outer airlock or a corridor end, the room grows outward; at a wall or editable door, drag into either clear side. Moving sideways sets half the room width, and moving away from the start sets its depth. A straight drag supplies the missing dimension automatically; small drags show the minimum room that can contain the fixed chamfers and doorway. A click alone places nothing. Existing doors are reused; a solid wall midpoint or open corridor end gets a centered door. Red previews reject placements blocked by other walls, openings, corners or insufficient space. Escape cancels and a completed attachment is one undo step. Open corridor ends are recognized from unambiguous paired free rail endpoints, including reopened maps.
 
 In **Select (V)**, start a selection rectangle on empty canvas and hold the left mouse button while dragging. Only fully enclosed walls and enclosed points are selected. Ctrl-click adds/removes a wall or corner, and Ctrl-drag adds another area. Drag any selected member to move the group together. Escape cancels a drag or clears an idle selection. Selection highlights and counts are editor aids and are never exported. An ordinary click on an unselected wall/point returns to single-item editing.
 

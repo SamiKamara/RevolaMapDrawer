@@ -2,6 +2,41 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Attached room straight-drag correction — 2026-10-10
+
+- [x] Reproduce the reported doorway/chamfer error on normal-only and tangent-only attached-room drags.
+- [x] Give a missing dimension a usable default and show a legal minimum outline on early drags, preserving exact door centers and collision checks.
+- [x] Require actual pointer movement before preview/placement so an attracted click cannot create a room.
+- [x] Verify source/packaged UI, persistence, cancellation and history; rebuild and launch the actual refreshed desktop shortcut.
+
+The previous attached-room checks exercised sufficiently large diagonal drags only. They did not verify the natural straight drags reported by the user. This correction adds that coverage.
+
+Verified evidence and current limits:
+
+- `npm test`: **275/275 pass**, no skips. Four added geometry checks cover normal-only and tangent-only sizing, early minimum outlines and small anchor offsets; centered doors and collision rejection remain checked.
+- `npm run test:ui` and `npm run test:packaged` pass the complete maintained suites without renderer errors. Connection checks now cover **11** accepted room placements, including six natural straight drags from ship/corridor/wall/door starts. All **49** screenshot states per mode contain actual white ship pixels (minimum **2,398**). Exact centered **375 px** doors, original topology/pins, undo/redo, native save/reopen and collision rejection pass. An inaccurate stationary anchor click, Escape during an early **80 px** drag and release back at the original pointer press make no edit. Evidence: ignored `artifacts/room-drag-unit-tests.log`, `room-drag-ui-suite.log`, `room-drag-packaged-suite.log`, connection results JSON and screenshots.
+- `npm run package` rebuilt and verified all **21** runtime files and the minimal **0.10.4** manifest against current source. The `postpackage` hook refreshed the real desktop shortcut; separate `-VerifyOnly` readback confirmed its direct packaged executable target, empty arguments, repository working directory and existing target/icon paths. Launched that actual `.lnk` through Windows Shell. Computer Use verified the new Room guidance and a straight vertical drag from the default outer airlock door: a centered square room was visibly placed with **8 walls / 1 door** and no error. Undo returned the test document to clean **0 walls / 0 doors**; Room remains active at **16%** zoom. Evidence: `artifacts/room-drag-package.log` and `room-drag-shortcut-room.png`.
+- A missing drag component now follows the other dimension, subject to grid rounding and legal minima: default minimum width **900 px** at wall/door/ship starts or **1050 px** at corridor mouths, minimum depth **450 px**. Components within **75 map pixels** (or wall width when larger) count as absent to tolerate attraction offsets. For tangent-only editable-wall/door drags, the default side is up, or left for a vertical wall; drag diagonally toward the desired side to select another side. Ship and corridor rooms grow outward, and substantial inward drags remain rejected. Actual movement must exceed **3 screen pixels** before preview/placement. Existing clear-space and protected-ship checks still apply; two-axis room sizing remains available.
+
+## Corridor continuation and attached rooms — 2026-10-10
+
+- [x] Recognize unambiguous open corridor mouths in existing graph geometry and retain their exact centers for continuation.
+- [x] Attach room sides and centered 375 px doors to clear wall/door/corridor starts and the fixed outer airlock door.
+- [x] Verify clear-space rejection, openings, topology, eight directions, persistence, cancellation and one-step undo/redo.
+- [x] Run source UI checks, rebuild Windows package and verify packaged behavior.
+- [x] Inspect and launch the actual refreshed desktop shortcut, confirming the latest packaged UI opens.
+
+Version selection remains unchanged; this is unreleased local feature work.
+
+### Verified evidence and limitations
+
+- `npm test`: **271/271 pass**, no skips. New checks cover eight-direction corridor inference/continuation/arrival and room attachments, fractional centers, branches/pins, ambiguous mouths, real cuts, nearest-wall precedence, ship mirroring, shared topology, original doorway IDs/world positions, stale targets, collisions, centered expansion, atomic failures and exact JSON reopen. A nearby external stub remains unchanged with attachment joining disabled.
+- `npm run test:ui` and `npm run test:packaged` pass the complete maintained suites, including the new `scripts/connection-start-smoke.mjs` in both modes, without renderer errors. Five accepted room placements cover corridor END, fixed ship DOOR in both facings, wall CENTER and editable DOOR. Real Canvas labels/dashed previews retain exact anchors and a **375 px** base opening. Continuation shares the original rail vertices. Escape, one-step undo/redo, native project save/reopen and red collision rejection pass. Source and packaged screenshots were visually inspected; the ship-room preview matches the supplied approximate arrangement. Evidence: ignored `artifacts/connection-start-results.json`, `connection-start-packaged-results.json`, screenshots and aggregate logs.
+- Existing `npm run test:corridors` and `npm run test:corridor-end` pass unchanged, including original wall/door alignment, safe endpoint fitting and opening preservation. Evidence: `artifacts/connection-prior-corridors.log` and `connection-prior-corridor-end.log`.
+- Final focused source/packaged connection checks also verify actual ship hull pixels in all **27** screenshot states per run (minimum **2,398** visible white hull pixels; corridor-room preview **2,509** in both modes), without renderer errors. This strengthens screenshot readiness beyond observing image-draw calls. Evidence: `artifacts/connection-start-source-final.log`, `connection-start-packaged-final.log` and the corresponding results JSON.
+- `npm run package` rebuilt the Windows executable and verified all **21** runtime files plus the minimal **0.10.4** manifest against current source; `postpackage` refreshed the actual desktop shortcut. Separate `scripts/update-desktop-shortcut.ps1 -VerifyOnly` readback confirmed direct target `<repository root>\dist\RevolaMapDrawer-win32-x64\RevolaMapDrawer.exe`, empty arguments, repository working directory and existing target/icon paths. Launched the actual `<desktop>\RevolaMapDrawer - testattava versio.lnk` through Windows Shell. Computer Use observed that executable's clean **8192 × 8192**, **0 walls / 0 doors** editor, new Room guidance and **DOOR** hover at the fixed outer opening. Left Room active at **16%** airlock zoom. No user map was opened or modified.
+- Limitations: END inference requires unique paired solid degree-one rail ends; staggered/branched/pinned/obstructed or ambiguous mouths do not attract. A conservative **2,000,000** spatial-check budget omits inferred ends for unsupported density. Attraction retains existing map-space tolerances (mouth midpoint ±29 px at width580). Continuation begins outward along the old rails; mouth arrival requires an opposing normal run. Attached rooms automatically align with the host; Rotate45 controls free rooms. At default grid/style, minimum room width is **900 px** for wall/door/ship starts or **1050 px** for corridor mouths, and minimum depth is **450 px**. A shared base containing another door/erasure rejects attachment, as does extension through corners, branches or fixed pins; compatible solid free ends can extend. Collision checks conservatively reject unrelated centerline touches/crossings/enclosed graph walls and protected ship space. Original references, ship pixels, schema, pinned positions and world scale remain unchanged.
+
 ## Static browser build and Vercel — 2026-10-10
 
 - [x] Keep the same native/browser geometry, project schema and export implementation; load optional stars only when a closed map needs them.

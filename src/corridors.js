@@ -1,10 +1,11 @@
 import { getWallSpan } from './doors.js';
 import { corridorSegments, DEFAULTS } from './model.js';
-import { shipDoorways } from './ship.js';
+import { isShipPort, shipDoorways } from './ship.js';
 
 const EPS = 1e-6;
 const finitePoint = point => point && Number.isFinite(point.x) && Number.isFinite(point.y);
 const dot = (a, b) => a.x * b.x + a.y * b.y;
+const cross = (a, b) => a.x * b.y - a.y * b.x;
 const sub = (a, b) => ({ x: a.x - b.x, y: a.y - b.y });
 const clean = value => Math.round(value * 1e9) / 1e9;
 const tolerance = (value, fallback) => Number.isFinite(value) ? Math.max(0, value) : fallback;
@@ -12,6 +13,164 @@ const pointAt = (span, offset) => ({
   x: clean(span.a.x + span.direction.x * offset),
   y: clean(span.a.y + span.direction.y * offset),
 });
+
+const eightDirection = delta => Math.abs(delta.x) < EPS || Math.abs(delta.y) < EPS
+  || Math.abs(Math.abs(delta.x) - Math.abs(delta.y)) < EPS;
+
+function physicalCuts(doc, edge, length) {
+  const halfDoor = doc.style.doorWidth / 2;
+  return [...(edge.gaps ?? []).map(gap => ({ start: gap.start * length, end: gap.end * length })),
+    ...(edge.doors ?? []).map(door => ({ start: door.t * length - halfDoor, end: door.t * length + halfDoor }))]
+    .sort((a, b) => a.start - b.start);
+}
+
+// Index only cells touched by a solid segment. Crossing parameters keep a long
+// diagonal from filling its complete rectangular bounding box.
+function segmentCells(a, b, size) {
+  const times = [0, 1], cells = new Set();
+  for (const axis of ['x', 'y']) {
+    const delta = b[axis] - a[axis];
+    if (Math.abs(delta) < EPS) continue;
+    const low = Math.min(a[axis], b[axis]), high = Math.max(a[axis], b[axis]);
+    for (let line = Math.floor(low / size) + 1; line * size < high; line++) times.push((line * size - a[axis]) / delta);
+  }
+  times.sort((x, y) => x - y);
+  const include = t => {
+    const point = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    for (let x = Math.floor((point.x - EPS) / size); x <= Math.floor((point.x + EPS) / size); x++) {
+      for (let y = Math.floor((point.y - EPS) / size); y <= Math.floor((point.y + EPS) / size); y++) cells.add(`${x},${y}`);
+    }
+  };
+  for (let i = 0; i < times.length; i++) {
+    include(times[i]);
+    if (i) include((times[i - 1] + times[i]) / 2);
+  }
+  return cells;
+}
+
+// The proposed mouth is a virtual receiving wall. Any other solid wall through
+// it would make its opening ambiguous, even when that wall ends at the mouth.
+function mouthIsClear(first, second, walls) {
+  const tangent = sub(second.point, first.point), width = Math.hypot(tangent.x, tangent.y);
+  const direction = { x: tangent.x / width, y: tangent.y / width };
+  const normal = { x: -direction.y, y: direction.x };
+  for (const wall of walls) {
+    if (wall.edge.id === first.edge.id || wall.edge.id === second.edge.id) continue;
+    const a = sub(wall.a, first.point), b = sub(wall.b, first.point);
+    const aNormal = dot(a, normal), bNormal = dot(b, normal);
+    if (Math.min(aNormal, bNormal) > EPS || Math.max(aNormal, bNormal) < -EPS) continue;
+    const aAlong = dot(a, direction), bAlong = dot(b, direction);
+    if (Math.abs(aNormal) < EPS && Math.abs(bNormal) < EPS) {
+      if (Math.min(aAlong, bAlong) <= width + EPS && Math.max(aAlong, bAlong) >= -EPS) return false;
+    } else {
+      const t = aNormal / (aNormal - bNormal), offset = aAlong + (bAlong - aAlong) * t;
+      if (t >= -EPS && t <= 1 + EPS && offset >= -EPS && offset <= width + EPS) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Infer open corridor mouths from the existing graph, without provenance or
+ * schema changes. A mouth has two unique solid free rail ends exactly one
+ * corridor width apart, with parallel rails extending into the same side and
+ * no conflicting solid wall across their opening. Pinned ship ports, branches,
+ * erased endpoints, opposing rails and ambiguous pairings do not qualify.
+ * `direction` is the canonical receiving-mouth tangent; `outwardDirection`
+ * points away from the existing rails for a continuation or adjoining room.
+ */
+export function corridorEndTargets(doc) {
+  if (!Array.isArray(doc?.vertices) || !Array.isArray(doc.edges)
+    || !Number.isFinite(doc.style?.corridorWidth) || doc.style.corridorWidth <= 0
+    || !Number.isFinite(doc.style?.doorWidth) || doc.style.doorWidth <= 0) return [];
+  const vertices = new Map(doc.vertices.map(vertex => [vertex.id, vertex]));
+  const adjacent = new Map(), wallInfo = [];
+  for (const edge of doc.edges) {
+    const a = vertices.get(edge.a), b = vertices.get(edge.b);
+    if (!finitePoint(a) || !finitePoint(b)) return [];
+    const delta = sub(b, a), length = Math.hypot(delta.x, delta.y);
+    if (length <= EPS || !eightDirection(delta)) return [];
+    const cuts = physicalCuts(doc, edge, length), info = { edge, a, b, length, cuts };
+    wallInfo.push(info);
+    for (const id of [edge.a, edge.b]) {
+      if (!adjacent.has(id)) adjacent.set(id, []);
+      adjacent.get(id).push(info);
+    }
+  }
+  const ends = [];
+  for (const point of doc.vertices) {
+    const incident = adjacent.get(point.id);
+    if (incident?.length !== 1 || isShipPort(doc.ship, point, EPS)) continue;
+    const info = incident[0], atA = info.edge.a === point.id;
+    const offset = atA ? 0 : info.length;
+    if (info.cuts.some(cut => offset >= cut.start - EPS && offset <= cut.end + EPS)) continue;
+    const delta = sub(atA ? info.b : info.a, point);
+    ends.push({ point, edge: info.edge, inward: { x: delta.x / info.length, y: delta.y / info.length } });
+  }
+
+  // Spatial endpoint buckets avoid comparing every free end with every other
+  // end. Dense unsupported geometry stops rather than blocking pointer input.
+  const width = doc.style.corridorWidth, buckets = new Map(), pairs = [], degree = new Map();
+  let checks = 0;
+  for (const end of ends) {
+    const x = Math.floor(end.point.x / width), y = Math.floor(end.point.y / width);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+      for (const other of buckets.get(`${x + dx},${y + dy}`) ?? []) {
+        if (++checks > 2000000) return [];
+        const mouth = sub(end.point, other.point), separation = Math.hypot(mouth.x, mouth.y);
+        if (Math.abs(separation - width) > EPS || !eightDirection(mouth)
+          || Math.abs(dot(mouth, end.inward)) > EPS
+          || Math.abs(cross(end.inward, other.inward)) > EPS
+          || dot(end.inward, other.inward) < 1 - EPS) continue;
+        pairs.push([other, end]);
+        for (const candidate of [other, end]) degree.set(candidate.point.id, (degree.get(candidate.point.id) ?? 0) + 1);
+      }
+    }
+    const key = `${x},${y}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(end);
+  }
+  const uniquePairs = pairs.filter(pair => pair.every(end => degree.get(end.point.id) === 1));
+  if (!uniquePairs.length) return [];
+  const walls = [];
+  for (const info of wallInfo) {
+    let start = 0;
+    const addSolid = end => {
+      if (end - start <= EPS) return;
+      const at = offset => ({ x: info.a.x + (info.b.x - info.a.x) * offset / info.length,
+        y: info.a.y + (info.b.y - info.a.y) * offset / info.length });
+      walls.push({ edge: info.edge, a: at(start), b: at(end) });
+    };
+    for (const cut of info.cuts) {
+      addSolid(Math.min(cut.start, info.length));
+      start = Math.max(start, cut.end);
+    }
+    addSolid(info.length);
+  }
+  const wallBuckets = new Map();
+  for (const wall of walls) for (const key of segmentCells(wall.a, wall.b, width)) {
+    if (!wallBuckets.has(key)) wallBuckets.set(key, []);
+    wallBuckets.get(key).push(wall);
+  }
+  const targets = [];
+  for (const pair of uniquePairs) {
+    const [first, second] = pair.sort((a, b) => a.point.x - b.point.x || a.point.y - b.point.y);
+    const nearby = new Set();
+    for (const key of segmentCells(first.point, second.point, width)) {
+      for (const wall of wallBuckets.get(key) ?? []) nearby.add(wall);
+    }
+    if ((checks += nearby.size) > 2000000) return [];
+    if (!mouthIsClear(first, second, nearby)) continue;
+    const delta = sub(second.point, first.point);
+    targets.push({
+      point: { x: (first.point.x + second.point.x) / 2, y: (first.point.y + second.point.y) / 2 },
+      kind: 'end', source: 'corridor', direction: { x: delta.x / width || 0, y: delta.y / width || 0 },
+      outwardDirection: { x: -first.inward.x || 0, y: -first.inward.y || 0 },
+      vertexIds: [first.point.id, second.point.id], edgeIds: [first.edge.id, second.edge.id], spanLength: width,
+    });
+  }
+  return targets;
+}
 
 function targetOnSpan(span, point, options, distance) {
   const offset = dot(sub(point, span.a), span.direction);
@@ -54,9 +213,9 @@ function targetOnSpan(span, point, options, distance) {
 }
 
 /**
- * Attract a corridor's initial centerline point to the nearest wall's midpoint
- * or existing doorway. Returns null outside an attraction zone; the caller
- * retains its ordinary free/grid start in that case. Coordinates are map pixels
+ * Attract a corridor's initial centerline point to the nearest wall's midpoint,
+ * existing doorway or open corridor mouth. Returns null outside an attraction
+ * zone; the caller retains its ordinary free/grid start in that case. Coordinates are map pixels
  * and are never rounded to the grid. This helper does not change the document.
  *
  * wallTolerance bounds perpendicular distance (default 75). Midpoint attraction
@@ -64,7 +223,8 @@ function targetOnSpan(span, point, options, distance) {
  * span. Door attraction covers the whole opening plus doorMargin (default 50)
  * on either side, and takes precedence over its wall's midpoint. Turns, branches
  * and pinned ship ports bound spans; incidental collinear splits do not. The
- * fixed ship's outer doorway uses the same tolerances and nearest-wall priority.
+ * fixed ship's outer doorway and corridor mouths use the same tolerances and
+ * nearest-wall priority. A mouth is a virtual wall of corridorWidth length.
  */
 export function resolveCorridorStart(doc, point, options = {}) {
   if (!finitePoint(point) || !Array.isArray(doc?.vertices) || !Array.isArray(doc.edges)
@@ -90,7 +250,23 @@ export function resolveCorridorStart(doc, point, options = {}) {
     hosts.push({ edgeId: edge.id, distance });
   }
 
-  const shipTargets = [];
+  const freeTargets = [];
+  for (const end of corridorEndTargets(doc)) {
+    const delta = sub(point, end.point), offset = dot(delta, end.direction);
+    if (Math.abs(offset) > end.spanLength / 2 + EPS) continue;
+    const projectedPoint = { x: end.point.x + end.direction.x * offset, y: end.point.y + end.direction.y * offset };
+    const distance = Math.hypot(point.x - projectedPoint.x, point.y - projectedPoint.y);
+    if (distance > wallTolerance + EPS || distance > nearest + EPS) continue;
+    if (distance < nearest - EPS) {
+      nearest = distance;
+      hosts.length = 0;
+      freeTargets.length = 0;
+    }
+    const centerTolerance = Math.min(tolerance(options.centerTolerance, 50), end.spanLength * 0.05);
+    if (centerTolerance > 0 && Math.abs(offset) <= centerTolerance + EPS) {
+      freeTargets.push({ ...end, projectedPoint, distance });
+    }
+  }
   for (const door of shipDoorways(doc.ship)) {
     const offset = point.x - door.point.x, distance = Math.abs(point.y - door.point.y);
     if (Math.abs(offset) > door.width / 2 + tolerance(options.doorMargin, 50) + EPS
@@ -98,9 +274,9 @@ export function resolveCorridorStart(doc, point, options = {}) {
     if (distance < nearest - EPS) {
       nearest = distance;
       hosts.length = 0;
-      shipTargets.length = 0;
+      freeTargets.length = 0;
     }
-    shipTargets.push({
+    freeTargets.push({
       point: { ...door.point }, kind: 'door', source: 'ship', doorId: door.id,
       projectedPoint: { x: point.x, y: door.point.y }, distance, spanLength: door.width,
       direction: { ...door.direction },
@@ -109,7 +285,7 @@ export function resolveCorridorStart(doc, point, options = {}) {
 
   // Choose the nearby wall before evaluating its attractions. Otherwise a door
   // on a farther parallel wall could pull an intentional aim off the nearer one.
-  const visited = new Set(), targets = [...shipTargets];
+  const visited = new Set(), targets = [...freeTargets];
   for (const host of hosts) {
     if (visited.has(host.edgeId)) continue;
     const span = getWallSpan(doc, host.edgeId);

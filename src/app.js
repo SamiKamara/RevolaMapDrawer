@@ -8,6 +8,7 @@ import { generateFloor, drawFloor, renderFloorSvg } from './floors.js';
 import { detectRoom } from './rooms.js';
 import { resolveDoorPlacement } from './doors.js';
 import { resolveCorridorStart, fitCorridorEnd, corridorPreservesOpenings } from './corridors.js';
+import { resolveRoomStart, attachedRoomSegments, addAttachedRoom } from './room-start.js';
 import { emptySelection, selectionVertices, pruneSelection, rectangleSelection, combineSelection, toggleSelection } from './selection.js';
 import { copySelection, pasteSelection } from './clipboard.js';
 
@@ -66,8 +67,8 @@ const descriptions = {
   wall: ['Wall tool', 'Click to chain walls, or drag to draw. Nearby ends join automatically. Draw along a wall to extend it or fill an opening. Escape ends the chain.'],
   door: ['Door tool', 'Click a wall to cut a 375 px opening. Aim near the middle between corners or branches to snap exactly to CENTER. Click an existing opening to restore the wall.'],
   eraser: ['Eraser tool', 'Drag to erase any length of wall. Choose Brush size in the top bar. One stroke is one undo step. The fixed ship stays protected.'],
-  room: ['Room tool', 'Drag to size a room. For a tilted room, check Rotate 45° in the top options bar, use the button below, or press Shift + R. Chamfers stay 220 px.'],
-  corridor: ['Corridor tool', 'Drag a route to draw a 580 px corridor. CENTER or DOOR aligns the start, including the ship’s outer airlock door. Finish near either target to align the endpoint automatically while keeping your start and turn directions. Use broad turns.'],
+  room: ['Room tool', 'Start at DOOR, END or CENTER to attach a room with a centered door. Drag straight outward for a square room, or diagonally to set width and depth. A sideways drag supplies a default depth. The adjoining side stays centered on the start. Free rooms use Rotate 45° or Shift + R.'],
+  corridor: ['Corridor tool', 'Drag a route to draw a 580 px corridor. CENTER or DOOR aligns the start; from END, continue outward before turning. The ship’s outer airlock door also aligns. Finish near a target to align the endpoint while keeping your start and turn directions. Use broad turns.'],
   hand: ['Hand tool', 'Drag to move around the map. Scroll to zoom at your cursor, or press F to fit the whole map.'],
 };
 
@@ -227,6 +228,15 @@ function doorTarget(point) {
 function corridorTarget(point) {
   return resolveCorridorStart(doc, point, { wallTolerance: joinOptions().joinTolerance });
 }
+function roomTarget(point) {
+  return resolveRoomStart(doc, point, { wallTolerance: joinOptions().joinTolerance });
+}
+function targetName(target) {
+  return target.kind === 'door' ? 'door center' : target.kind === 'end' ? 'corridor end' : 'wall midpoint';
+}
+function targetLabel(target) {
+  return target.kind === 'door' ? 'DOOR' : target.kind === 'end' ? 'END' : 'CENTER';
+}
 function snap(point, start) {
   const options = joinOptions();
   // Existing legacy attachments remain usable, without exposing obsolete
@@ -272,7 +282,26 @@ function handle(point, radius = 4, color = '#b5e8c6') {
 }
 function roomPreview() {
   if (!gesture || gesture.type !== 'room') return [];
+  if (gesture.target) return gesture.segments || [];
   return model.roomSegments(gesture.start, gesture.end, $('rotate-room').checked, doc.style.chamfer);
+}
+function updateRoom(current, aim) {
+  current.end = current.target ? { ...aim } : model.snapPoint(aim, doc.style.grid);
+  if (!current.target) return;
+  if (distance(current.pointerStart, aim) * camera.scale <= 3) {
+    current.segments = []; current.valid = false; current.previewKey = null;
+    status(`Room start aligned to the ${targetName(current.target)}. Drag to size the room.`);
+    return;
+  }
+  const key = JSON.stringify(current.end);
+  if (key === current.previewKey) return;
+  current.previewKey = key; current.segments = []; current.valid = false;
+  try {
+    current.segments = attachedRoomSegments(doc, current.target, current.end);
+    addAttachedRoom(clone(doc), current.target, current.end);
+    current.valid = true;
+    status('Release to place the room with its centered door.');
+  } catch (error) { status(error.message, true); }
 }
 function simplify(points, tolerance) {
   if (points.length <= 2) return points;
@@ -287,20 +316,28 @@ function simplify(points, tolerance) {
   if (max <= tolerance) return [start, end];
   return [...simplify(points.slice(0, index + 1), tolerance).slice(0, -1), ...simplify(points.slice(index), tolerance)];
 }
-function corridorPath(points) {
+function corridorPath(points, startTarget = null) {
   const reduced = simplify(points, doc.style.corridorWidth * .22);
   // Pointerdown already resolved this start. Keep fractional wall/door centers
   // exactly; subsequent 45-degree steps use this same origin in preview/save.
   const result = [{ ...reduced[0] }];
   for (const point of reduced.slice(1)) {
-    const next = model.snapEndpoint(result.at(-1), point, doc.style.grid);
+    let next;
+    if (result.length === 1 && startTarget?.kind === 'end') {
+      const direction = startTarget.outwardDirection;
+      const along = (point.x - result[0].x) * direction.x + (point.y - result[0].y) * direction.y;
+      const run = Math.round(along / doc.style.grid) * doc.style.grid;
+      if (run <= 0) continue;
+      next = { x: result[0].x + direction.x * run, y: result[0].y + direction.y * run };
+    } else next = model.snapEndpoint(result.at(-1), point, doc.style.grid);
     if (distance(next, result.at(-1)) >= doc.style.corridorWidth * .6) result.push(next);
   }
   return result;
 }
 function placeCorridor(path, startTarget, endTarget = null) {
   return commit(() => model.addCorridor(doc, path), endTarget
-    ? `Corridor endpoint aligned to the ${endTarget.kind === 'door' ? 'door center' : 'wall midpoint'}.`
+    ? `Corridor endpoint aligned to the ${targetName(endTarget)}.`
+    : startTarget?.kind === 'end' ? 'Corridor placed from the corridor end.'
     : startTarget?.kind === 'door' ? 'Corridor placed from the door center.'
     : startTarget ? 'Corridor placed from the wall midpoint. Use the Door tool to open the wall.'
     : 'Corridor placed. Use the Door tool to connect through existing walls.');
@@ -310,7 +347,7 @@ function corridorRoute(current, release) {
   // than the sampling threshold. Attraction must precede route quantization.
   const points = [...current.points];
   if (distance(points.at(-1), release) > 1e-6) points.push(release);
-  const path = corridorPath(points), target = corridorTarget(release);
+  const path = corridorPath(points, current.target), target = corridorTarget(release);
   // Pointer sampling and grid quantization often produce the same route over
   // several frames. Reuse its insertion check while the document is unchanged.
   const key = target && JSON.stringify([path, target.edgeId, target.kind, target.point]);
@@ -325,7 +362,9 @@ function corridorRoute(current, release) {
   const hostDirection = target?.direction ?? (hostA && hostB && { x: hostB.x - hostA.x, y: hostB.y - hostA.y });
   const last = path.at(-1), previous = path.at(-2);
   const crossesHost = previous && hostDirection && Math.abs((last.x - previous.x) * hostDirection.y
-    - (last.y - previous.y) * hostDirection.x) > 1e-6;
+    - (last.y - previous.y) * hostDirection.x) > 1e-6 && (target.kind !== 'end'
+    || (Math.abs((last.x - previous.x) * target.outwardDirection.y - (last.y - previous.y) * target.outwardDirection.x) < 1e-6
+      && (last.x - previous.x) * target.outwardDirection.x + (last.y - previous.y) * target.outwardDirection.y < 0));
   const fit = crossesHost && fitCorridorEnd(path, target.point, { width: doc.style.corridorWidth, maxDeviation: 300 });
   if (fit && corridorPreservesOpenings(doc, fit.path)) {
     try {
@@ -414,11 +453,12 @@ function render() {
     handle(target, 3);
   }
   if (gesture?.type === 'room') {
-    try { for (const { a, b } of roomPreview()) segment(a, b, '#b5e8c6', true, 2); }
+    const color = gesture.target && !gesture.valid ? '#be8c6f' : '#b5e8c6';
+    try { for (const { a, b } of roomPreview()) segment(a, b, color, true, 2); }
     catch { segment(gesture.start, gesture.end, '#be8c6f', true); }
   }
   if (gesture?.type === 'corridor') {
-    const { path, endTarget } = gesture.route || { path: corridorPath(gesture.points) };
+    const { path, endTarget } = gesture.route || { path: corridorPath(gesture.points, gesture.target) };
     try { for (const { a, b } of model.corridorSegments(path, doc.style.corridorWidth)) segment(a, b, '#b5e8c6', true, 2); }
     catch { for (let i = 1; i < path.length; i++) segment(path[i - 1], path[i], '#be8c6f', true); }
     if (endTarget) {
@@ -426,15 +466,15 @@ function render() {
       ctx.save(); ctx.translate(endTarget.point.x, endTarget.point.y); ctx.scale(1 / camera.scale, 1 / camera.scale);
       ctx.fillStyle = '#13271be6'; ctx.fillRect(-37, -29, 74, 17);
       ctx.fillStyle = '#b5e8c6'; ctx.font = '10px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(endTarget.kind === 'door' ? 'END · DOOR' : 'END · CENTER', 0, -20); ctx.restore();
+      ctx.fillText(`END · ${targetLabel(endTarget)}`, 0, -20); ctx.restore();
     }
   }
-  if (tool === 'corridor' && (gesture?.type === 'corridor' || (!gesture && pointer && drawable(pointer)))) {
-    const target = gesture?.type === 'corridor' ? gesture.target : corridorTarget(pointer);
-    const start = gesture?.type === 'corridor' ? gesture.points[0] : target?.point ?? model.snapPoint(pointer, doc.style.grid);
+  if (['corridor', 'room'].includes(tool) && (gesture?.type === tool || (!gesture && pointer && drawable(pointer)))) {
+    const target = gesture?.type === tool ? gesture.target : tool === 'room' ? roomTarget(pointer) : corridorTarget(pointer);
+    const start = gesture?.type === 'corridor' ? gesture.points[0] : gesture?.type === 'room' ? gesture.start : target?.point ?? model.snapPoint(pointer, doc.style.grid);
     handle(start, target ? 5 : 3);
     if (target) {
-      const label = target.kind === 'door' ? 'DOOR' : 'CENTER';
+      const label = targetLabel(target);
       ctx.save(); ctx.translate(start.x, start.y); ctx.scale(1 / camera.scale, 1 / camera.scale);
       ctx.fillStyle = '#13271be6'; ctx.fillRect(-27, -29, 54, 17);
       ctx.fillStyle = '#b5e8c6'; ctx.font = '10px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -505,13 +545,15 @@ canvas.addEventListener('pointerdown', event => {
     catch (error) { gesture = null; status(error.message, true); return; }
     canvas.setPointerCapture(event.pointerId); refresh();
   } else if (tool === 'room') {
-    gesture = { type: 'room', start: model.snapPoint(point, doc.style.grid), end: model.snapPoint(point, doc.style.grid) };
+    const target = roomTarget(point);
+    const start = target?.point ?? model.snapPoint(point, doc.style.grid);
+    gesture = { type: 'room', target, start, pointerStart: { ...point }, end: { ...start }, valid: false, segments: [] };
+    status(target ? `Room start aligned to the ${targetName(target)}. Drag toward clear space to size the room.` : 'Drag to size a room.');
     canvas.setPointerCapture(event.pointerId); refresh();
   } else if (tool === 'corridor') {
     const target = corridorTarget(point);
     gesture = { type: 'corridor', target, points: [target?.point ?? model.snapPoint(point, doc.style.grid)] };
-    status(target?.kind === 'door' ? 'Corridor start aligned to the door center. Drag the route.'
-      : target ? 'Corridor start aligned to the wall midpoint. Drag the route.' : 'Drag a route to draw a 580 px corridor.');
+    status(target ? `Corridor start aligned to the ${targetName(target)}. Drag the route.` : 'Drag a route to draw a 580 px corridor.');
     canvas.setPointerCapture(event.pointerId); refresh();
   } else if (tool === 'select') {
     const vertex = nearestVertex(point, 8 / camera.scale);
@@ -549,12 +591,12 @@ canvas.addEventListener('pointermove', event => {
   } else if (gesture?.type === 'erase') {
     try { model.eraseWalls(gesture.preview, gesture.previous, pointer, gesture.radius); gesture.previous = { ...pointer }; }
     catch (error) { status(error.message, true); }
-  } else if (gesture?.type === 'room') gesture.end = model.snapPoint(pointer, doc.style.grid);
+  } else if (gesture?.type === 'room') updateRoom(gesture, pointer);
   else if (gesture?.type === 'corridor') {
     if (distance(gesture.points.at(-1), pointer) > 35 && gesture.points.length < 2000) gesture.points.push(pointer);
     gesture.route = corridorRoute(gesture, pointer);
-    status(gesture.route.endTarget ? `Corridor endpoint aligned to the ${gesture.route.endTarget.kind === 'door' ? 'door center' : 'wall midpoint'}. Release to place.`
-      : 'Drag the route. Finish near CENTER or DOOR to align the endpoint automatically.');
+    status(gesture.route.endTarget ? `Corridor endpoint aligned to the ${targetName(gesture.route.endTarget)}. Release to place.`
+      : 'Drag the route. Finish near CENTER, DOOR or END to align the endpoint automatically.');
   } else if (gesture?.type === 'marquee') {
     gesture.end = pointer;
     gesture.moved = distance(gesture.start, pointer) * camera.scale > 3;
@@ -595,7 +637,13 @@ function finishPointer(event) {
     const end = snap(world(local(event)), current.start);
     commit(() => model.addWall(doc, current.start, end, joinOptions()), 'Wall drawn. Nearby ends joined; covered openings filled.'); wallStart = null;
   } else if (current.type === 'erase') commit(() => { doc = current.preview; }, 'Wall erased. Draw over the gap to restore it.');
-  else if (current.type === 'room' && distance(current.start, current.end) > 5) commit(() => model.addRoom(doc, current.start, current.end, $('rotate-room').checked), 'Room placed. Drag a side to resize it while keeping its chamfers.');
+  else if (current.type === 'room') {
+    updateRoom(current, world(local(event)));
+    if (distance(current.pointerStart, world(local(event))) * camera.scale > 3 && distance(current.start, current.end) > 5) commit(() => current.target
+      ? addAttachedRoom(doc, current.target, current.end)
+      : model.addRoom(doc, current.start, current.end, $('rotate-room').checked),
+    current.target ? `Room placed with its door at the ${targetName(current.target)}.` : 'Room placed. Drag a side to resize it while keeping its chamfers.');
+  }
   else if (current.type === 'corridor' && distance(current.points[0], world(local(event))) > 5) {
     const route = corridorRoute(current, world(local(event)));
     placeCorridor(route.path, current.target, route.endTarget);

@@ -5,6 +5,10 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+- Fix attached rooms disappearing during straight drags by supplying the missing dimension and showing the minimum legal outline during sizing; stationary clicks remain unchanged.
+- Continue an existing corridor from its exact open-end midpoint, including saved maps.
+- Attach chamfered rooms to the outer airlock door, editable doors, open corridor ends and clear wall midpoints, keeping the adjoining side and 375 px doorway centered on the start.
+- Preview and reject obstructed attachments without changing existing openings; preserve one-step undo and editable persistence.
 - Add a static browser build for the specialized Revola: Post Hyper editor at [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app), with local file import/downloads, content-hashed assets and offline application caching.
 - Load the optional star background only when a closed map needs it; preserve native offline files, geometry and transparent exports.
 - Add Vercel configuration and browser transfer/offline verification alongside the maintained Windows package checks.
