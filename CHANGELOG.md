@@ -20,6 +20,10 @@ editor, shared by the offline Windows application and browser version.
 - Load the optional star background only when a closed map needs it; preserve native offline files, geometry and transparent exports.
 - Add Vercel configuration and browser transfer/offline verification alongside the maintained Windows package checks.
 
+Published as the latest Windows x64 portable release with its SHA-256 checksum:
+[v0.11.0](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.11.0).
+The shared browser build is deployed at [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app).
+
 ## [0.10.4] - 2026-10-08
 
 Airlock wall alignment correction for the specialized **Revola: Post Hyper**
@@ -31,7 +35,7 @@ offline Windows map editor.
 - Verify actual wall previews, drawing, facing changes and native save/reopen in
   source and packaged release checks, with views fitted to smaller test windows.
 
-Published as the latest Windows x64 portable release with its SHA-256 checksum:
+Published as a Windows x64 portable release with its SHA-256 checksum:
 [v0.10.4](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.4).
 
 ## [0.10.3] - 2026-10-08

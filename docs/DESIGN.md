@@ -36,13 +36,13 @@ An updated worker waits until every previous editor tab closes, preventing a run
 
 ## Document and geometry contracts
 
-### Unreleased Shift square rooms and short corridors
+### Version 0.11.0 Shift square rooms and short corridors
 
 Holding Shift during a Room gesture constrains the footprint's width and depth to the larger requested dimension, preserving the drag quadrant and existing 220 px chamfers. Free rooms constrain their endpoint before the existing optional 45° rotation. Attached rooms use the host's local frame, preserve the exact receiving-side/door midpoint and apply legal doorway/chamfer minima; their equal side is rounded up to twice the document grid so both half-width and depth remain grid-valid. Pointerdown, pointermove and release read the modifier, while Shift keydown/keyup recompute the current preview without requiring another pointer movement. Releasing Shift returns to the original unconstrained pointer aim. Shift+R retains its rotation shortcut.
 
 Corridor route quantization retains any nonzero grid step instead of discarding steps shorter than 60% of corridor width (348 px at width580). This permits short straight pieces, including fixed/editable doorway starts and continuations. Default axis-aligned steps can be 25 px; diagonal steps retain the ordinary 45° grid rules. The pure boundary geometry continues rejecting reversed or overlapping offsets at tight turns. Track the actual corridor pointer press and require more than three screen pixels of movement for previews and placement; attraction offsets alone and returning to the press point make no edit. When a press attracts to a target, translate sampled/release route aims by the same start correction, so a short outward drag beside a door keeps its actual direction and distance. Receiving-target lookup still uses the raw release aim before fitting. Endpoint attraction cannot collapse a short route into its own start.
 
-### Unreleased corridor continuation and attached rooms
+### Version 0.11.0 corridor continuation and attached rooms
 
 Infer an open corridor mouth from an unambiguous pair of solid, unpinned degree-one rail endpoints exactly one corridor width apart, with parallel incident rails extending into the same side and no conflicting wall across the opening. No persistent primitive metadata is required, so existing saved graphs qualify. `corridorEndTargets` supplies its exact midpoint, mouth tangent and outward continuation direction. `resolveCorridorStart` shares nearest-geometry precedence and bounded attraction with editable wall centers/doors and the fixed outer doorway. END marks a mouth. A continuation's first run follows its outward direction; subsequent runs use ordinary eight-direction route quantization. Endpoint arrival at a mouth must approach along its normal from outside.
 
