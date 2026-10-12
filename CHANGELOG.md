@@ -14,6 +14,10 @@ shared by the offline Windows application and browser version.
 - Save editable projects as `<Map name>-source.revola`, preserving the same JSON document and support for opening older `.revola.json` projects.
 - Apply these names to Windows save-dialog suggestions and browser downloads, including keyboard save shortcuts.
 
+Published as the latest Windows x64 portable release with its SHA-256 checksum:
+[v0.11.1](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.11.1).
+The same save naming is deployed at [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app).
+
 ## [0.11.0] - 2026-10-11
 
 Room and corridor drawing improvements for the specialized **Revola: Post Hyper**
