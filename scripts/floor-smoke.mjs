@@ -283,12 +283,13 @@ try {
     assert.deepEqual(await state(), before, 'PNG floor preserves project dirty state and history');
     const pngDialog = await desktop.evaluate(() => global.__revolaFloor.dialogs.at(-1));
     assert.equal(pngDialog.title, 'Export floor PNG'); assert.deepEqual(pngDialog.filters[0].extensions, ['png']);
-    assert.ok(pngDialog.defaultPath.endsWith('-floors.png'));
+    assert.equal(pngDialog.defaultPath, `${source.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'Untitled map'}-floors.png`);
     const pngInfo = await inspectPng(png, source, probes);
     const svgBytes = await write('#floor-svg-button', destination(`${name}.svg`));
     assert.deepEqual(await state(), before, 'SVG floor preserves project dirty state and history');
     const svgDialog = await desktop.evaluate(() => global.__revolaFloor.dialogs.at(-1));
     assert.equal(svgDialog.title, 'Export floor SVG'); assert.deepEqual(svgDialog.filters[0].extensions, ['svg']);
+    assert.equal(svgDialog.defaultPath, `${source.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'Untitled map'}-floors.svg`);
     const svgInfo = await page.evaluate(text => {
       const xml = new DOMParser().parseFromString(text, 'image/svg+xml'), svg = xml.documentElement;
       return { errors: xml.querySelectorAll('parsererror').length, width: svg.getAttribute('width'), height: svg.getAttribute('height'),
@@ -329,7 +330,7 @@ try {
       return { width, height, whitePixels, uncovered, nonblack };
     }, { svg: svgBytes.toString('utf8'), source });
     assert.ok(shipCoverage.whitePixels > 100_000); assert.equal(shipCoverage.uncovered, 0); assert.equal(shipCoverage.nonblack, 0);
-    evidence.exports.push({ name, png: pngInfo, svg: { ...svgInfo, bytes: svgBytes.length, probeAlpha: svgProbes, shipCoverage } });
+    evidence.exports.push({ name, defaultNames: { png: pngDialog.defaultPath, svg: svgDialog.defaultPath }, png: pngInfo, svg: { ...svgInfo, bytes: svgBytes.length, probeAlpha: svgProbes, shipCoverage } });
     return pngInfo;
   };
 
@@ -382,9 +383,9 @@ try {
   assert.deepEqual(validateDocument(JSON.parse(restored.toString('utf8'))), fixture, 'Real outer doorway cut and history restore exact map geometry');
   evidence.interactions.push('An outer-door edit removes floor and stars; one-step undo/redo automatically restores or removes them and export readiness with exact geometry');
   await page.screenshot({ path: destination('editor.png') });
-  await page.locator('#map-name').fill('Unsaved floor test'); await page.locator('#map-name').blur();
+  await page.locator('#map-name').fill('RevolaReserveMap-1'); await page.locator('#map-name').blur();
   await expect(page.locator('#dirty-dot')).toHaveClass(/dirty/);
-  const renamed = { ...fixture, name: 'Unsaved floor test' };
+  const renamed = { ...fixture, name: 'RevolaReserveMap-1' };
   const pngInfo = await exportBoth('closed', renamed, [
     { name: 'room', x: 2500, y: 2000 }, { name: 'door', x: 4300, y: 2700 },
     { name: 'white wall underfloor', x: 2500, y: 1000 }, { name: 'outer rim', x: 2500, y: 969 },

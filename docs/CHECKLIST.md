@@ -2,6 +2,25 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Save filenames and release 0.11.1 — 2026-10-12
+
+- [x] Verify Map name based `-walls`, `-floors` and `-source.revola` names in the shared native/browser save flow.
+- [x] Verify new `.revola` project reopen and legacy `.revola.json` compatibility without a schema change.
+- [x] Verify the complete Windows portable release and local/browser UI checks.
+- [x] Inspect and launch the actual refreshed desktop test shortcut, confirming the latest packaged UI opens.
+- [ ] Commit/push directly to `main`, create immutable v0.11.1 and verify/publish its new release assets.
+- [ ] Deploy the verified browser build to Vercel production and verify live/offline downloads.
+
+The owner requested source commit/push, a GitHub release update and the Vercel live update. Version **0.11.1** is selected for this patch; published older versions and tags are preserved. Remote release/deployment verification remains pending at this preparation stage.
+
+Verified local preparation:
+
+- `scripts/build-release.ps1 -Version 0.11.1` passes **289/289** unit checks, complete `npm run test:ui`, packaging/postpackage, complete `npm run test:packaged`, all **21** runtime byte comparisons/minimal manifest and every byte of **77** ZIP entries. The extracted portable app reopens the exact native-saved `.revola` project with **36 walls**, no renderer errors and **zero network requests**; its input fixture also verifies legacy `.revola.json`. Native tests assert exact dialog defaults for all five outputs, including `RevolaReserveMap-1-walls.png` / `.svg`, `RevolaReserveMap-1-floors.png` / `.svg` and `RevolaReserveMap-1-source.revola`, and the `.revola` project filter. Reopened projects are saved to distinct fresh outputs before whole-document comparison. Filename sanitization, PNG metadata, transparent images, dirty-state/cancellation/atomic-write protection, centered expansion, geometry/history and compact layout retain their checks. Evidence: ignored `artifacts/release-0111-preparation.log`, source/packaged smoke/SVG/floor/connection JSON and `portable-results.json`.
+- `npm run build:web` and `npm run test:web` pass desktop Chrome local/offline use. Build **74a7b5166265f7d7**, app hash **7bf465d7ccad8cb5**, eight files, **413,421 total bytes**. Actual download events verify all five exact sample filenames; `.revola` and legacy `.revola.json` reopen with exact geometry. Floor PNG/SVG export works on the first offline closure without cached stars. Initial install measures **196,513 response-body bytes**, controlled reload makes **zero host requests**, and offline drawing uses **zero requests / zero bytes**; no uploads, third-party requests or renderer errors. Worker-update and 1024 × 700 checks pass. Evidence: ignored `artifacts/release-0111-web-build.log`, `release-0111-web-local.log`, `web-build.json` and `web-results.json`.
+- The automatic `postpackage` hook refreshed the actual desktop shortcut. Separate `scripts/update-desktop-shortcut.ps1 -VerifyOnly` inspected its persisted direct target `<repository>\dist\RevolaMapDrawer-win32-x64\RevolaMapDrawer.exe`, empty arguments, repository working directory and existing target/icon paths. Launched that exact `.lnk` with Windows Shell; Computer Use selected the exact packaged process and visibly verified its clean **8192 × 8192**, **0 walls / 0 doors** editor, fixed ship and save controls at `resources/app.asar/index.html`. Closed only this new blank instance before the tagging rebuild. Evidence: ignored `artifacts/release-0111-shortcut.json` and the visible Computer Use observation.
+
+Current limits: native dialogs suggest filenames and allow the user to choose another destination/name. Browser downloads cannot confirm destination/completion and retain unsaved reminders. `.revola` remains versioned JSON; SVG/floor images do not contain editable project data. Windows x64 remains unsigned; browser verification covers desktop Chrome, not mobile/touch or other browsers. Offline caching retains application files, not unsaved maps, and updates wait for old tabs to close. Original references, ship pixels/pins, world scale and document schema are unchanged.
+
 ## Version 0.11.0 release and web update — 2026-10-11
 
 The owner's request authorizes committing/pushing `main`, updating the Windows release and deploying the web application. Version **0.11.0** is selected manually for the new room/corridor features and browser distribution. Older tags and releases remain unchanged.

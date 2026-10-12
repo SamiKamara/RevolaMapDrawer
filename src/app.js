@@ -734,7 +734,7 @@ async function saveDocument(kind = 'png') {
   floorControls();
   const snapshot = clone(doc);
   const exportFloor = floor;
-  const name = `${safeName(snapshot.name)}${floorExport ? '-floors' : ''}${fileKind === 'png' ? '.png' : fileKind === 'svg' ? '.svg' : '.revola.json'}`;
+  const name = `${safeName(snapshot.name)}-${floorExport ? 'floors' : fileKind === 'project' ? 'source' : 'walls'}${fileKind === 'png' ? '.png' : fileKind === 'svg' ? '.svg' : '.revola'}`;
   try {
     model.validateDocument(snapshot);
     let bytes;

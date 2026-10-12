@@ -11,9 +11,9 @@ import { createExampleDocument } from './example-fixture.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const artifacts = path.join(root, 'artifacts');
 await fs.mkdir(artifacts, { recursive: true });
-const exportPath = path.join(artifacts, 'smoke-map.png');
-const projectPath = path.join(artifacts, 'smoke-map.revola.json');
-const recoveredPath = path.join(artifacts, 'smoke-recovered.revola.json');
+const exportPath = path.join(artifacts, 'RevolaReserveMap-1-walls.png');
+const projectPath = path.join(artifacts, 'RevolaReserveMap-1-source.revola');
+const recoveredPath = path.join(artifacts, 'smoke-recovered.revola');
 const invalidPath = path.join(artifacts, 'smoke-invalid.png');
 const examplePath = path.join(artifacts, 'smoke-example-fixture.revola.json');
 await fs.writeFile(invalidPath, 'This is not a PNG.');
@@ -33,8 +33,9 @@ const evidence = { interactions: [], files: {} };
 try {
   await desktop.evaluate(({ dialog }) => {
     // Only OS dialogs are replaced; every file operation still traverses the real preload and IPC.
-    global.__revolaSmoke = { saves: [], opens: [], messages: [], discard: false };
-    dialog.showSaveDialog = async () => {
+    global.__revolaSmoke = { saves: [], opens: [], dialogs: [], messages: [], discard: false };
+    dialog.showSaveDialog = async (_window, options) => {
+      global.__revolaSmoke.dialogs.push(options);
       const filePath = global.__revolaSmoke.saves.shift();
       return filePath ? { canceled: false, filePath } : { canceled: true };
     };
@@ -145,26 +146,31 @@ try {
   await expect(page.locator('#zoom-value')).toHaveText(baselineZoom);
   evidence.interactions.push('scroll zoom, hand pan, fit');
 
-  await page.locator('#map-name').fill('Smoke test — Revola');
+  await page.locator('#map-name').fill('RevolaReserveMap-1');
   await page.locator('#map-name').press('Tab');
   await page.locator('#mirror-button').click();
   await expect(page.locator('#mirror-label')).toHaveText('Ship facing left');
   await desktop.evaluate((_electron, filePath) => global.__revolaSmoke.saves.push(filePath), projectPath);
   await page.locator('#project-button').click();
   await expect.poll(async () => fs.stat(projectPath).then((s) => s.size).catch(() => 0)).toBeGreaterThan(100);
+  const projectDialog = await desktop.evaluate(() => global.__revolaSmoke.dialogs.at(-1));
+  assert.equal(projectDialog.defaultPath, 'RevolaReserveMap-1-source.revola');
+  assert.deepEqual(projectDialog.filters[0].extensions, ['revola']);
   const project = validateDocument(JSON.parse(await fs.readFile(projectPath, 'utf8')));
-  assert.equal(project.name, 'Smoke test — Revola');
+  assert.equal(project.name, 'RevolaReserveMap-1');
   assert.equal(project.edges.length, 22);
   assert.equal(project.edges.flatMap((edge) => edge.doors).length, 1);
   assert.equal(project.ship.mirrored, true);
   await desktop.evaluate((_electron, filePath) => global.__revolaSmoke.saves.push(filePath), exportPath);
   await page.locator('#export-button').click();
   await expect.poll(async () => fs.stat(exportPath).then((s) => s.size).catch(() => 0), { timeout: 90_000 }).toBeGreaterThan(1000);
+  assert.equal(await desktop.evaluate(() => global.__revolaSmoke.dialogs.at(-1).defaultPath), 'RevolaReserveMap-1-walls.png');
   const png = await fs.readFile(exportPath);
   assert.deepEqual(validateDocument(decodePngMetadata(png)), project);
   evidence.files.pngBytes = png.length;
   evidence.files.metadataJsonBytes = Buffer.byteLength(JSON.stringify(project));
-  evidence.interactions.push('native project save and PNG export, mirrored ship, exact metadata round trip');
+  evidence.files.defaultNames = { project: projectDialog.defaultPath, wallPng: 'RevolaReserveMap-1-walls.png' };
+  evidence.interactions.push('native source.revola and walls.png filenames, mirrored ship, exact metadata round trip');
 
   const doorEdge = project.edges.find((edge) => edge.doors.length);
   const doorA = project.vertices.find((vertex) => vertex.id === doorEdge.a);
@@ -219,6 +225,10 @@ try {
   await page.locator('#new-button').click();
   await page.locator('#confirm-dialog button[value="discard"]').click();
   await expect(stats()).toHaveText('0 walls · 0 doors');
+  await desktop.evaluate((_electron, filePath) => global.__revolaSmoke.opens.push(filePath), projectPath);
+  await page.locator('#open-button').click();
+  await expect(page.locator('#map-name')).toHaveValue(project.name);
+  assert.deepEqual(await saveSnapshot('source-reopened'), project, 'New .revola project opens with exact editable document');
   await desktop.evaluate((_electron, filePath) => global.__revolaSmoke.opens.push(filePath), exportPath);
   await page.locator('#open-button').click();
   await expect(page.locator('#map-name')).toHaveValue(project.name);
@@ -289,7 +299,7 @@ try {
     }
   }
   assert.ok(visited.has(ports[1].id), 'Airlock ports belong to the same connected room graph');
-  evidence.interactions.push('native Open loads a fixture with a valid graph connected to both airlock ports');
+  evidence.interactions.push('native Open retains legacy .revola.json compatibility and loads exact graph connected to both airlock ports');
   await page.screenshot({ path: path.join(artifacts, 'example.png') });
 
   await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1024, 700));

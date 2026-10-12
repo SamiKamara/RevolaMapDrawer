@@ -90,7 +90,7 @@ When new geometry crosses the default boundary, the original 8192 square occupie
 
 | Action | Contents | Reopens as an editable map? |
 | --- | --- | --- |
-| Save project | `.revola.json` graph, openings, style and ship orientation | Yes |
+| Save project | `.revola` JSON graph, openings, style and ship orientation | Yes |
 | Save wall PNG | Transparent white walls and ship, plus embedded project data | Yes, while its metadata is retained |
 | Save wall SVG | Transparent vector walls with one embedded ship PNG | No |
 | Save floor PNG / SVG | Black floor on transparency, available for closed maps | No |
@@ -103,7 +103,9 @@ When finishing a corridor, aim near the same **CENTER** or **DOOR** targets used
 
 **Save wall PNG** produces an ordinary transparent white wall PNG with one `RevolaMap` iTXt metadata chunk. That chunk contains the versioned JSON graph, door positions, style, seed and ship orientation. Reopening the PNG restores those editable objects. The metadata size is proportional to the graph rather than the 8192-pixel image dimensions.
 
-**Save project** writes the same editable document as `.revola.json`, useful for backup and interchange without the image. Keep a project copy if another image editor or optimizer will process your PNG: such programs may remove custom metadata.
+**Save project** writes the same editable document as `.revola`, useful for backup and interchange without the image. Older `.revola.json` projects remain readable. Keep a project copy if another image editor or optimizer will process your PNG: such programs may remove custom metadata.
+
+Save names use **Map name** plus the output layer: for `RevolaReserveMap-1`, wall exports are `RevolaReserveMap-1-walls.png` / `.svg`, floor exports are `RevolaReserveMap-1-floors.png` / `.svg`, and the editable project is `RevolaReserveMap-1-source.revola`. The Windows save dialog suggests these names; the browser uses them for downloads.
 
 **Save wall SVG** exports a transparent, self-contained image with white vector walls. Continuous wall runs are merged and unnecessary outline points are removed within a 0.25 map pixel tolerance; door and eraser cut endpoints and corner miters stay exact. The bundled ship PNG is embedded once to preserve its detail without a large raster trace. The SVG retains the full 8192 or 16384 canvas at its original scale, contains no editing overlays or external image dependencies, and omits project metadata. It cannot be reopened as an editable map; SVG export leaves unsaved changes marked, so also save wall PNG or a project to continue editing later.
 

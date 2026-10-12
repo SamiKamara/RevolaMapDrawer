@@ -5,6 +5,15 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-10-12
+
+Consistent save filenames for the specialized **Revola: Post Hyper** editor,
+shared by the offline Windows application and browser version.
+
+- Name wall PNG/SVG exports `<Map name>-walls.png` / `.svg` and floor PNG/SVG exports `<Map name>-floors.png` / `.svg`.
+- Save editable projects as `<Map name>-source.revola`, preserving the same JSON document and support for opening older `.revola.json` projects.
+- Apply these names to Windows save-dialog suggestions and browser downloads, including keyboard save shortcuts.
+
 ## [0.11.0] - 2026-10-11
 
 Room and corridor drawing improvements for the specialized **Revola: Post Hyper**

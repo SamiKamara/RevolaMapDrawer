@@ -19,7 +19,7 @@ const artifacts = path.join(root, 'artifacts');
 await fs.mkdir(artifacts, { recursive: true });
 const fixture = validateDocument(createExampleDocument());
 const input = path.join(artifacts, 'portable-fixture.revola.json');
-const output = path.join(artifacts, 'portable-saved.revola.json');
+const output = path.join(artifacts, 'portable-saved.revola');
 await fs.writeFile(input, JSON.stringify(fixture));
 await fs.rm(output, { force: true });
 const env = { ...process.env };
@@ -29,7 +29,10 @@ try {
   await app.evaluate(({ dialog }, { input, output }) => {
     const opens = [input, output];
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [opens.shift()] });
-    dialog.showSaveDialog = async () => ({ canceled: false, filePath: output });
+    dialog.showSaveDialog = async (_window, options) => {
+      global.__revolaPortableSave = options;
+      return { canceled: false, filePath: output };
+    };
     dialog.showMessageBox = async () => ({ response: 1 });
   }, { input, output });
   const page = await app.firstWindow();
@@ -48,6 +51,9 @@ try {
   await expect(page.locator('#map-name')).toHaveValue(fixture.name);
   await page.locator('#project-button').click();
   await expect.poll(() => fs.stat(output).then(stat => stat.size).catch(() => 0)).toBeGreaterThan(100);
+  const saveDialog = await app.evaluate(() => global.__revolaPortableSave);
+  assert.equal(saveDialog.defaultPath, `${fixture.name}-source.revola`);
+  assert.deepEqual(saveDialog.filters[0].extensions, ['revola']);
   assert.deepEqual(validateDocument(JSON.parse(await fs.readFile(output, 'utf8'))), fixture);
   await page.locator('#new-button').click();
   await expect(page.locator('#graph-stats')).toHaveText('0 walls · 0 doors');

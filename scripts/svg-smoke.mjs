@@ -27,7 +27,7 @@ if (packaged) {
 }
 
 const fixture = createDocument();
-fixture.name = 'SVG <walls> & doors';
+fixture.name = 'RevolaReserveMap-1';
 const wall = (ax, ay, bx, by) => addWall(fixture, { x: ax, y: ay }, { x: bx, y: by }, { joinTolerance: 0 });
 wall(500, 1000, 3500, 1000);
 addDoor(fixture, fixture.edges[0].id, { x: 1500, y: 1000 }, { centerTolerance: 0 });
@@ -42,7 +42,7 @@ assert.deepEqual(validateDocument(fixture), fixture, 'SVG fixture is a legal sha
 const fixturePath = destination('fixture.revola.json');
 await fs.writeFile(fixturePath, JSON.stringify(fixture));
 const expanded = structuredClone(fixture);
-expanded.name = 'Expanded SVG map'; expanded.ship.mirrored = true;
+expanded.name = 'Expanded <SVG> & map'; expanded.ship.mirrored = true;
 addWall(expanded, { x: -1500, y: -1000 }, { x: 500, y: -1000 }, { joinTolerance: 0 });
 assert.deepEqual(validateDocument(expanded), expanded);
 const expandedPath = destination('expanded-fixture.revola.json');
@@ -118,7 +118,7 @@ try {
     const dialog = await desktop.evaluate(() => global.__revolaSvg.dialogs.at(-1));
     assert.equal(dialog.title, 'Export SVG');
     assert.deepEqual(dialog.filters[0].extensions, ['svg']);
-    assert.ok(dialog.defaultPath.endsWith('.svg'));
+    assert.equal(dialog.defaultPath, `${document.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'Untitled map'}-walls.svg`);
     const svg = bytes.toString('utf8');
     const pngs = [...svg.matchAll(/data:image\/png;base64,([A-Za-z\d+/=]+)/g)];
     assert.equal(pngs.length, 1, 'The original ship is embedded only once');
@@ -152,7 +152,7 @@ try {
     }
     assert.ok(pointCount < originalPoints, 'Actual SVG removes unnecessary sampled wall points');
     const raster = await inspectRaster(svg, document);
-    evidence.exports.push({ name, bytes: bytes.length, wallDataBytes: bytes.length - Math.ceil(shipPng.length / 3) * 4,
+    evidence.exports.push({ name, defaultName: dialog.defaultPath, bytes: bytes.length, wallDataBytes: bytes.length - Math.ceil(shipPng.length / 3) * 4,
       originalWallPoints: originalPoints, exportedWallPoints: pointCount, removedWallPoints: originalPoints - pointCount, parsed, raster });
     return bytes;
   };
@@ -293,6 +293,7 @@ try {
   await page.locator('#mirror-button').click();
   await expect(page.locator('#dirty-dot')).toHaveClass(/dirty/);
   const png = await write('#export-button', destination('editable.png'));
+  assert.equal(await desktop.evaluate(() => global.__revolaSvg.dialogs.at(-1).defaultPath), 'RevolaReserveMap-1-walls.png');
   assert.deepEqual(validateDocument(decodePngMetadata(png)), fixture);
   await expect(page.locator('#dirty-dot')).not.toHaveClass(/dirty/);
   evidence.interactions.push('Existing editable PNG save still preserves metadata and clears native dirty state');
@@ -348,7 +349,7 @@ try {
       const downloadPromise = preview.waitForEvent('download');
       await preview.locator('#svg-button').click();
       const download = await downloadPromise;
-      assert.ok(download.suggestedFilename().endsWith('.svg'));
+      assert.equal(download.suggestedFilename(), 'RevolaReserveMap-1-walls.svg');
       await download.saveAs(destination('browser.svg'));
       const downloaded = await fs.readFile(destination('browser.svg'));
       assert.ok(downloaded.equals(await fs.readFile(destination('mirrored.svg'))), 'Browser download matches native SVG byte for byte, including original embedded ship PNG');

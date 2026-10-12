@@ -20,6 +20,29 @@ const destination = name => path.join(artifacts, `web-${name}`);
 await fs.access(path.join(output, 'index.html'));
 await fs.mkdir(artifacts, { recursive: true });
 
+async function assertDownloadName(page, selector, download, evidence) {
+  const suffixes = {
+    '#project-button': '-source.revola', '#export-button': '-walls.png', '#svg-button': '-walls.svg',
+    '#floor-png-button': '-floors.png', '#floor-svg-button': '-floors.svg',
+  };
+  assert.ok(suffixes[selector], `Known save action: ${selector}`);
+  const mapName = await page.locator('#map-name').inputValue();
+  const base = mapName.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'Untitled map';
+  assert.equal(download.suggestedFilename(), base + suffixes[selector], `Actual browser download name for ${selector}`);
+  if (mapName === 'RevolaReserveMap-1') {
+    evidence.defaultNames ||= {};
+    evidence.defaultNames[selector] = download.suggestedFilename();
+  }
+}
+
+function closedFilenameFixture() {
+  const document = createDocument(); document.name = 'RevolaReserveMap-1';
+  const points = [[3739.5, 4740], [3739.5, 4400], [2000, 4400], [2000, 1000], [6500, 1000], [6500, 4400], [4452.5, 4400], [4452.5, 4740]];
+  for (let i = 1; i < points.length; i++) addWall(document, { x: points[i - 1][0], y: points[i - 1][1] }, { x: points[i][0], y: points[i][1] }, { joinTolerance: 0 });
+  assert.equal(generateFloor(document).closed, true);
+  return document;
+}
+
 // Exercise the current browser bundle through real mouse/keyboard events and
 // downloaded projects. This shared check also runs against the published site
 // while offline, so release behavior adds no resource requests or map uploads.
@@ -134,9 +157,18 @@ if (process.argv.length > 2) {
   const settle = async () => { await page.waitForLoadState('networkidle'); await Promise.all(tracking); };
   const write = async (selector, name) => {
     const pending = page.waitForEvent('download', { timeout: 120_000 }); await page.locator(selector).click();
-    const download = await pending, file = destination(`production-${name}`); await download.saveAs(file);
+    const download = await pending, file = destination(`production-${name}`);
+    await assertDownloadName(page, selector, download, result); await download.saveAs(file);
     assert.equal(await download.failure(), null); await expect(page.locator(selector)).toBeEnabled();
     return fs.readFile(file);
+  };
+  const snapshot = async name => validateDocument(JSON.parse((await write('#project-button', `${name}.revola`)).toString('utf8')));
+  const open = async (file, expectedName) => {
+    const dirty = await page.locator('#dirty-dot').evaluate(element => element.classList.contains('dirty'));
+    const chooser = page.waitForEvent('filechooser'); await page.locator('#open-button').click(); await (await chooser).setFiles(file);
+    if (dirty) { await expect(page.locator('#confirm-dialog')).toBeVisible(); await page.locator('#confirm-dialog button[value="discard"]').click(); }
+    await expect(page.locator('#document-title')).toHaveText(expectedName);
+    await expect(page.locator('#status-message')).toContainText('All walls and doors are editable');
   };
   try {
     const initial = await page.goto(deployed.href, { waitUntil: 'networkidle' });
@@ -145,6 +177,8 @@ if (process.argv.length > 2) {
     await expect(page.locator('#status-message')).not.toHaveText('Preparing workspace…');
     await page.evaluate(() => navigator.serviceWorker.ready); await settle();
     assert.equal(await page.evaluate(() => typeof window.revolaDesktop), 'undefined');
+    const accepted = await page.locator('#file-input').getAttribute('accept');
+    for (const extension of ['.revola', '.revola.json', '.png']) assert.ok(accepted.split(',').includes(extension));
     assert.ok(!requests.some(item => item.url.includes('editor-stars')));
     for (const response of finished.filter(item => new URL(item.url).pathname.startsWith('/assets/'))) assert.match(response.cacheControl, /max-age=31536000.*immutable/);
     result.firstLoad = finished.slice();
@@ -154,11 +188,15 @@ if (process.argv.length > 2) {
     result.controlledReload = finished.slice(warmStart);
     assert.ok(result.controlledReload.filter(item => !item.fromServiceWorker).every(item => new URL(item.url).pathname === '/sw.js'), 'Production repeat visit makes no host resource requests');
     const fixture = createExampleDocument(), fixturePath = destination('production-fixture.revola.json');
+    fixture.name = 'RevolaReserveMap-1';
     await fs.writeFile(fixturePath, JSON.stringify(fixture));
     const localStart = finished.length;
-    const chooser = page.waitForEvent('filechooser'); await page.locator('#open-button').click(); await (await chooser).setFiles(fixturePath);
-    await expect(page.locator('#document-title')).toHaveText(fixture.name);
-    assert.deepEqual(validateDocument(JSON.parse((await write('#project-button', 'project.revola.json')).toString('utf8'))), fixture);
+    await open(fixturePath, fixture.name);
+    assert.deepEqual(validateDocument(JSON.parse((await write('#project-button', 'RevolaReserveMap-1-source.revola')).toString('utf8'))), fixture);
+    await open(destination('production-RevolaReserveMap-1-source.revola'), fixture.name);
+    assert.deepEqual(await snapshot('source-reopened'), fixture, 'Published browser reopens new .revola with exact geometry');
+    await open(fixturePath, fixture.name);
+    assert.deepEqual(await snapshot('legacy-reopened'), fixture, 'Published browser retains legacy .revola.json compatibility');
     const png = await write('#export-button', 'editable.png'); assert.deepEqual(validateDocument(decodePngMetadata(png)), fixture);
     const svg = (await write('#svg-button', 'walls.svg')).toString('utf8');
     const embedded = svg.match(/(?:href|xlink:href)="data:image\/png;base64,([^"]+)"/);
@@ -171,24 +209,24 @@ if (process.argv.length > 2) {
     await page.reload({ waitUntil: 'networkidle' }); await expect(page.locator('#map-canvas')).toBeVisible();
     await page.locator('#file-input').setInputFiles(destination('production-editable.png'));
     await expect(page.locator('#document-title')).toHaveText(fixture.name);
-    assert.deepEqual(validateDocument(JSON.parse((await write('#project-button', 'offline-project.revola.json')).toString('utf8'))), fixture);
+    assert.deepEqual(await snapshot('offline-project'), fixture);
     assert.equal((await write('#svg-button', 'offline-walls.svg')).toString('utf8'), svg);
     await page.screenshot({ path: destination('production-offline.png') });
-    const snapshot = async name => validateDocument(JSON.parse((await write('#project-button', `${name}.revola.json`)).toString('utf8')));
-    const open = async (file, expectedName) => {
-      const dirty = await page.locator('#dirty-dot').evaluate(element => element.classList.contains('dirty'));
-      const chooser = page.waitForEvent('filechooser'); await page.locator('#open-button').click(); await (await chooser).setFiles(file);
-      if (dirty) { await expect(page.locator('#confirm-dialog')).toBeVisible(); await page.locator('#confirm-dialog button[value="discard"]').click(); }
-      await expect(page.locator('#document-title')).toHaveText(expectedName);
-      await expect(page.locator('#status-message')).toContainText('All walls and doors are editable');
-    };
+    const closed = closedFilenameFixture(), closedPath = destination('production-closed-fixture.revola');
+    await fs.writeFile(closedPath, JSON.stringify(closed)); await open(closedPath, closed.name);
+    await expect(page.locator('#floor-png-button')).toBeEnabled();
+    const floorPng = await write('#floor-png-button', 'floors.png');
+    assert.throws(() => decodePngMetadata(floorPng), /no Revola Map metadata/, 'Published floor PNG remains noneditable');
+    const floorSvg = (await write('#floor-svg-button', 'floors.svg')).toString('utf8');
+    assert.match(floorSvg, /<path/); assert.ok(!floorSvg.includes('data:image'));
+    assert.deepEqual(await snapshot('after-floor-exports'), closed, 'Both floor downloads leave exact project geometry unchanged');
     const drawingStart = finished.length;
     result.drawingModifiers = await verifyDrawingModifiers(page, snapshot, open, 'production-'); await settle();
     result.drawingActions = finished.slice(drawingStart);
     assert.ok(result.drawingActions.filter(item => !item.fromServiceWorker).every(item => new URL(item.url).pathname === '/sw.js'), 'Production Shift and short corridor drawing use no host resources while offline');
     assert.ok(requests.every(item => ['GET', 'HEAD'].includes(item.method) && (!/^https?:/.test(item.url) || new URL(item.url).origin === deployed.origin)), 'Production editor sends no uploads and contacts no other domain');
     assert.deepEqual(errors, []);
-    result.interactions.push('Published cache/security headers match the static deployment', 'Warm controlled reload uses cached resources', 'Local browser JSON/PNG/SVG downloads preserve exact fixture topology and embed ship bytes without resource traffic', 'Installed production app reloads offline and reopens editable PNG with exact JSON/SVG downloads', 'Shift square and short offset airlock corridor previews, downloads and undo/redo work offline', 'No map uploads or third-party requests');
+    result.interactions.push('Published cache/security headers match the static deployment', 'Warm controlled reload uses cached resources', 'All five downloads use exact Map name suffixes and extensions', 'New .revola and legacy .revola.json reopen with exact project geometry', 'Local browser project/PNG/SVG downloads preserve exact fixture topology and embed ship bytes without resource traffic', 'Installed production app reloads offline and exports PNG/SVG floors', 'Shift square and short offset airlock corridor previews, downloads and undo/redo work offline', 'No map uploads or third-party requests');
     result.files = { projectBytes: Buffer.byteLength(JSON.stringify(fixture)), pngBytes: png.length, svgBytes: Buffer.byteLength(svg) };
     await fs.writeFile(destination('production-results.json'), JSON.stringify(result, null, 2));
     console.log(JSON.stringify({ ...result, evidenceFile: destination('production-results.json') }, null, 2));
@@ -284,6 +322,8 @@ try {
   await expect(page.locator('#status-message')).not.toHaveText('Preparing workspace…');
   await expect(page.locator('#map-canvas')).toBeVisible();
   assert.equal(await page.evaluate(() => typeof window.revolaDesktop), 'undefined');
+  const accepted = await page.locator('#file-input').getAttribute('accept');
+  for (const extension of ['.revola', '.revola.json', '.png']) assert.ok(accepted.split(',').includes(extension));
   await page.evaluate(() => navigator.serviceWorker.ready);
   assert.ok(!hostRequests.some(item => item.path.includes('editor-stars')), 'An open/new map never fetches the optional background');
   evidence.transfers.firstLoad = summarize(hostRequests.slice());
@@ -301,13 +341,14 @@ try {
     const pending = page.waitForEvent('download', { timeout: 120_000 });
     await page.locator(selector).click();
     const download = await pending, file = destination(name);
+    await assertDownloadName(page, selector, download, evidence);
     await download.saveAs(file);
     assert.equal(await download.failure(), null);
     await expect(page.locator(selector)).toBeEnabled();
     await expect(page.locator('#status-message')).toContainText('Downloaded');
     return fs.readFile(file);
   };
-  const snapshot = async name => validateDocument(JSON.parse((await write('#project-button', `${name}.revola.json`)).toString('utf8')));
+  const snapshot = async name => validateDocument(JSON.parse((await write('#project-button', `${name}.revola`)).toString('utf8')));
   const open = async (file, expectedName) => {
     const dirty = await page.locator('#dirty-dot').evaluate(element => element.classList.contains('dirty'));
     const chooser = page.waitForEvent('filechooser'); await page.locator('#open-button').click();
@@ -332,7 +373,7 @@ try {
   await expect(page.locator('#graph-stats')).toHaveText('2 walls · 0 doors');
   await page.locator('[data-tool="door"]').click(); await clickMap(3000, 1400);
   await expect(page.locator('#graph-stats')).toHaveText('2 walls · 1 doors');
-  await page.locator('#map-name').fill('Browser smoke — Revola'); await page.locator('#map-name').blur();
+  await page.locator('#map-name').fill('RevolaReserveMap-1'); await page.locator('#map-name').blur();
   const project = await snapshot('project');
   assert.equal(project.vertices.length, 3); assert.equal(project.edges.length, 2);
   assert.equal(project.style.wallWidth, 50); assert.equal(project.style.doorWidth, 375); assert.equal(project.style.corridorWidth, 580);
@@ -348,8 +389,11 @@ try {
   assert.ok(Buffer.from(embedded[1], 'base64').equals(await fs.readFile(path.join(root, 'assets', 'ship.png'))));
   assert.ok(!/(?:href|src)="https?:\/\//.test(svg), 'SVG has no remote dependencies');
   await expect(page.locator('#dirty-dot')).toHaveClass(/dirty/);
-  await open(destination('project.revola.json'), project.name);
-  assert.deepEqual(await snapshot('json-reopened'), project);
+  await open(destination('project.revola'), project.name);
+  assert.deepEqual(await snapshot('source-reopened'), project, 'Downloaded .revola opens with exact geometry');
+  const legacyPath = destination('legacy-project.revola.json');
+  await fs.writeFile(legacyPath, JSON.stringify(project)); await open(legacyPath, project.name);
+  assert.deepEqual(await snapshot('legacy-reopened'), project, 'Legacy .revola.json retains exact geometry');
   await open(destination('editable.png'), project.name);
   assert.deepEqual(await snapshot('png-reopened'), project);
   for (const invalid of [
@@ -370,20 +414,19 @@ try {
   const example = createExampleDocument(), examplePath = destination('example-fixture.revola.json');
   await fs.writeFile(examplePath, JSON.stringify(example)); await open(examplePath, example.name);
   assert.deepEqual(await snapshot('example-reopened'), example);
-  const closed = createDocument(); closed.name = 'Closed browser floor';
-  const points = [[3739.5, 4740], [3739.5, 4400], [2000, 4400], [2000, 1000], [6500, 1000], [6500, 4400], [4452.5, 4400], [4452.5, 4740]];
-  for (let i = 1; i < points.length; i++) addWall(closed, { x: points[i - 1][0], y: points[i - 1][1] }, { x: points[i][0], y: points[i][1] }, { joinTolerance: 0 });
-  assert.equal(generateFloor(closed).closed, true);
-  const closedPath = destination('closed-fixture.revola.json'); await fs.writeFile(closedPath, JSON.stringify(closed));
+  const closed = closedFilenameFixture();
+  const closedPath = destination('closed-fixture.revola'); await fs.writeFile(closedPath, JSON.stringify(closed));
   assert.ok(!hostRequests.some(item => item.path.includes('editor-stars')));
   const closureStart = hostRequests.length;
   await context.setOffline(true);
   await open(closedPath, closed.name); await expect(page.locator('#floor-svg-button')).toBeEnabled();
   const firstOfflineFloor = (await write('#floor-svg-button', 'first-offline-floor.svg')).toString('utf8');
   assert.match(firstOfflineFloor, /<path/);
+  const floorPng = await write('#floor-png-button', 'first-offline-floors.png');
+  assert.throws(() => decodePngMetadata(floorPng), /no Revola Map metadata/, 'Browser floor PNG remains noneditable');
   assert.equal(hostRequests.length, closureStart, 'The first offline closure remains exportable without fetching the uncached background');
   await page.screenshot({ path: destination('first-offline-closure.png') });
-  evidence.interactions.push('First-ever closure while offline keeps the floor SVG export available with the optional stars uncached');
+  evidence.interactions.push('All five downloads use exact Map name suffixes and extensions; first-ever offline closure exports both floor formats with the optional stars uncached');
   await context.setOffline(false);
   await expect.poll(() => hostRequests.filter(item => item.path.includes('editor-stars') && item.status === 200).length).toBe(1);
   evidence.transfers.firstClosure = summarize(hostRequests.slice(closureStart));

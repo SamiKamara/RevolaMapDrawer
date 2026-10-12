@@ -1,6 +1,6 @@
 # Revola Map Drawer — implementation design
 
-Implementation baseline: version 0.11.0. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
+Implementation baseline: version 0.11.1. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
 
 ## Product and first milestone
 
@@ -167,13 +167,17 @@ Inspect the supplied transparent reference PNGs composited on black. Record wall
 
 ## Saving and opening
 
+### Version 0.11.1 save filenames
+
+The shared renderer derives every suggested native filename and browser download name from the document's Map name, retaining filename-character sanitization and the Untitled map fallback. Append `-walls.png` / `-walls.svg` for wall images, `-floors.png` / `-floors.svg` for floor images and `-source.revola` for editable projects. The `.revola` project remains the same versioned JSON document; native Open and browser input accept it alongside legacy `.revola.json` projects and editable PNGs. Native project save filters use `.revola`. No schema, image content or dirty-state change is required.
+
 ### Version 0.9 compact SVG export
 
 **Save wall SVG** (named **Save SVG** when introduced in version 0.9) exports a self-contained transparent `.svg` at the document's native dimensions and world-origin viewBox. White wall polygons come from the shared renderer, including merged collinear runs, deterministic roughness, real door/eraser cuts and bounded miter joins. Simplify only the wall side chains with at most 0.25 map pixel deviation including coordinate rounding; preserve the exact cap endpoints and miter geometry. Straight sides retain only their necessary endpoints. Use one compact nonzero-fill wall path, no editing overlays, background, duplicate graph metadata or external resources.
 
 Embed the bundled ship PNG once in the SVG, without further alteration during export, retaining its pixels, anchor and mirroring. The asset's bounded airlock correction is documented in [REFERENCE_ANALYSIS.md](REFERENCE_ANALYSIS.md). Avoid tracing the raster artwork into excessive vector nodes. A dedicated native bridge reads only this bundled asset; browser preview loads the same file locally. SVG is an image export, without project import or editable graph metadata. Successful SVG export therefore leaves unsaved project changes dirty; keep **Save wall PNG** and **Save project** for editable persistence. Native saves retain atomic replacement, cancellation and bounded byte validation; browser downloads use `image/svg+xml`.
 
-PNG is the normal interchange path. Embed bounded, versioned JSON in an ancillary iTXt chunk using a namespaced keyword and validate the chunk CRC. Rasterization uses transparent clear pixels and white RGB wall pixels. The PNG contains only map content, never grid, selection, labels or black background. Report metadata size in the reference/testing notes. Also support `.revola.json` project files as a recovery/interoperability path. Plain PNGs without metadata cannot reconstruct graph topology and must return a useful message.
+PNG is the normal interchange path. Embed bounded, versioned JSON in an ancillary iTXt chunk using a namespaced keyword and validate the chunk CRC. Rasterization uses transparent clear pixels and white RGB wall pixels. The PNG contains only map content, never grid, selection, labels or black background. Report metadata size in the reference/testing notes. Also support `.revola` JSON project files as a recovery/interoperability path, retaining legacy `.revola.json` import. Plain PNGs without metadata cannot reconstruct graph topology and must return a useful message.
 
 Native dialogs handle cancel without false success. Save/load errors leave the current document intact. Track unsaved changes and confirm replacement or exit. Browser preview uses file input/download fallback. Validate image dimensions, graph size and total import byte length before expensive processing.
 

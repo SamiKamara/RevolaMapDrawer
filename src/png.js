@@ -160,14 +160,14 @@ export function decodePngMetadata(pngBytes) {
   const { chunks } = readPng(pngBytes);
   const matching = chunks.filter(isRevolaMetadata);
   if (!matching.length) {
-    throw new Error('This PNG has no Revola Map metadata and cannot be edited. Open a PNG saved by Revola Map Drawer or a .revola.json project.');
+    throw new Error('This PNG has no Revola Map metadata and cannot be edited. Open a PNG saved by Revola Map Drawer or a .revola project.');
   }
   if (matching.length !== 1) throw new Error('PNG contains conflicting editable map metadata.');
   const data = matching[0].data;
   let offset = keyword.length + 1;
   if (data.length < offset + 4) throw new Error('PNG editable metadata is truncated.');
   if (data[offset] !== 0 || data[offset + 1] !== 0) {
-    throw new Error('Compressed PNG map metadata is not supported. Open the .revola.json project instead.');
+    throw new Error('Compressed PNG map metadata is not supported. Open the .revola project instead.');
   }
   offset += 2;
   const languageEnd = data.indexOf(0, offset);

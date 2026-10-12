@@ -23,15 +23,15 @@ function trusted(event) {
 function supportedFile(filePath) {
   const name = filePath.toLowerCase();
   if (name.endsWith('.png')) return { kind: 'png', max: MAX_PNG_BYTES };
-  if (name.endsWith('.revola.json')) return { kind: 'project', max: MAX_PROJECT_BYTES };
-  throw new Error('Choose a .png or .revola.json file.');
+  if (name.endsWith('.revola') || name.endsWith('.revola.json')) return { kind: 'project', max: MAX_PROJECT_BYTES };
+  throw new Error('Choose a .png, .revola or legacy .revola.json file.');
 }
 
 ipcMain.handle('revola:open', async (event) => {
   trusted(event);
   const selection = await dialog.showOpenDialog(window, {
     title: 'Open Revola map', properties: ['openFile'],
-    filters: [{ name: 'Revola maps', extensions: ['png', 'revola.json'] }],
+    filters: [{ name: 'Revola maps', extensions: ['png', 'revola', 'revola.json'] }],
   });
   if (selection.canceled || !selection.filePaths.length) return null;
   const filePath = selection.filePaths[0];
@@ -60,7 +60,7 @@ ipcMain.handle('revola:save', async (event, options) => {
   if (!Array.isArray(options.bytes) || options.bytes.length > max || !options.bytes.length || options.bytes.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) {
     throw new Error('The file data is invalid or exceeds the save limit.');
   }
-  const extension = options.kind === 'png' ? '.png' : options.kind === 'svg' ? '.svg' : '.revola.json';
+  const extension = options.kind === 'png' ? '.png' : options.kind === 'svg' ? '.svg' : '.revola';
   const proposed = typeof options.suggestedName === 'string' ? path.basename(options.suggestedName) : `Untitled${extension}`;
   const defaultPath = proposed.toLowerCase().endsWith(extension) ? proposed : `${proposed}${extension}`;
   const selection = await dialog.showSaveDialog(window, {
