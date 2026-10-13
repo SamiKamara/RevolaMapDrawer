@@ -141,8 +141,8 @@ Verified publication and final handoff:
   Computer Use with Escape before final visual capture/private-map opening;
   no further UI automation was performed. Earlier visual verification of this
   unchanged runtime and full automated source/packaged/portable checks stand.
-  The downloaded ZIP is byte-identical to that tested package; an additional
-  downloaded-copy UI launch was not performed after the stop. The test editor
+  All 77 downloaded ZIP file contents match that tested package byte-for-byte;
+  an additional downloaded-copy UI launch was not performed after the stop. The test editor
   was left running; no user project was changed. Evidence: ignored
   `feedback-0120-shortcut-final.json` and `feedback-0120-shortcut-window.json`.
 
