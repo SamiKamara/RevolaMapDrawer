@@ -19,6 +19,18 @@ fixture; it is excluded from the repository and distributions.
 
 Verified preparation:
 
+Hosted preflight follow-up: main CI 38481354141 exposed an intermittent Save all
+browser gesture check before tagging. Publication is held while the exact
+pointer/gesture assertion is investigated and rerun; local checks remain valid.
+The completed local tagging build was deliberately blocked by a tracked
+checklist update; no local or remote v0.12.0 tag was created. The smoke helper
+now waits for each tool's rendered frame, recalibrates/hit-tests each Canvas
+press, and verifies its trusted pointerdown, capture and application status
+before asserting all save buttons are disabled. Original logs lacked that event
+evidence, so stale coordinates/focus timing is probable, not established as the
+sole cause. Updated source/native/browser/private-map and packaged checks pass;
+the correction changes the test script only and retains every save assertion.
+
 - The private feedback map has **72 vertices, 75 walls, 8 doors**, no stored gaps,
   and centered **16384 × 16384** bounds. Three visible wall-face contacts miss
   their receiving centerlines by **2.8895 / 4.8543 / 4.8543 px**. Exact shared

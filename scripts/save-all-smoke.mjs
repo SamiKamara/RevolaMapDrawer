@@ -17,6 +17,7 @@ import { SAVE_ALL_FORMATS } from '../src/save-all.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packaged = process.argv.includes('--packaged'), browserOnly = process.argv.includes('--browser');
+const stress = process.argv.includes('--stress');
 const urlIndex = process.argv.indexOf('--url');
 const deployedUrl = urlIndex >= 0 ? new URL(process.argv[urlIndex + 1]).href : null;
 if (deployedUrl) assert.equal(new URL(deployedUrl).protocol, 'https:');
@@ -103,16 +104,81 @@ async function inspectSet(files, source, fullRaster = true) {
 }
 async function disabledDuringGesture(page) {
   const canvas = page.locator('#map-canvas');
-  const point = await canvas.evaluate(element => {
-    const rect = element.getBoundingClientRect(), transform = element.getContext('2d').getTransform();
-    return { x: rect.x + (3000 * transform.a + transform.e) * rect.width / element.width, y: rect.y + (2000 * transform.d + transform.f) * rect.height / element.height };
+  const kind = await page.evaluate(() => window.revolaDesktop ? 'native' : 'browser');
+  const phases = [];
+  await page.evaluate(() => {
+    const canvas = document.getElementById('map-canvas');
+    window.__revolaSaveGestureEvents = [];
+    window.__revolaSaveGestureController = new AbortController();
+    const options = { signal: window.__revolaSaveGestureController.signal };
+    for (const type of ['pointerdown', 'pointerup', 'pointercancel', 'gotpointercapture', 'lostpointercapture']) canvas.addEventListener(type, event => {
+      const item = { type, x: event.clientX, y: event.clientY, button: event.button, buttons: event.buttons,
+        pointerId: event.pointerId, pointerType: event.pointerType, target: event.target.id, trusted: event.isTrusted };
+      // Observe the application's pointer handler after it has run, without
+      // exposing or changing its document, gesture or camera state.
+      queueMicrotask(() => window.__revolaSaveGestureEvents.push({ ...item, captured: canvas.hasPointerCapture(event.pointerId),
+        activeTool: document.querySelector('[data-tool][aria-pressed="true"]')?.dataset.tool,
+        status: document.getElementById('status-message').textContent,
+        saveAllDisabled: document.getElementById('save-all-button').disabled }));
+    }, options);
+    window.addEventListener('blur', () => window.__revolaSaveGestureEvents.push({ type: 'window-blur' }), options);
   });
-  await page.locator('[data-tool="wall"]').click(); await page.mouse.click(point.x, point.y);
-  for (const selector of saveSelectors) await expect(page.locator(selector)).toBeDisabled();
-  await page.keyboard.press('Control+s'); await page.keyboard.press('Escape'); await expect(page.locator('#save-all-button')).toBeEnabled();
-  await page.locator('[data-tool="room"]').click(); await page.mouse.move(point.x, point.y); await page.mouse.down();
-  for (const selector of saveSelectors) await expect(page.locator(selector)).toBeDisabled();
-  await page.keyboard.press('Escape'); await page.mouse.up(); await expect(page.locator('#save-all-button')).toBeEnabled();
+  const choose = async tool => {
+    await page.locator(`[data-tool="${tool}"]`).click();
+    await expect(page.locator(`[data-tool="${tool}"]`)).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#active-tool-name')).toHaveText(tool === 'wall' ? 'Wall tool' : 'Room tool');
+    // Tool changes schedule a render. Recalibrate each press from that frame;
+    // never reuse a coordinate measured before the previous toolbar action.
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const calibration = await canvas.evaluate(element => {
+      const rect = element.getBoundingClientRect(), matrix = element.getContext('2d').getTransform();
+      const point = { x: rect.x + (3000 * matrix.a + matrix.e) * rect.width / element.width,
+        y: rect.y + (2000 * matrix.d + matrix.f) * rect.height / element.height };
+      return { point, rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+        pixels: { width: element.width, height: element.height }, matrix: { a: matrix.a, b: matrix.b, c: matrix.c, d: matrix.d, e: matrix.e, f: matrix.f },
+        hit: document.elementFromPoint(point.x, point.y)?.id, viewport: { width: innerWidth, height: innerHeight, ratio: devicePixelRatio },
+        focused: document.hasFocus(), activeElement: document.activeElement?.id,
+        pointerDownCount: window.__revolaSaveGestureEvents.filter(event => event.type === 'pointerdown').length };
+    });
+    phases.push({ tool, calibration });
+    assert.ok(calibration.matrix.a > 0 && calibration.matrix.d > 0, `${kind} ${tool}: rendered map transform is ready`);
+    assert.equal(calibration.hit, 'map-canvas', `${kind} ${tool}: the recalibrated pointer hits the canvas`);
+    return calibration;
+  };
+  const press = async tool => {
+    const calibration = await choose(tool);
+    await page.mouse.move(calibration.point.x, calibration.point.y); await page.mouse.down();
+    const pointerDowns = await page.evaluate(() => window.__revolaSaveGestureEvents.filter(event => event.type === 'pointerdown'));
+    assert.equal(pointerDowns.length, calibration.pointerDownCount + 1, `${kind} ${tool}: exactly one real canvas press was received`);
+    const event = pointerDowns.at(-1); phases.at(-1).pointerDown = event;
+    assert.equal(event.target, 'map-canvas'); assert.equal(event.trusted, true); assert.equal(event.button, 0); assert.equal(event.activeTool, tool);
+    assert.ok(Math.abs(event.x - calibration.point.x) < 1 && Math.abs(event.y - calibration.point.y) < 1, `${kind} ${tool}: actual pointer matches the fresh measurement`);
+    assert.equal(event.captured, true, `${kind} ${tool}: application captured the active drawing gesture`);
+    assert.match(event.status, tool === 'wall' ? /Click the next corner/ : /Drag to size a room|Room start aligned/);
+    for (const selector of saveSelectors) await expect(page.locator(selector)).toBeDisabled();
+  };
+  try {
+    await press('wall'); await page.mouse.up();
+    for (const selector of saveSelectors) await expect(page.locator(selector)).toBeDisabled();
+    await page.keyboard.press('Control+s'); await page.keyboard.press('Escape'); await expect(page.locator('#save-all-button')).toBeEnabled();
+    if (stress && kind === 'browser') await page.setViewportSize({ width: 1100, height: 720 });
+    await press('room'); await page.keyboard.press('Escape'); await page.mouse.up(); await expect(page.locator('#save-all-button')).toBeEnabled();
+    if (stress && kind === 'browser') {
+      await page.setViewportSize({ width: 1024, height: 700 });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    }
+    evidence.gestureChecks ||= []; evidence.gestureChecks.push({ kind, phases });
+  } catch (error) {
+    const state = await page.evaluate(() => ({ events: window.__revolaSaveGestureEvents, title: document.title, focused: document.hasFocus(),
+      activeElement: document.activeElement?.id, activeTool: document.querySelector('[data-tool][aria-pressed="true"]')?.dataset.tool,
+      status: document.getElementById('status-message').textContent,
+      saves: [...document.querySelectorAll('#save-all-button, #export-button, #svg-button, #floor-png-button, #floor-svg-button, #project-button')].map(button => ({ id: button.id, disabled: button.disabled })) }));
+    const diagnostic = { error: error.message, kind, phases, state };
+    await fs.writeFile(destination(`${kind}-gesture-failure.json`), JSON.stringify(diagnostic, null, 2));
+    await page.screenshot({ path: destination(`${kind}-gesture-failure.png`) });
+    console.error(JSON.stringify({ saveAllGestureFailure: diagnostic }, null, 2));
+    throw error;
+  } finally { await page.evaluate(() => window.__revolaSaveGestureController.abort()); }
 }
 async function compactLayout(page) {
   const rectangles = await page.locator('.topbar button, .document-title').evaluateAll(elements => elements.map(element => {
@@ -218,8 +284,11 @@ if (!packaged) {
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); url = `http://127.0.0.1:${server.address().port}/`;
   }
   const browser = await chromium.launch({ ...(process.platform === 'win32' ? { channel: 'chrome' } : {}), headless: true });
-  const context = await browser.newContext({ acceptDownloads: true, viewport: { width: 1024, height: 700 }, serviceWorkers: 'allow' });
+  const context = await browser.newContext({ acceptDownloads: true, viewport: { width: 1024, height: 700 }, serviceWorkers: 'allow',
+    ...(stress ? { deviceScaleFactor: 1.5 } : {}) });
   const page = await context.newPage(); page.setDefaultTimeout(45_000); page.on('pageerror', error => evidence.rendererErrors.push(error.message));
+  const stressSession = stress ? await context.newCDPSession(page) : null;
+  if (stressSession) await stressSession.send('Emulation.setCPUThrottlingRate', { rate: 4 });
   const downloads = []; page.on('download', download => downloads.push(download.suggestedFilename()));
   try {
     await page.goto(url); await expect(page.locator('#status-message')).not.toHaveText('Preparing workspace…'); await expect(page.locator('#save-all-button')).toBeDisabled();
@@ -230,6 +299,7 @@ if (!packaged) {
       await expect(page.locator('#status-message')).toContainText('Opened');
     };
     await open(fixturePath); await expect(page.locator('#save-all-button')).toBeEnabled(); await disabledDuringGesture(page);
+    if (stressSession) await stressSession.send('Emulation.setCPUThrottlingRate', { rate: 1 });
     await page.locator('#map-name').fill('Save all — Station changed'); await page.locator('#map-name').press('Tab');
     await expect(page.locator('#dirty-dot')).toHaveClass(/dirty/);
     const source = { ...structuredClone(fixture), name: 'Save all — Station changed' };
@@ -242,7 +312,8 @@ if (!packaged) {
     const contents = await inspectSet(unpack(await fs.readFile(zipPath)), source);
     await compactLayout(page); await page.screenshot({ path: destination('browser-compact.png') });
     await open(blankPath); await expect(page.locator('#save-all-button')).toBeDisabled();
-    evidence.browser = { url, production: !!deployedUrl, contents, oneZipDownload: true, downloadKeepsDirty: true, activeGestureAndConcurrentSaveBlocked: true, openMapDisablesSaveAll: true, compactHeader: true };
+    evidence.browser = { url, production: !!deployedUrl, ...(stress ? { stress: { gestureCpuThrottle: 4, deviceScaleFactor: 1.5, resizeBetweenTools: [1100, 720] } } : {}),
+      contents, oneZipDownload: true, downloadKeepsDirty: true, activeGestureAndConcurrentSaveBlocked: true, openMapDisablesSaveAll: true, compactHeader: true };
     if (process.env.REVOLA_FEEDBACK_FIXTURE) {
       const userPath = path.resolve(process.env.REVOLA_FEEDBACK_FIXTURE), originalBytes = await fs.readFile(userPath);
       const originalHash = createHash('sha256').update(originalBytes).digest('hex'), userSource = validateDocument(JSON.parse(originalBytes.toString('utf8')));
