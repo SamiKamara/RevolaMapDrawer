@@ -15,6 +15,10 @@ Floor closure, eraser geometry and combined saves for the specialized
 - Add **Save all** for wall PNG/SVG, floor PNG/SVG and the editable `.revola` project, retaining the existing layer suffixes.
 - Save the complete set to one selected folder in Windows, with one overwrite confirmation and rollback on write failure; download one ZIP in the browser.
 
+Published as the latest Windows x64 portable release with its SHA-256 checksum:
+[v0.12.0](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.12.0).
+The same fixes and Save all are deployed at [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app).
+
 ## [0.11.1] - 2026-10-12
 
 Consistent save filenames for the specialized **Revola: Post Hyper** editor,

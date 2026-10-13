@@ -14,14 +14,14 @@ fixture; it is excluded from the repository and distributions.
 - [x] Add and verify all five formats through Save all in Windows and the browser.
 - [x] Run complete geometry, source UI, browser and packaged/portable verification.
 - [x] Inspect and launch the actual rebuilt desktop test shortcut.
-- [ ] Commit/push `main`, create and verify immutable v0.12.0 release assets, then publish the authorized release.
-- [ ] Deploy and verify the same browser runtime in Vercel production.
+- [x] Commit/push `main`, create and verify immutable v0.12.0 release assets, then publish the authorized release.
+- [x] Deploy and verify the same browser runtime in Vercel production.
 
 Verified preparation:
 
 Hosted preflight follow-up: main CI 38481354141 exposed an intermittent Save all
-browser gesture check before tagging. Publication is held while the exact
-pointer/gesture assertion is investigated and rerun; local checks remain valid.
+browser gesture check before tagging. Publication was held until the exact
+pointer/gesture assertion was investigated and rerun; local checks remained valid.
 The completed local tagging build was deliberately blocked by a tracked
 checklist update; no local or remote v0.12.0 tag was created. The smoke helper
 now waits for each tool's rendered frame, recalibrates/hit-tests each Canvas
@@ -92,6 +92,62 @@ Rollback conflicts preserve original `.bak` files and report the conflict.
 Windows x64 remains unsigned. Browser checks cover desktop Chrome; application
 caching does not save maps and updates wait for old tabs to close. Original
 references, ship bytes/pins, world center and scale remain unchanged.
+
+Verified publication and final handoff:
+
+- Feature commit **4ee8e0c** and test calibration correction **e261086** are pushed
+  directly to `main`. [Verify application 38482299541](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/38482299541)
+  succeeds for **e261086c6d3b0fb6faa60068091813c3f9dd1847**, including all
+  **327** unit checks, source/browser UI, browser build, packaging and packaged
+  UI. `scripts/create-release.ps1 -Version 0.12.0 -Push` repeated complete local
+  verification from clean `main` matching fetched `origin/main`, then created
+  immutable **v0.12.0** at that exact commit. Local/remote peeled tag readback
+  agrees. [Build release 38483493179](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/38483493179)
+  succeeds, including ZIP compression, extracted offline persistence and draft
+  creation. Evidence: ignored `feedback-0120-tagging-final.log`,
+  `feedback-0120-main-ci-final.*` and `feedback-0120-release-ci.*`.
+- Downloaded draft notes matched the reviewed generated notes. Exactly two
+  assets matched the API sizes/digests: **162,834,906-byte** ZIP, SHA-256
+  **4a1a3060b7d8c706edde958bd7fe6f37a999a66098f1308dba308bcc2745ae3a**,
+  and **102-byte** checksum file. The maintained archive verifier compared every
+  byte of all **77** ZIP files with the locally verified package. Published
+  [v0.12.0](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.12.0)
+  is public, non-prerelease and the explicit **latest**. Only the draft-pending
+  sentence was removed from published notes. Anonymous public API/download
+  readback returns **200**, and streaming both assets verifies the same complete
+  sizes, SHA-256 values and checksum line. Evidence: ignored
+  `feedback-0120-draft{,-api}.json`, `feedback-0120-hosted-archive.log`,
+  `feedback-0120-published.json` and `feedback-0120-public-release.json`.
+- Vercel production deployment **dpl_xQuJSLDdGSJoE8zHkNdv1bnzMCH2** is READY
+  at [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app).
+  Full production `npm run test:web -- --url ...` passes local downloads/reopen,
+  floor images, offline cached use, worker protection, square rooms and short
+  corridors, with no renderer errors/uploads/third-party requests. Save all also
+  passes production with the private 16384 map under **1.5 DPR**, **4× CPU
+  throttling** during gestures, and a viewport change between tools. Trusted
+  Canvas press/capture/status and all save-disabled assertions pass. Original
+  map bytes remain unchanged. Anonymous HTTP checks match all **eight** file
+  hashes and root HTML to build **377513203a5fbc1a**, verify caching/security
+  headers and require **404** for **17** private/native/source/original probes.
+  Evidence: ignored `feedback-0120-vercel*.log`, `feedback-0120-web-production.log`,
+  `feedback-0120-web-http.json`, `web-production-results.json` and
+  `save-all-production-results.json`.
+- After the final tagging rebuild, separate shortcut readback again verified
+  the direct packaged executable, empty arguments, repository working directory
+  and existing paths. Launched the actual `.lnk`; process readback confirms the
+  expected executable with a responding **Untitled map — Revola Map Drawer**
+  window. `release:check --version 0.12.0 --verify-package` again matches all
+  **23** runtime files to current supported source. The user physically stopped
+  Computer Use with Escape before final visual capture/private-map opening;
+  no further UI automation was performed. Earlier visual verification of this
+  unchanged runtime and full automated source/packaged/portable checks stand.
+  The downloaded ZIP is byte-identical to that tested package; an additional
+  downloaded-copy UI launch was not performed after the stop. The test editor
+  was left running; no user project was changed. Evidence: ignored
+  `feedback-0120-shortcut-final.json` and `feedback-0120-shortcut-window.json`.
+
+The final README/changelog/checklist follow-up changes documentation only;
+verified native/web runtime and immutable version tag remain unchanged.
 
 ## Save filenames and release 0.11.1 — 2026-10-12
 
