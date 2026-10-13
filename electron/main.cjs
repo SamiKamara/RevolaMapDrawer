@@ -2,6 +2,7 @@ const { app, BrowserWindow, dialog, ipcMain, Menu } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL, fileURLToPath } = require('node:url');
+const { validateSaveAll, existingFileNames, writeFileSet } = require('./save-all.cjs');
 
 const ROOT = path.resolve(__dirname, '..');
 const ENTRY = path.join(ROOT, 'index.html');
@@ -13,6 +14,7 @@ let window;
 let dirty = false;
 let closeApproved = false;
 let closingDialog = false;
+let savingFile = false;
 
 function trusted(event) {
   if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || event.senderFrame.url !== ENTRY_URL) {
@@ -53,8 +55,17 @@ ipcMain.handle('revola:open', async (event) => {
   } finally { await handle.close(); }
 });
 
-ipcMain.handle('revola:save', async (event, options) => {
-  trusted(event);
+function oneSave(operation) {
+  return async (event, options) => {
+    trusted(event);
+    if (savingFile) throw new Error('Another save is already in progress.');
+    savingFile = true;
+    try { return await operation(options); }
+    finally { savingFile = false; }
+  };
+}
+
+ipcMain.handle('revola:save', oneSave(async (options) => {
   if (!options || !['png', 'svg', 'project'].includes(options.kind)) throw new Error('Choose a supported save format.');
   const max = options.kind === 'png' ? MAX_PNG_BYTES : options.kind === 'svg' ? MAX_SVG_BYTES : MAX_PROJECT_BYTES;
   if (!Array.isArray(options.bytes) || options.bytes.length > max || !options.bytes.length || options.bytes.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) {
@@ -79,7 +90,27 @@ ipcMain.handle('revola:save', async (event, options) => {
     throw error;
   }
   return { path: selection.filePath };
-});
+}));
+
+ipcMain.handle('revola:save-all', oneSave(async (options) => {
+  const files = validateSaveAll(options);
+  const selection = await dialog.showOpenDialog(window, {
+    title: 'Save all five formats — choose a folder',
+    properties: ['openDirectory', 'createDirectory'],
+  });
+  if (selection.canceled || !selection.filePaths.length) return null;
+  const directory = selection.filePaths[0];
+  const existing = await existingFileNames(directory, files);
+  if (existing.length) {
+    const answer = await dialog.showMessageBox(window, {
+      type: 'warning', title: 'Replace existing exports?',
+      message: `Replace ${existing.length} existing file${existing.length === 1 ? '' : 's'}?`,
+      detail: existing.join('\n'), buttons: ['Cancel', 'Replace files'], defaultId: 0, cancelId: 0, noLink: true,
+    });
+    if (answer.response !== 1) return null;
+  }
+  return writeFileSet(directory, files, { existing });
+}));
 
 ipcMain.handle('revola:ship-png', async (event) => {
   trusted(event);
@@ -125,6 +156,9 @@ function createWindow() {
   });
   // Native close owns the desktop prompt. Browser preview uses renderer beforeunload.
   window.on('close', (event) => {
+    // Finish a multi-file install or rollback before an ordinary close can
+    // terminate the process. The user can close again after saving finishes.
+    if (savingFile) { event.preventDefault(); return; }
     if (closeApproved || !dirty) return;
     event.preventDefault();
     if (closingDialog) return;

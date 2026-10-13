@@ -2,6 +2,85 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Floor, eraser and Save all feedback — version 0.12.0, 2026-10-14
+
+The owner requested the three fixes, commit/push to `main`, a new GitHub release
+and the Vercel production update. Version **0.12.0** is selected for this milestone.
+The attached `Revolamap_a-source (2).revola` is a read-only private regression
+fixture; it is excluded from the repository and distributions.
+
+- [x] Correct floor closure for visible wall overlaps and verify the supplied map.
+- [x] Remove erased terminal/junction skeletons and unused points, preserving exact visible geometry and old-project import.
+- [x] Add and verify all five formats through Save all in Windows and the browser.
+- [x] Run complete geometry, source UI, browser and packaged/portable verification.
+- [x] Inspect and launch the actual rebuilt desktop test shortcut.
+- [ ] Commit/push `main`, create and verify immutable v0.12.0 release assets, then publish the authorized release.
+- [ ] Deploy and verify the same browser runtime in Vercel production.
+
+Verified preparation:
+
+- The private feedback map has **72 vertices, 75 walls, 8 doors**, no stored gaps,
+  and centered **16384 × 16384** bounds. Three visible wall-face contacts miss
+  their receiving centerlines by **2.8895 / 4.8543 / 4.8543 px**. Exact shared
+  renderer polygons now close it without changing any saved coordinates.
+  Native source/packaged floor checks show black floor and stars and export
+  **696,727-byte PNG / 364,774-byte SVG** with transparent exterior and all
+  **522,771** tested ship wall pixels covered. Original file SHA-256 remains
+  **b1127a38259ff277215d427c6d2fc11c8294e96d9b1d47d7efc79ba9753c4fef**.
+- `scripts/build-release.ps1 -Version 0.12.0`, with `REVOLA_FEEDBACK_FIXTURE`
+  selecting that read-only map, passes **327/327** unit checks, complete
+  `npm run test:ui`, automatic packaging/postpackage, complete
+  `npm run test:packaged`, **23** exact runtime files/minimal manifest, portable
+  ZIP byte comparison and extracted offline save/reopen. The extracted app
+  reopens exact **36-wall** native project geometry with **zero network requests**
+  and no renderer errors. New unit coverage includes **21 floor**, **15 eraser**
+  and **15 Save all** tests. Source/packaged UI checks include actual erased-point
+  removal/selection, one-step undo/redo, protected ship and 16384 editable PNG
+  persistence. Baseline smoke pointer calibration now waits for rendered frames
+  after Fit/moves to prevent a stale startup readout from misplacing test clicks.
+  Evidence: ignored `artifacts/feedback-0120-preparation.log`, source/packaged
+  floor/feedback/Save all JSON, screenshots and `portable-results.json`.
+- Native Save all checks verify exact five-file names/content, confirmed dirty
+  clearing, folder/overwrite cancellation, partial-install rollback, exclusive
+  creation/restoration, blocked concurrent edits/saves/close and compact layout.
+  Browser checks verify one ZIP with all five files and unchanged dirty reminders;
+  the private 16384 map also produces exact source/PNG metadata and both SVGs.
+  Synthetic 8192 PNGs are fully scanned for white/black pixels and transparency;
+  private-map combined wall PNG is checked for CRCs, dimensions and exact editable
+  metadata, without claiming a full wall raster scan.
+- `npm run build:web` and `npm run test:web` pass the final browser build
+  **377513203a5fbc1a**, app hash **58ccc385d4dd16cd**, eight files,
+  **419,390 total bytes**. First install measures **198,225 response-body bytes**;
+  controlled reload and offline drawing-modifier actions use **zero host requests**.
+  Worker-update protection, local imports/downloads, exact persistence and compact
+  layout pass, with no uploads, third-party requests or renderer errors. Evidence:
+  ignored `feedback-0120-web-{build,local}.log`, `web-build.json`, `web-results.json`
+  and `save-all-browser-results.json`.
+- Automatic `postpackage` refreshed the real desktop shortcut. Separate
+  `-VerifyOnly` readback checks direct target
+  `<repository>\dist\RevolaMapDrawer-win32-x64\RevolaMapDrawer.exe`, empty arguments,
+  repository working directory and existing paths. Launched the actual `.lnk`
+  through Windows Shell; Computer Use selected that exact executable and visibly
+  verified **8192 × 8192**, **0 walls / 0 doors**, the fixed ship and new Save all
+  control. Closed only this blank test instance before the tagging rebuild.
+  `release:check --version 0.12.0 --verify-package` confirms all **23** runtime files.
+  Evidence: ignored `feedback-0120-shortcut.json` and the actual UI observation.
+
+Exact limits: floor analysis retains bounded spatial-check budgets; unsupported
+density leaves floor/Save all disabled. Retained doors/interior gaps in isolated
+compartments still reject exterior cuts. Once erasure removes a terminal/corner
+and its old invisible envelope, an unreachable former compartment can become
+indistinguishable from a detached appendage; that deleted envelope is not guessed.
+Any ship-connected breach still prevents floors. Interior erasures retain gap
+intervals, while trimmed ends and remaining incident corners retain optional v2
+`cutEnds` markers; actual legacy solid slivers below joining tolerance keep their
+original valid interval representation. A normal close cannot interrupt native
+file installation; forced process/power interruption is not crash recovery.
+Rollback conflicts preserve original `.bak` files and report the conflict.
+Windows x64 remains unsigned. Browser checks cover desktop Chrome; application
+caching does not save maps and updates wait for old tabs to close. Original
+references, ship bytes/pins, world center and scale remain unchanged.
+
 ## Save filenames and release 0.11.1 — 2026-10-12
 
 - [x] Verify Map name based `-walls`, `-floors` and `-source.revola` names in the shared native/browser save flow.

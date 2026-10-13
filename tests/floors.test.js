@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createDocument, addWall, addDoor } from '../src/model.js';
+import { createDocument, addWall, addDoor, eraseWalls, validateDocument } from '../src/model.js';
 import { drawMap } from '../src/render.js';
 import { FLOOR_RIM, generateFloor, drawFloor, floorContainsPoint, floorRegionContainsPoint, renderFloorSvg } from '../src/floors.js';
 
@@ -58,6 +58,96 @@ test('closed outer walls enclose the ship and all interiors without changing sou
   assert.equal(floor.outlineWidth, FLOOR_RIM * 2);
   assert.deepEqual(document, before);
   assert.deepEqual(generateFloor(document), floor);
+});
+
+test('visible wall-face contacts close the floor without moving disconnected centerline endpoints', () => {
+  for (const angle of [0, 45, 90, 135, 180, 225, 270, 315]) {
+    for (const inset of [15, 25, 25.001]) {
+      const document = createDocument(); document.style.roughness = 0;
+      Object.assign(document, { width: 16384, height: 16384, originX: -4096, originY: -4096 });
+      const radians = angle * Math.PI / 180;
+      const transform = ({ x, y }) => ({ x: 4000 + (x - 4000) * Math.cos(radians) - (y - 4000) * Math.sin(radians),
+        y: 4000 + (x - 4000) * Math.sin(radians) + (y - 4000) * Math.cos(radians) });
+      square(document);
+      document.vertices.push({ id: 'face-contact', x: 7500, y: 500 + inset });
+      document.edges[1].a = 'face-contact';
+      document.vertices = document.vertices.map(vertex => ({ id: vertex.id, ...transform(vertex) }));
+      const before = structuredClone(document), floor = generateFloor(document);
+      assert.equal(floor.closed, inset <= 25, `Rotation ${angle}°, endpoint inset ${inset} px follows the physical butt-ended outlines`);
+      assert.deepEqual(document, before, 'Closure must not repair or snap the saved graph');
+      if (floor.closed) assert.equal(floorRegionContainsPoint(floor.polygons, transform({ x: 2000, y: 2000 })), true);
+    }
+  }
+});
+
+test('overlapping parallel wall sides close while a real separation between their silhouettes stays open', () => {
+  for (const separation of [20, 50, 50.001]) {
+    const document = createDocument(); document.style.roughness = 0;
+    const points = [{ x: 500, y: 500 }, { x: 7500, y: 500 }, { x: 7500, y: 4200 },
+      { x: 7500 - separation, y: 4100 }, { x: 7500 - separation, y: 7500 }, { x: 500, y: 7500 }];
+    document.vertices.push(...points.map((point, index) => ({ id: `side-v${index}`, ...point })));
+    for (const [a, b] of [[0, 1], [1, 2], [3, 4], [4, 5], [5, 0]]) {
+      document.edges.push({ id: `side-e${a}`, a: `side-v${a}`, b: `side-v${b}`, doors: [], gaps: [] });
+    }
+    const before = structuredClone(document), floor = generateFloor(document);
+    assert.equal(floor.closed, separation <= 50, `${separation} px centerline separation follows exactly 50 px wall coverage`);
+    assert.deepEqual(document, before);
+  }
+});
+
+test('rough wall contacts use their actual deterministic outline rather than a nominal snapping distance', () => {
+  const document = createDocument(); square(document);
+  document.vertices.push({ id: 'rough-contact', x: 7500, y: 525.5 });
+  document.edges[1].a = 'rough-contact';
+  const expected = collectingContext(); drawMap(expected.context, document, { drawShip: false });
+  const top = expected.paths[0].find(polygon => polygon.every(point => point.y < 550) &&
+    Math.max(...polygon.map(point => point.x)) - Math.min(...polygon.map(point => point.x)) > 6000);
+  const cornerPoints = top.filter(point => point.x >= 7472.75);
+  assert.ok(cornerPoints.length > 0 && cornerPoints.every(point => point.y < 525.5), 'The rendered top wall leaves a real exposed corner');
+  assert.equal(generateFloor(document).closed, false,
+    'Maximum wall roughness gives a 27.25 px attraction range, but the actual silhouette does not close this 25.5 px contact');
+});
+
+test('visibly covered external doorways and erasures no longer falsely block floor generation', () => {
+  for (const type of ['door', 'gap']) {
+    const document = createDocument(), edges = square(document);
+    if (type === 'door') edges[0].doors.push({ id: 'covered-door', t: .5 });
+    else edges[0].gaps.push({ id: 'covered-gap', start: .49, end: .51 });
+    assert.equal(generateFloor(document).closed, false);
+    // This overdraw has independent endpoints and remains editable as saved.
+    // Its shifted centerline does not erase the source opening's metadata.
+    document.vertices.push({ id: 'cover-a', x: 3700, y: 510 }, { id: 'cover-b', x: 4300, y: 510 });
+    document.edges.push({ id: 'cover-wall', a: 'cover-a', b: 'cover-b', doors: [], gaps: [] });
+    const before = structuredClone(document), floor = generateFloor(document);
+    assert.equal(floor.closed, true, 'The shared renderer visibly covers the complete opening');
+    assert.deepEqual(document, before);
+    document.edges.at(-1).b = 'cover-short';
+    document.vertices.push({ id: 'cover-short', x: 4000, y: 510 });
+    assert.equal(generateFloor(document).closed, false, 'A partially covered opening still leads to exterior space');
+  }
+});
+
+test('erasing an exterior corner leaves the ship-connected enclosure open after terminal skeleton cleanup', () => {
+  const document = createDocument(); square(document);
+  assert.equal(generateFloor(document).closed, true);
+  assert.equal(eraseWalls(document, { x: 500, y: 500 }, { x: 500, y: 500 }, 80), true);
+  assert.equal(document.vertices.some(vertex => vertex.x === 500 && vertex.y === 500), false, 'No erased corner survives as a graph handle');
+  assert.ok(document.edges.filter(edge => edge.cutEnds?.a || edge.cutEnds?.b).length >= 2);
+  assert.equal(generateFloor(document).closed, false, 'The physical corner opening still connects the ship to space');
+  const reopened = validateDocument(JSON.parse(JSON.stringify(document)));
+  assert.equal(generateFloor(reopened).closed, false, 'Reopening cannot restore a barrier at trimmed cut ends');
+});
+
+test('legacy terminal erasures retain visually covered corner closure after import cleanup', () => {
+  const source = createDocument(), edges = square(source); source.style.roughness = 0;
+  edges[0].gaps.push({ id: 'covered-terminal-gap', start: 0, end: 20 / 7000 });
+  const original = structuredClone(source), reopened = validateDocument(source);
+  assert.ok(reopened.edges.find(edge => edge.id === edges[0].id).cutEnds?.a);
+  assert.equal(generateFloor(source).closed, true, 'The neighboring 50 px wall visibly covers the 20 px terminal cut');
+  assert.deepEqual(generateFloor(reopened), generateFloor(source), 'Terminal skeleton cleanup preserves exact derived floor coverage');
+  assert.deepEqual(source, original, 'Import and floor analysis do not rewrite the original project');
+  edges[0].gaps[0].end = 25.001 / 7000;
+  assert.equal(generateFloor(source).closed, false, 'A 0.001 px separation beyond the neighboring wall face remains open');
 });
 
 test('every outer doorway and subpixel erasure permits travel to space', () => {

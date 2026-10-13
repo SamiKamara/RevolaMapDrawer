@@ -30,6 +30,7 @@ export function copySelection(doc, selection) {
     edges: edges.map(edge => ({ id: edge.id, a: edge.a, b: edge.b,
       doors: edge.doors.map(door => ({ id: door.id, t: door.t })),
       gaps: (edge.gaps ?? []).map(gap => ({ id: gap.id, start: gap.start, end: gap.end })),
+      ...(edge.cutEnds ? { cutEnds: { ...edge.cutEnds } } : {}),
     })),
     anchor: { x: (bounds.left + bounds.right) / 2, y: (bounds.top + bounds.bottom) / 2 },
   });
@@ -83,6 +84,7 @@ export function pasteSelection(doc, fragment, delta) {
     id: allocate('e'), a: remap.get(edge.a), b: remap.get(edge.b),
     doors: edge.doors.map(door => ({ id: allocate('d'), t: door.t })),
     gaps: edge.gaps.map(gap => ({ id: allocate('g'), start: gap.start, end: gap.end })),
+    ...(edge.cutEnds ? { cutEnds: { ...edge.cutEnds } } : {}),
   }));
   const draft = structuredClone(doc);
   ensureCanvasContains(draft, vertices);

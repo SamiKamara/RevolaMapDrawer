@@ -200,7 +200,10 @@ export function drawMap(ctx, document, { shipImage, drawShip = true } = {}) {
       [b, a, parts.at(-1)?.end === 1],
     ]) {
       const joint = joints.get(vertex.id) || { vertex, rays: [], blocked: false };
-      joint.blocked ||= !visible;
+      // A removed incident arm can leave this same visible corner behind. Its
+      // erased-end marker retains the original suppressed join, so pruning the
+      // hidden skeleton never grows a miter back into the brush cut.
+      joint.blocked ||= !visible || edge.cutEnds?.[edge.a === vertex.id ? 'a' : 'b'];
       if (visible) {
         const forward = along(line, other) > along(line, vertex);
         const ux = line.ux * (forward ? 1 : -1), uy = line.uy * (forward ? 1 : -1);

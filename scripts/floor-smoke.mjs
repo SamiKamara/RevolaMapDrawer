@@ -59,6 +59,16 @@ const gap = structuredClone(fixture); gap.name = 'Tiny exterior gap';
 gap.edges.find(edge => edge.id === top.id).gaps.push({ id: 'floor_tiny_gap', start: .1, end: .10001 });
 assert.equal(generateFloor(gap).closed, false, 'A real narrow exterior erasure still reaches space');
 const gapPath = destination('tiny-gap.revola.json'); await fs.writeFile(gapPath, JSON.stringify(gap));
+const wallFaceFixture = structuredClone(fixture); wallFaceFixture.name = 'Visible wall-face closure';
+const nearRight = wallFaceFixture.edges.find(edge => {
+  const a = wallFaceFixture.vertices.find(vertex => vertex.id === edge.a), b = wallFaceFixture.vertices.find(vertex => vertex.id === edge.b);
+  return a.x === 6500 && a.y === 1000 && b.x === 6500 && b.y === 4400;
+});
+assert.ok(nearRight);
+wallFaceFixture.vertices.push({ id: 'floor-face-contact', x: 6500, y: 1010 });
+nearRight.a = 'floor-face-contact';
+assert.equal(generateFloor(wallFaceFixture).closed, true, 'Rendered wall faces close despite a 10 px disconnected centerline endpoint');
+const wallFacePath = destination('wall-face.revola.json'); await fs.writeFile(wallFacePath, JSON.stringify(wallFaceFixture));
 // Optional read-only additional fixture; maintained generated cases always run.
 // A supplied missing/invalid fixture must fail rather than silently lose coverage.
 const userSource = process.env.REVOLA_FLOOR_FIXTURE ? path.resolve(process.env.REVOLA_FLOOR_FIXTURE) : undefined;
@@ -68,13 +78,23 @@ if (userSource) {
   userDocument = validateDocument(JSON.parse(userBytes.toString('utf8')));
 }
 if (userDocument) assert.equal(generateFloor(userDocument).closed, true, 'Supplied complex map is enclosed');
+// Separate private feedback fixture: its geometry differs from the original
+// optional regression map, whose fixed courtyard probes remain unchanged.
+const feedbackSource = process.env.REVOLA_FEEDBACK_FIXTURE ? path.resolve(process.env.REVOLA_FEEDBACK_FIXTURE) : undefined;
+let feedbackBytes, feedbackDocument;
+if (feedbackSource) {
+  feedbackBytes = await fs.readFile(feedbackSource);
+  feedbackDocument = validateDocument(JSON.parse(feedbackBytes.toString('utf8')));
+  assert.equal(generateFloor(feedbackDocument).closed, true, 'Supplied closed-looking feedback map receives its floor');
+}
 const blockedPath = destination('blocked-directory'); await fs.mkdir(blockedPath, { recursive: true });
 
 const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
 const desktop = await electron.launch({ ...(packaged ? { executablePath } : { args: [root] }), cwd: root, env, timeout: 45_000 });
 const page = await desktop.firstWindow({ timeout: 45_000 }); page.setDefaultTimeout(30_000);
 const errors = []; page.on('pageerror', error => errors.push(error.message));
-const evidence = { packaged, matchingSourceFiles: packaged ? matchingSourceFiles : [], optionalComplexFixture: userSource ? 'Configured with REVOLA_FLOOR_FIXTURE' : 'Not configured; maintained generated floor fixtures run', interactions: [], exports: [], rendererErrors: errors };
+const evidence = { packaged, matchingSourceFiles: packaged ? matchingSourceFiles : [], optionalComplexFixture: userSource ? 'Configured with REVOLA_FLOOR_FIXTURE' : 'Not configured; maintained generated floor fixtures run',
+  optionalFeedbackFixture: feedbackSource ? 'Configured with REVOLA_FEEDBACK_FIXTURE' : 'Not configured', interactions: [], exports: [], rendererErrors: errors };
 
 function pngChunks(png) {
   assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
@@ -338,6 +358,16 @@ try {
   await page.screenshot({ path: destination('open-editor.png') });
   await open(gapPath, gap.name, false); await expectCanvas(gap, false);
   evidence.interactions.push('Exterior door and tiny exterior erasure automatically disable floor exports and remove the repeating star background');
+  await open(wallFacePath, wallFaceFixture.name); await expectCanvas(wallFaceFixture, true);
+  await exportBoth('wall-face', wallFaceFixture, [
+    { name: 'reachable room', x: 2500, y: 2000, expectedAlpha: 255 },
+    { name: 'covered wall contact', x: 6480, y: 1000, expectedAlpha: 255 },
+    { name: 'exterior space', x: 6700, y: 900, expectedAlpha: 0 },
+  ]);
+  const wallFaceProject = await write('#project-button', destination('wall-face-after-exports.revola.json'));
+  assert.deepEqual(validateDocument(JSON.parse(wallFaceProject.toString('utf8'))), wallFaceFixture);
+  await page.screenshot({ path: destination('wall-face-editor.png') });
+  evidence.interactions.push('Disconnected 10 px wall endpoint visibly overlapping another wall automatically enables floor and stars; native PNG/SVG and saved project preserve exact geometry');
   await open(fixturePath, fixture.name); await expectCanvas(fixture, true);
   const initialSeedSvg = await write('#floor-svg-button', destination('initial-seed.svg'));
   assert.equal(initialSeedSvg.toString('utf8'), renderFloorSvg(fixture), 'Initial native floor SVG matches the fresh pure geometry export');
@@ -444,6 +474,21 @@ try {
     assert.ok((await fs.readFile(userSource)).equals(userBytes), 'Supplied project remains byte-for-byte untouched');
     await page.screenshot({ path: destination('complex-editor.png') });
     evidence.interactions.push('Supplied complex 16384 map automatically shows floor and stars and exports both floor formats without changing its source project');
+  }
+  if (feedbackDocument) {
+    await open(feedbackSource, feedbackDocument.name); await expectCanvas(feedbackDocument, true, false);
+    await exportBoth('feedback-map', feedbackDocument, [
+      { name: 'ship interior', x: 4110, y: 5570, expectedAlpha: 255 },
+      { name: 'connected airlock corridor', x: 4110, y: 4600, expectedAlpha: 255 },
+      { name: 'reachable upper room', x: 7200, y: 1500, expectedAlpha: 255 },
+      { name: 'exterior space', x: -3000, y: -3000, expectedAlpha: 0 },
+    ]);
+    const feedbackProject = await write('#project-button', destination('feedback-after-exports.revola.json'));
+    assert.deepEqual(validateDocument(JSON.parse(feedbackProject.toString('utf8'))), feedbackDocument,
+      'Opening and deriving floors must not alter the feedback map');
+    assert.ok((await fs.readFile(feedbackSource)).equals(feedbackBytes), 'Feedback project remains byte-for-byte untouched');
+    await page.screenshot({ path: destination('feedback-editor.png') });
+    evidence.interactions.push('Supplied feedback map automatically shows floor and stars, exports both transparent black floor formats, and preserves original project bytes and graph geometry');
   }
   await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1024, 700)); await settled();
   const compact = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, overflow: document.documentElement.scrollWidth > innerWidth,

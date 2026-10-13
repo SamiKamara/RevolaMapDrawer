@@ -102,6 +102,7 @@ export function corridorEndTargets(doc) {
     const incident = adjacent.get(point.id);
     if (incident?.length !== 1 || isShipPort(doc.ship, point, EPS)) continue;
     const info = incident[0], atA = info.edge.a === point.id;
+    if (info.edge.cutEnds?.[atA ? 'a' : 'b']) continue;
     const offset = atA ? 0 : info.length;
     if (info.cuts.some(cut => offset >= cut.start - EPS && offset <= cut.end + EPS)) continue;
     const delta = sub(atA ? info.b : info.a, point);

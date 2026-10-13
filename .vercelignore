@@ -13,6 +13,7 @@
 !src/render.js
 !src/room-start.js
 !src/rooms.js
+!src/save-all.js
 !src/selection.js
 !src/ship.js
 !src/svg.js

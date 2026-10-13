@@ -11,6 +11,7 @@ import { resolveCorridorStart, fitCorridorEnd, corridorPreservesOpenings } from 
 import { resolveRoomStart, attachedRoomSegments, addAttachedRoom } from './room-start.js';
 import { emptySelection, selectionVertices, pruneSelection, rectangleSelection, combineSelection, toggleSelection } from './selection.js';
 import { copySelection, pasteSelection } from './clipboard.js';
+import { SAVE_ALL_FORMATS, createExportZip } from './save-all.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('map-canvas');
@@ -42,7 +43,9 @@ function floorGeometryKey() {
 function floorControls() {
   const ready = floorKey === floorGeometryKey() && !floorPendingKey;
   const closed = ready && floor?.closed;
-  for (const id of ['floor-png-button', 'floor-svg-button']) $(id).disabled = busy || !closed || !!gesture || !!paste || !!wallStart;
+  const blocked = busy || !!gesture || !!paste || !!wallStart;
+  for (const id of ['floor-png-button', 'floor-svg-button', 'save-all-button']) $(id).disabled = blocked || !closed;
+  for (const id of ['export-button', 'svg-button', 'project-button']) $(id).disabled = blocked;
 }
 function refreshFloor() {
   const key = floorGeometryKey();
@@ -86,8 +89,10 @@ function refresh() {
   $('dirty-dot').classList.toggle('dirty', changed);
   if (document.activeElement !== $('map-name')) $('map-name').value = doc.name;
   $('graph-stats').textContent = `${doc.edges.length} walls · ${doc.edges.reduce((count, e) => count + e.doors.length, 0)} doors`;
-  $('undo-button').disabled = !history.length;
-  $('redo-button').disabled = !future.length;
+  $('undo-button').disabled = busy || !history.length;
+  $('redo-button').disabled = busy || !future.length;
+  for (const id of ['new-button', 'open-button', 'mirror-button', 'map-name', 'guide-rotate-room']) $(id).disabled = busy;
+  for (const button of document.querySelectorAll('[data-tool]')) button.disabled = busy;
   $('mirror-label').textContent = doc.ship.mirrored ? 'Ship facing left' : 'Ship facing right';
   selected = pruneSelection(doc, selected);
   const selection = gesture?.type === 'marquee' ? gesture.selection : selected;
@@ -98,7 +103,7 @@ function refresh() {
   $('paste-button').disabled = !clipboard || busy || !!gesture;
   const edge = selectionMode === 'single' && selection.edgeIds.length === 1 && !selection.vertexIds.length
     ? doc.edges.find(e => e.id === selection.edgeIds[0]) : null;
-  $('delete-button').disabled = !pointCount || !!paste;
+  $('delete-button').disabled = busy || !pointCount || !!paste;
   const room = edge ? detectRoom(doc, edge.id) : null;
   $('selection-badge').textContent = room ? 'ROOM SIDE' : edge ? 'WALL' : pointCount ? selectionMode === 'single' && pointCount === 1 ? 'POINT' : 'GROUP' : '—';
   $('selection-info').dataset.wallCount = String(selection.edgeIds.length);
@@ -114,6 +119,7 @@ function refresh() {
   renderSoon();
 }
 function commit(operation, message) {
+  if (busy) return false;
   const before = JSON.stringify(doc);
   const previousWidth = doc.width;
   try {
@@ -176,6 +182,7 @@ function placePaste(point) {
   }, `Pasted ${current.fragment.edges.length} walls. The copy is selected. Ctrl+V to place another.`);
 }
 function setTool(next) {
+  if (busy) return;
   cancelGesture(); tool = next;
   for (const button of document.querySelectorAll('[data-tool]')) {
     const active = button.dataset.tool === next;
@@ -190,12 +197,14 @@ function setTool(next) {
   status(descriptions[next][1]); renderSoon();
 }
 function undo() {
+  if (busy) return;
   if (paste) { cancelGesture(); status('Paste canceled.'); return; }
   if (!history.length) return;
   future.push(JSON.stringify(doc)); doc = JSON.parse(history.pop()); cancelGesture();
   status('Undone.'); refresh();
 }
 function redo() {
+  if (busy) return;
   if (paste) { cancelGesture(); status('Paste canceled.'); return; }
   if (!future.length) return;
   history.push(JSON.stringify(doc)); doc = JSON.parse(future.pop()); cancelGesture();
@@ -708,7 +717,7 @@ async function openDocument() {
     catch (error) { status(`Could not open: ${error.message}`, true); }
   } else { $('file-input').value = ''; $('file-input').click(); }
 }
-function safeName(name) { return (name || 'Untitled map').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'Untitled map'; }
+function safeName(name) { return (name || 'Untitled map').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim().slice(0, 80).replace(/[. ]+$/, '') || 'Untitled map'; }
 async function embeddedShip() {
   if (shipDataUrl) return shipDataUrl;
   if (window.revolaDesktop) shipDataUrl = await window.revolaDesktop.shipPngDataUrl();
@@ -725,40 +734,76 @@ async function embeddedShip() {
   }
   return shipDataUrl;
 }
+async function exportBytes(snapshot, format, exportFloor) {
+  if (format.layer === 'floor' && format.kind === 'png') {
+    return renderFloorPng(snapshot, { floor: exportFloor,
+      onProgress: fraction => status(`Rendering ${snapshot.width} × ${snapshot.height} black floor PNG… ${Math.round(fraction * 100)}%`),
+    });
+  }
+  if (format.layer === 'floor') {
+    status('Preparing transparent floor SVG…');
+    return new TextEncoder().encode(renderFloorSvg(snapshot, { floor: exportFloor }));
+  }
+  if (format.kind === 'png') {
+    return renderMapPng(snapshot, { shipImage: shipImage || await loadShip(),
+      onProgress: fraction => status(`Rendering ${snapshot.width} × ${snapshot.height} transparent PNG… ${Math.round(fraction * 100)}%`),
+    });
+  }
+  if (format.kind === 'svg') {
+    status('Preparing transparent SVG…');
+    return new TextEncoder().encode(renderMapSvg(snapshot, { shipDataUrl: await embeddedShip() }));
+  }
+  return new TextEncoder().encode(JSON.stringify(snapshot, null, 2));
+}
+function downloadBytes(name, bytes, type) {
+  const url = URL.createObjectURL(new Blob([bytes], { type }));
+  const link = document.createElement('a'); link.href = url; link.download = name; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+function saving(active) {
+  busy = active;
+  canvas.classList.toggle('loading', active);
+  refresh();
+}
+async function saveAll() {
+  if (busy || gesture || paste || wallStart || !floor?.closed || floorKey !== floorGeometryKey() || floorPendingKey) return;
+  const snapshot = clone(doc), exportFloor = floor, name = safeName(snapshot.name);
+  saving(true);
+  try {
+    model.validateDocument(snapshot);
+    const files = [];
+    for (const format of SAVE_ALL_FORMATS) files.push({ ...format, name: name + format.suffix, bytes: await exportBytes(snapshot, format, exportFloor) });
+    if (window.revolaDesktop) {
+      const success = await window.revolaDesktop.saveAll({ suggestedName: name,
+        files: files.map(({ kind, layer, bytes }) => ({ kind, layer, bytes: Array.from(bytes) })) });
+      if (!success) { status('Save all canceled.'); return; }
+      savedState = JSON.stringify(snapshot);
+      status(`Saved all five formats to ${success.directory}.`);
+    } else {
+      const bytes = createExportZip(files), zipName = `${name}-all.zip`;
+      downloadBytes(zipName, bytes, 'application/zip');
+      status(`Downloaded ${zipName} · all five formats included · ${(bytes.length / 1024).toFixed(0)} KB`);
+    }
+  } catch (error) { status(`Could not save all: ${error.message}`, true); }
+  finally { saving(false); }
+}
 async function saveDocument(kind = 'png') {
-  if (busy) return;
+  if (busy || gesture || paste || wallStart) return;
   const floorExport = kind === 'floor-png' || kind === 'floor-svg';
   if (floorExport && (!floor?.closed || floorKey !== floorGeometryKey() || floorPendingKey)) return;
   const fileKind = floorExport ? kind.slice(6) : kind;
-  busy = true; $('export-button').disabled = true; $('svg-button').disabled = true; $('project-button').disabled = true; canvas.classList.add('loading');
-  floorControls();
+  saving(true);
   const snapshot = clone(doc);
   const exportFloor = floor;
   const name = `${safeName(snapshot.name)}-${floorExport ? 'floors' : fileKind === 'project' ? 'source' : 'walls'}${fileKind === 'png' ? '.png' : fileKind === 'svg' ? '.svg' : '.revola'}`;
   try {
     model.validateDocument(snapshot);
-    let bytes;
-    if (kind === 'floor-png') {
-      bytes = await renderFloorPng(snapshot, { floor: exportFloor,
-        onProgress: fraction => status(`Rendering ${snapshot.width} × ${snapshot.height} black floor PNG… ${Math.round(fraction * 100)}%`),
-      });
-    } else if (kind === 'floor-svg') {
-      status('Preparing transparent floor SVG…');
-      bytes = new TextEncoder().encode(renderFloorSvg(snapshot, { floor: exportFloor }));
-    } else if (kind === 'png') {
-      bytes = await renderMapPng(snapshot, { shipImage: shipImage || await loadShip(),
-        onProgress: fraction => status(`Rendering ${snapshot.width} × ${snapshot.height} transparent PNG… ${Math.round(fraction * 100)}%`),
-      });
-    } else if (kind === 'svg') {
-      status('Preparing transparent SVG…');
-      bytes = new TextEncoder().encode(renderMapSvg(snapshot, { shipDataUrl: await embeddedShip() }));
-    } else bytes = new TextEncoder().encode(JSON.stringify(snapshot, null, 2));
+    const bytes = await exportBytes(snapshot, { kind: fileKind, layer: floorExport ? 'floor' : 'walls' }, exportFloor);
     let success;
     if (window.revolaDesktop) success = await window.revolaDesktop.saveFile({ suggestedName: name, bytes: Array.from(bytes), kind: fileKind, layer: floorExport ? 'floor' : 'walls' });
     else {
-      const url = URL.createObjectURL(new Blob([bytes], { type: fileKind === 'png' ? 'image/png' : fileKind === 'svg' ? 'image/svg+xml' : 'application/json' }));
-      const link = document.createElement('a'); link.href = url; link.download = name; link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 30000); success = { downloaded: true };
+      downloadBytes(name, bytes, fileKind === 'png' ? 'image/png' : fileKind === 'svg' ? 'image/svg+xml' : 'application/json');
+      success = { downloaded: true };
     }
     if (success) {
       // Native saves are confirmed writes; browser downloads cannot confirm destination or completion.
@@ -766,7 +811,7 @@ async function saveDocument(kind = 'png') {
       status(`${window.revolaDesktop ? 'Saved' : 'Downloaded'} ${name} · ${(bytes.length / 1024).toFixed(0)} KB${floorExport ? ' · black floor only; transparent background' : kind === 'png' ? ' · editable metadata included' : kind === 'svg' ? ' · SVG exported; save wall PNG or project to keep editing' : ''}`);
     } else status('Save canceled.');
   } catch (error) { status(`Could not save: ${error.message}`, true); }
-  finally { busy = false; $('export-button').disabled = false; $('svg-button').disabled = false; $('project-button').disabled = false; canvas.classList.remove('loading'); refresh(); }
+  finally { saving(false); }
 }
 function deleteSelected() {
   if (busy || gesture || paste) return;
@@ -785,6 +830,7 @@ $('open-button').addEventListener('click', openDocument);
 $('export-button').addEventListener('click', () => saveDocument('png'));
 $('svg-button').addEventListener('click', () => saveDocument('svg'));
 $('project-button').addEventListener('click', () => saveDocument('project'));
+$('save-all-button').addEventListener('click', saveAll);
 $('floor-png-button').addEventListener('click', () => saveDocument('floor-png'));
 $('floor-svg-button').addEventListener('click', () => saveDocument('floor-svg'));
 $('file-input').addEventListener('change', async () => {

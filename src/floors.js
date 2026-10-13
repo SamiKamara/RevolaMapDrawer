@@ -1,6 +1,6 @@
 /** Derived, transparent black floors for maps whose ship cannot reach space. */
 import { validateDocument } from './model.js';
-import { drawMap, segmentVisibleParts, SHIP_ANCHOR } from './render.js';
+import { drawMap, SHIP_ANCHOR } from './render.js';
 import { shipWorldPoint, shipPorts, legacyShipPorts } from './ship.js';
 import { SHIP_FLOOR_OUTLINE, SHIP_FLOOR_BARRIER, SHIP_FLOOR_SEED } from '../assets/ship-floor-contour.js';
 
@@ -41,18 +41,25 @@ function collectWalls(document) {
   return polygons;
 }
 
-function barrierSegments(document, { solid = false } = {}) {
+function barrierSegments(document, { solid = false, walls } = {}) {
   const vertices = new Map(document.vertices.map(vertex => [vertex.id, vertex]));
   const segments = [];
   const append = (a, b, edge) => {
     if (Math.hypot(b.x - a.x, b.y - a.y) > EPSILON) segments.push({ a, b, edge, splits: [0, 1] });
   };
-  // Door and eraser intervals really remove barriers. Even a tiny interval must
-  // connect the two neighboring faces, independent of any raster resolution.
-  for (const edge of document.edges) {
-    const a = vertices.get(edge.a), b = vertices.get(edge.b);
-    if (solid) append(a, b, edge);
-    else for (const part of segmentVisibleParts(a, b, edge.doors, document.style.doorWidth, edge.gaps)) append(part.a, part.b);
+  // Closure follows the same physical wall outlines as the editor and exports.
+  // Two wall faces can overlap while their centerlines do not meet. An exact
+  // polygon arrangement joins that overlap, without snapping the source graph
+  // or sealing a genuinely exposed door or even a subpixel erased interval.
+  const polygons = walls ?? collectWalls(solid ? { ...document,
+    edges: document.edges.map(edge => ({ ...edge, doors: [], gaps: [] })) } : document);
+  for (const polygon of polygons) {
+    for (let index = 0; index < polygon.length; index++) append(polygon[index], polygon[(index + 1) % polygon.length]);
+  }
+  if (solid) for (const edge of document.edges) {
+    // Centerlines partition the solid-wall arrangement only to sample every
+    // cut interval where another physical wall overlaps it.
+    append(vertices.get(edge.a), vertices.get(edge.b), edge);
   }
   const ship = SHIP_FLOOR_BARRIER.map(point => worldShipBarrierPoint(document, point));
   for (let index = 1; index < ship.length; index++) append(ship[index - 1], ship[index]);
@@ -227,7 +234,7 @@ function boundedRegions(cycles) {
   return regions;
 }
 
-function exteriorOpening(document) {
+function exteriorOpening(document, walls) {
   if (!document.edges.some(edge => edge.doors.length || edge.gaps.length)) return null;
   const segments = barrierSegments(document, { solid: true });
   // Here all bounded faces count as enclosed, including unreachable rooms and
@@ -243,6 +250,16 @@ function exteriorOpening(document) {
       }
     }
   }
+  const wallBuckets = new Map();
+  for (const polygon of walls) {
+    const bounds = polygonBounds(polygon);
+    for (let x = Math.floor(bounds.left / BUCKET_SIZE); x <= Math.floor(bounds.right / BUCKET_SIZE); x++) {
+      for (let y = Math.floor(bounds.top / BUCKET_SIZE); y <= Math.floor(bounds.bottom / BUCKET_SIZE); y++) {
+        const key = `${x}:${y}`, bucket = wallBuckets.get(key) ?? [];
+        bucket.push({ polygon, ...bounds }); wallBuckets.set(key, bucket);
+      }
+    }
+  }
   let pointChecks = 0;
   const enclosed = point => {
     const candidates = buckets.get(`${Math.floor(point.x / BUCKET_SIZE)}:${Math.floor(point.y / BUCKET_SIZE)}`) ?? [];
@@ -253,6 +270,13 @@ function exteriorOpening(document) {
       return floorContainsPoint(face, point);
     });
   };
+  const covered = point => (wallBuckets.get(`${Math.floor(point.x / BUCKET_SIZE)}:${Math.floor(point.y / BUCKET_SIZE)}`) ?? [])
+    .some(({ polygon, left, right, top, bottom }) => {
+      if (point.x < left || point.x > right || point.y < top || point.y > bottom) return false;
+      pointChecks += polygon.length;
+      if (pointChecks > 2_000_000) throw new Error('Floor exterior-opening analysis exceeds the supported 2,000,000 boundary-point checks.');
+      return floorContainsPoint(polygon, point);
+    });
   for (const segment of segments) {
     if (!segment.edge) continue;
     const edge = segment.edge, dx = segment.b.x - segment.a.x, dy = segment.b.y - segment.a.y;
@@ -268,7 +292,11 @@ function exteriorOpening(document) {
       const end = Math.min(segment.splits[index], cut.end);
       if ((end - start) * length <= EPSILON) continue;
       const t = (start + end) / 2, x = segment.a.x + dx * t, y = segment.a.y + dy * t;
-      const nx = -dy / length * 0.00001, ny = dx / length * 0.00001;
+      // A cut completely covered by a drawn wall is visibly closed. Probe
+      // beyond the wall footprint, rather than inside its two solid halves.
+      if (covered({ x, y })) continue;
+      const offset = document.style.wallWidth / 2 + Math.min(document.style.roughness, document.style.wallWidth / 8) + 0.00001;
+      const nx = -dy / length * offset, ny = dx / length * offset;
       if (enclosed({ x: x + nx, y: y + ny }) !== enclosed({ x: x - nx, y: y - ny })) return cut.type;
     }
   }
@@ -276,7 +304,7 @@ function exteriorOpening(document) {
 }
 
 /**
- * Analyze exact graph openings together with the fixed, open-door ship hull.
+ * Analyze rendered wall outlines together with the fixed, open-door ship hull.
  * Only the face reachable from the ship is floor. Internal doors merge faces;
  * sealed courtyards and disconnected rooms remain transparent. Negative cycles
  * describe courtyard holes in otherwise connected or nested boundary graphs.
@@ -287,11 +315,12 @@ function exteriorOpening(document) {
  */
 export function generateFloor(document) {
   const map = validateDocument(document);
-  const regions = boundedRegions(planarFaces(barrierSegments(map)));
+  const walls = collectWalls(map);
+  const regions = boundedRegions(planarFaces(barrierSegments(map, { walls })));
   const seed = worldShipPoint(map, SHIP_FLOOR_SEED);
   const region = regions.find(candidate => floorRegionContainsPoint([candidate.boundary, ...candidate.holes], seed));
   const shipEnclosed = Boolean(region);
-  const exteriorCut = shipEnclosed ? exteriorOpening(map) : null;
+  const exteriorCut = shipEnclosed ? exteriorOpening(map, walls) : null;
   const closed = shipEnclosed && !exteriorCut;
   return {
     closed,
@@ -300,7 +329,7 @@ export function generateFloor(document) {
       'Open map: the ship can reach the exterior through a doorway, erased gap or unfinished wall.',
     width: map.width, height: map.height, originX: map.originX, originY: map.originY,
     polygons: closed ? [region.boundary, ...region.holes] : [],
-    wallPolygons: closed ? collectWalls(map) : [],
+    wallPolygons: closed ? walls : [],
     shipPolygons: closed ? [SHIP_FLOOR_OUTLINE.map(point => worldShipPoint(map,
       { x: point.x - SHIP_ANCHOR.x, y: point.y - SHIP_ANCHOR.y }))] : [],
     outlineWidth: FLOOR_RIM * 2,

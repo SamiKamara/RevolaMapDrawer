@@ -76,7 +76,9 @@ test('erased free endpoints do not regrow a join and pinned ports cannot extend'
   const stub = wall(doc, 2400, 1200, 2400, 1970);
   stub.gaps.push({ id: 'erased_end', start: .95, end: 1 });
   wall(doc, 1000, 2000, 4000, 2000, {});
-  assert.ok(doc.vertices.some(v => v.x === 2400 && v.y === 1970));
+  assert.equal(doc.vertices.some(v => v.x === 2400 && v.y === 1970), false);
+  assert.ok(doc.vertices.some(v => v.x === 2400 && v.y === 1931.5));
+  assert.equal(doc.edges.find(edge => edge.id === stub.id).cutEnds.b, true);
   const pin = wall(doc, 3739.5, 3740, 3739.5, 4740);
   const pinnedId = pin.b;
   wall(doc, 3000, 4770, 4500, 4770, {});

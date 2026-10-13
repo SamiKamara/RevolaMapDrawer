@@ -1,6 +1,6 @@
 # Revola Map Drawer — implementation design
 
-Implementation baseline: version 0.11.1. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
+Implementation baseline: version 0.12.0. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
 
 ## Product and first milestone
 
@@ -35,6 +35,38 @@ Hashed assets have one-year immutable browser caching. A web-only service worker
 An updated worker waits until every previous editor tab closes, preventing a running editor from switching source versions. Reopening online allows the browser to discover an update; the first reopening may still use the previous worker until it finishes installing. Cached versions and browser storage can be evicted. See [WEB.md](WEB.md) for deployment, measured transfer sizes and exact verification scope.
 
 ## Document and geometry contracts
+
+### Version 0.12.0 visible closure and eraser endpoints
+
+Floor closure uses the actual editable-wall polygons from the shared renderer,
+including their deterministic texture and corner joins. Construct an exact planar
+arrangement of those boundaries with the protected ship barrier. Overlapping wall
+faces therefore close a map even when their centerlines remain disconnected,
+without moving or snapping the document. An exposed exterior door or erased
+interval, including a subpixel cut, remains open. The separate uncut-wall check
+still rejects exterior openings in compartments unreachable from the ship and
+allows cuts completely covered by another visible wall. Retain bounded spatial
+analysis and the existing transparent floor/rim contract.
+
+The check for openings in unreachable compartments can reconstruct an uncut
+envelope from retained doors/interior gaps. After erasure removes a terminal or
+corner and its invisible skeleton, a formerly closed unreachable compartment
+can become indistinguishable from a detached wall appendage. Its deleted
+envelope is not reconstructed speculatively; the ship-connected floor still
+rejects any actual path to exterior space.
+
+Erasure removes fully hidden walls, trims hidden terminal portions to the exact
+surviving wall ends, and prunes graph points that no longer meet visible walls.
+Interior gaps retain their version 2 interval representation. Optional
+`edge.cutEnds:{a:boolean,b:boolean}` marks trimmed erased ends so automatic
+joining does not restore an intentional cut. Validation, persistence and clipboard
+copy/paste preserve these markers. Import cleans older terminal erasures without
+moving surviving wall coverage or ship pins. Hit testing and intersections ignore
+erased intervals; explicitly drawing over an opening continues to fill it.
+Surviving incident endpoints also retain a cut marker when an erased branch is
+removed, preserving the previous suppressed corner join. A real legacy wall
+sliver below the graph joining tolerance keeps its original gap representation
+so normalization cannot merge its two ends into an invalid zero-length edge.
 
 ### Version 0.11.0 Shift square rooms and short corridors
 
@@ -81,7 +113,7 @@ Fill the interior reachable from the ship through actual door/gap openings and t
 
 Closed maps display the user-supplied `assets/editor-stars.png` as a repeating editor background. It is bundled for offline loading and never enters any export. The top header exposes **Save wall PNG**, **Save wall SVG**, **Save floor PNG** and **Save floor SVG** in one row with shared button geometry; PNG buttons share one visual treatment and SVG buttons another. Floor save actions become available automatically once the current map's closure check succeeds and no editing gesture or save is active. The fixed ship contour is derived from the bundled asset; the original brief, references and user's input maps remain unchanged.
 
-Exact visible centerline intervals determine graph topology at a 1e-9 map-unit joining tolerance. Door cuts retain their measured width and valid subpixel erasures stay open; closure never relies on a coarse raster grid. The fixed hull's closure contour is simplified within 1 px, while its filled footprint is traced from every visible bundled alpha pixel. Spatial intersection/probe buckets and explicit 2,000,000-check limits bound dense analyses. Unsupported density leaves floor saves disabled and omits floor/stars rather than returning a false closure result. The derived result cache includes the texture seed as well as bounds, graph, ship and style.
+The original floor implementation used exact visible centerline intervals; version 0.12.0 replaces that closure barrier with actual shared-renderer wall polygons. Arrangement joining retains a 1e-9 map-unit tolerance. Door cuts retain their measured width and exposed subpixel erasures stay open; closure never relies on a coarse raster grid. The fixed hull's closure contour is simplified within 1 px, while its filled footprint is traced from every visible bundled alpha pixel. Spatial intersection/probe buckets and explicit 2,000,000-check limits bound dense analyses. Unsupported density leaves floor saves disabled and omits floor/stars rather than returning a false closure result. The derived result cache includes the texture seed as well as bounds, graph, ship and style.
 
 ### Version 0.9.1 symmetric fixed airlock and outer-door targeting
 
@@ -166,6 +198,21 @@ Recognized room sides first attempt shape-preserving resizing. The room's other 
 Inspect the supplied transparent reference PNGs composited on black. Record wall thickness, clear door width, corridor width, chamfer, and anchor bounds in `REFERENCE_ANALYSIS.md`, distinguishing measurements from provisional interpretation. Use original ship pixels where a clean crop is possible; retain attribution to the supplied file and a reproducible extraction script. The anchor must mirror horizontally without changing the upper airlock connection position. Wall roughness is seeded and stable between redraws, save/load and export; it must not become grey wall fill. Antialiasing may change alpha only.
 
 ## Saving and opening
+
+### Version 0.12.0 Save all
+
+**Save all** becomes available when current floor analysis confirms closure and
+no drawing gesture, wall chain, paste preview or save is active. Generate wall
+PNG/SVG, floor PNG/SVG and the editable `.revola` project from one document
+snapshot, using the existing `-walls`, `-floors` and `-source` suffixes.
+
+Windows uses one folder chooser and one confirmation for all existing matching
+files. Stage the complete set before replacing any destination, retain originals
+until all replacements succeed, and roll back on failure. A completed native
+project write clears the snapshot's dirty state; cancellation and failure do not.
+The browser downloads one `<Map name>-all.zip` containing the five original
+exports byte-for-byte and retains the unsaved reminder. Exports stay entirely
+local. Busy saves block edits and competing save operations.
 
 ### Version 0.11.1 save filenames
 

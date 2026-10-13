@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createDocument, validateDocument, edgeGapIntervals, moveSelection } from '../src/model.js';
+import { createDocument, validateDocument, edgeGapIntervals, moveSelection, eraseWalls, snapWallStart } from '../src/model.js';
 import { copySelection, pasteSelection } from '../src/clipboard.js';
 
 function graph(points, links) {
@@ -20,6 +20,24 @@ function rejected(doc, fragment, delta, pattern) {
   assert.throws(() => pasteSelection(doc, fragment, delta), pattern);
   assert.deepEqual(doc, before);
 }
+
+test('copy, paste and reopen retain trimmed eraser endpoints without snapping across their cut', () => {
+  const doc = basic();
+  eraseWalls(doc, { x: 1000, y: 1000 }, { x: 1000, y: 1000 }, 200);
+  const edge = doc.edges[0];
+  assert.equal(doc.vertices.some(vertex => vertex.x === 1000 && vertex.y === 1000), false);
+  assert.ok(edge.cutEnds?.a || edge.cutEnds?.b, 'The surviving cut endpoint is protected');
+  const fragment = copySelection(doc, select([edge.id]));
+  assert.deepEqual(fragment.edges[0].cutEnds, edge.cutEnds);
+  assert.ok(Object.isFrozen(fragment.edges[0].cutEnds));
+  const selected = pasteSelection(doc, fragment, { x: 0, y: 1000 });
+  const pasted = doc.edges.find(candidate => candidate.id === selected.edgeIds[0]);
+  assert.deepEqual(pasted.cutEnds, edge.cutEnds);
+  const reopened = validateDocument(JSON.parse(JSON.stringify(doc)));
+  assert.deepEqual(reopened, doc);
+  const insideErasure = { x: 1180, y: 2000 };
+  assert.deepEqual(snapWallStart(reopened, insideErasure, { joinTolerance: 50 }), insideErasure);
+});
 
 test('point-only selection copies its induced connected walls and omits outside walls and loose points', () => {
   const doc = graph([[1000, 1000], [2500, 1000], [2500, 2500], [4000, 2500], [1000, 4000]], [[1, 2], [2, 3], [3, 4]]);

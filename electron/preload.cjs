@@ -4,6 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('revolaDesktop', Object.freeze({
   openFile: () => ipcRenderer.invoke('revola:open'),
   saveFile: (options) => ipcRenderer.invoke('revola:save', options),
+  saveAll: (options) => ipcRenderer.invoke('revola:save-all', options),
   shipPngDataUrl: () => ipcRenderer.invoke('revola:ship-png'),
   setDirty: (dirty) => ipcRenderer.send('revola:dirty', dirty === true),
 }));

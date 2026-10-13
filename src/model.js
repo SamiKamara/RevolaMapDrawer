@@ -105,11 +105,15 @@ export function validateDocument(input) {
     if (pairs.has(pair)) fail('Duplicate wall.');
     pairs.add(pair);
     if (!Array.isArray(edge.doors) || (doorCount += edge.doors.length) > MAX_EDGES) fail('Invalid or excessive door data.');
+    const cutEnds = edge.cutEnds;
+    if (cutEnds !== undefined && (!cutEnds || typeof cutEnds.a !== 'boolean' || typeof cutEnds.b !== 'boolean')) fail('Invalid erased wall endpoints.');
     const length = distance(a, b), half = out.style.doorWidth / (2 * length);
     const endMargin = (out.style.doorWidth / 2 + out.style.wallWidth / 2 + out.style.roughness) / length;
     const doors = edge.doors.map(door => {
       const t = boundedNumber(door.t, 0, 1, 'door position');
-      if (t - endMargin < -EPS || t + endMargin > 1 + EPS) fail('A doorway is too close to a wall endpoint.');
+      // Erasing may leave less than the ordinary placement clearance beside an
+      // existing door. Retain that door's exact width and removal behavior.
+      if (t - (cutEnds?.a ? half : endMargin) < -EPS || t + (cutEnds?.b ? half : endMargin) > 1 + EPS) fail('A doorway is too close to a wall endpoint.');
       return { id: uniqueId(door.id), t };
     }).sort((x, y) => x.t - y.t);
     for (let i = 1; i < doors.length; i++) if (doors[i].t - doors[i - 1].t < 2 * half - EPS) fail('Doorways cannot overlap.');
@@ -122,9 +126,12 @@ export function validateDocument(input) {
     }).sort((a, b) => a.start - b.start);
     for (let i = 1; i < gaps.length; i++) if (gaps[i].start < gaps[i - 1].end - EPS) fail('Erased gaps cannot overlap.');
     for (const gap of gaps) if (doors.some(door => gap.start < door.t + half - EPS && gap.end > door.t - half + EPS)) fail('Erased gaps cannot overlap a doorway.');
-    out.edges.push({ id: uniqueId(edge.id), a: edge.a, b: edge.b, doors, gaps });
+    const wall = { id: uniqueId(edge.id), a: edge.a, b: edge.b, doors, gaps };
+    setCutEnds(wall, cutEnds?.a, cutEnds?.b);
+    out.edges.push(wall);
   }
-  validateTopology(out, vertices);
+  trimErasedEnds(out);
+  validateTopology(out, new Map(out.vertices.map(vertex => [vertex.id, vertex])));
   return out;
 }
 
@@ -218,6 +225,9 @@ function validateTopology(doc, vertices) {
       if (Math.max(a.x, b.x) + EPS < Math.min(c.x, d.x) || Math.max(c.x, d.x) + EPS < Math.min(a.x, b.x)
         || Math.max(a.y, b.y) + EPS < Math.min(c.y, d.y) || Math.max(c.y, d.y) + EPS < Math.min(a.y, b.y)) continue;
       const shared = [edge.a, edge.b].find(id => id === other.a || id === other.b), hit = intersection(a, b, c, d);
+      // Free erasures are actual empty space: a new wall can cross one without
+      // attaching to, or splitting, the invisible original centerline.
+      if (hit && (erasedAt(edge, hit.t) || erasedAt(other, hit.u))) continue;
       if (hit && (!shared || !same(hit.point, vertices.get(shared)))) fail('Intersecting walls must be split at a shared graph vertex.');
       if (!hit) {
         const overlap = [a, b].some(p => onSegment(c, d, p) && p.id !== shared)
@@ -231,6 +241,65 @@ function validateTopology(doc, vertices) {
       else buckets.set(key, [edge]);
     }
   }
+}
+
+function erasedAt(edge, t) {
+  return (edge.gaps ?? []).some(gap => t > gap.start + EPS && t < gap.end - EPS);
+}
+
+function setCutEnds(edge, a, b) {
+  if (a || b) edge.cutEnds = { a: Boolean(a), b: Boolean(b) };
+  else delete edge.cutEnds;
+}
+
+function retainCutJunctions(doc, detached) {
+  for (const edge of doc.edges) setCutEnds(edge,
+    edge.cutEnds?.a || detached.has(edge.a), edge.cutEnds?.b || detached.has(edge.b));
+}
+
+// Retain interior gaps for editable overdraw and exact floor-opening analysis,
+// but never retain a graph vertex in an erased terminal or junction. The new
+// endpoints lie on the physical butt cuts. Their marker prevents automatic
+// attraction from growing the erased wall back on a later unrelated edit.
+function trimErasedEnds(doc) {
+  const vertices = new Map(doc.vertices.map(vertex => [vertex.id, vertex]));
+  const detached = new Set();
+  for (const edge of [...doc.edges]) {
+    const gaps = edge.gaps ?? [];
+    let start = 0, end = 1;
+    // Imports may contain separately identified cuts that touch. Trace their
+    // entire terminal union without swallowing a real subpixel solid sliver.
+    for (const gap of gaps) { if (gap.start > start) break; start = Math.max(start, gap.end); }
+    for (let index = gaps.length - 1; index >= 0; index--) {
+      if (gaps[index].end < end) break;
+      end = Math.min(end, gaps[index].start);
+    }
+    if (end <= start) { detached.add(edge.a); detached.add(edge.b); removeEdge(doc, edge.id); continue; }
+    if (start === 0 && end === 1) continue;
+    const a = vertices.get(edge.a), b = vertices.get(edge.b), scale = end - start;
+    const pointA = clean(lerp(a, b, start)), pointB = clean(lerp(a, b, end));
+    // A legacy project can retain a real wall sliver below the graph's joining
+    // tolerance. Keep its already-valid original interval representation rather
+    // than coalescing both physical cuts into one vertex and returning a==b.
+    if (!allowed(pointA, pointB)) continue;
+    const nextA = start > 0 ? vertexAt(doc, pointA) : a;
+    const nextB = end < 1 ? vertexAt(doc, pointB) : b;
+    if (nextA.id === nextB.id) continue;
+    if (start > 0) detached.add(edge.a);
+    if (end < 1) detached.add(edge.b);
+    vertices.set(nextA.id, nextA); vertices.set(nextB.id, nextB);
+    edge.a = nextA.id; edge.b = nextB.id;
+    edge.doors = edge.doors.map(door => ({ ...door, t: (door.t - start) / scale }));
+    edge.gaps = gaps.filter(gap => gap.start >= start && gap.end <= end)
+      .map(gap => ({ ...gap, start: (gap.start - start) / scale, end: (gap.end - start) / scale }));
+    setCutEnds(edge, start > 0 || edge.cutEnds?.a, end < 1 || edge.cutEnds?.b);
+  }
+  // An erased arm used to suppress the common miter even when other incident
+  // runs survive. Keep that butt boundary when its invisible arm is detached.
+  retainCutJunctions(doc, detached);
+  const used = new Set(doc.edges.flatMap(edge => [edge.a, edge.b]));
+  doc.vertices = doc.vertices.filter(vertex => used.has(vertex.id));
+  if (doc.edges.length > MAX_EDGES || doc.vertices.length > MAX_VERTICES) fail('Project exceeds the geometry limit.');
 }
 
 function mergeIntervals(intervals) {
@@ -309,6 +378,7 @@ function splitEdge(doc, edge, points) {
     const va = vertexAt(doc, lerp(a, b, low)), vb = vertexAt(doc, lerp(a, b, high));
     const doors = edge.doors.filter(d => d.t >= low && d.t < high).map(d => ({ id: d.id, t: (d.t - low) / (high - low) }));
     const piece = { id: i === 0 ? edge.id : nextId(doc, 'e'), a: va.id, b: vb.id, doors, gaps: [] };
+    setCutEnds(piece, i === 0 && edge.cutEnds?.a, i === ts.length - 2 && edge.cutEnds?.b);
     // Add immediately so subsequently allocated IDs are unique.
     if (i > 0) doc.edges.push(piece);
     for (const gap of edge.gaps ?? []) {
@@ -332,7 +402,7 @@ function insertWall(doc, start, end) {
   for (const edge of doc.edges) {
     const a = vertices.get(edge.a), b = vertices.get(edge.b), hit = intersection(start, end, a, b);
     const cuts = [];
-    if (hit) { points.push(hit.point); cuts.push(hit.point); }
+    if (hit && !erasedAt(edge, hit.u)) { points.push(hit.point); cuts.push(hit.point); }
     else if (distance(lerp(a, b, projection(a, b, start)), start) < EPS && distance(lerp(a, b, projection(a, b, end)), end) < EPS) {
       fillEdge(doc, edge, a, b, start, end);
       covered.push({ edge, a, b });
@@ -353,6 +423,7 @@ function insertWall(doc, start, end) {
     result.push(edge);
   }
   if (doc.edges.length > MAX_EDGES || doc.vertices.length > MAX_VERTICES) fail('Project exceeds the geometry limit.');
+  trimErasedEnds(doc);
   return result;
 }
 
@@ -371,7 +442,8 @@ function joinTolerance(doc, options = {}) {
 function solidAt(doc, edge, t, clearance, vertices) {
   const length = distance(vertices.get(edge.a), vertices.get(edge.b)), margin = clearance / length;
   const halfDoor = doc.style.doorWidth / (2 * length);
-  return !(edge.gaps ?? []).some(gap => t >= gap.start - margin - EPS && t <= gap.end + margin + EPS)
+  return !(edge.cutEnds?.a && t <= margin + EPS) && !(edge.cutEnds?.b && t >= 1 - margin - EPS)
+    && !(edge.gaps ?? []).some(gap => t >= gap.start - margin - EPS && t <= gap.end + margin + EPS)
     && !edge.doors.some(door => Math.abs(t - door.t) <= halfDoor + margin + EPS);
 }
 
@@ -484,8 +556,16 @@ export function nearestEdge(doc, point, maxDistance = Infinity) {
   let best = null;
   for (const edge of doc.edges) {
     const a = vertices.get(edge.a), b = vertices.get(edge.b);
-    const t = Math.max(0, Math.min(1, projection(a, b, point))), projected = lerp(a, b, t), d = distance(point, projected);
-    if (d <= maxDistance && (!best || d < best.distance)) best = { edge, a, b, point: projected, t, distance: d };
+    // Fixed doors remain selectable for removal; arbitrary erased portions do
+    // not. Distance is measured to a surviving interval, never hidden skeleton.
+    let cursor = 0;
+    const intervals = [];
+    for (const gap of edge.gaps ?? []) { if (gap.start > cursor) intervals.push([cursor, gap.start]); cursor = gap.end; }
+    if (cursor < 1) intervals.push([cursor, 1]);
+    for (const [start, end] of intervals) {
+      const t = Math.max(start, Math.min(end, projection(a, b, point))), projected = lerp(a, b, t), d = distance(point, projected);
+      if (d <= maxDistance && (!best || d < best.distance)) best = { edge, a, b, point: projected, t, distance: d };
+    }
   }
   return best;
 }
@@ -504,6 +584,11 @@ export function addDoor(doc, edgeId, point, options = {}) {
   // cut IDs and world positions, structural ends and fixed ship ports.
   const draft = copy(doc), span = target.span, replaced = new Set(span.edgeIds);
   const edge = { id: edgeId, a: span.a.id, b: span.b.id, doors: [], gaps: [] };
+  const endpointCut = (segment, id) => {
+    const source = draft.edges.find(wall => wall.id === segment.edgeId);
+    return source.cutEnds?.[source.a === id ? 'a' : 'b'];
+  };
+  setCutEnds(edge, endpointCut(span.segments[0], span.a.id), endpointCut(span.segments.at(-1), span.b.id));
   for (const cut of span.cuts) {
     if (cut.kind === 'door') edge.doors.push({ id: cut.id, t: (cut.start + cut.end) / (2 * span.length) });
     else edge.gaps.push({ id: cut.id, start: cut.start / span.length, end: cut.end / span.length });
@@ -574,6 +659,7 @@ export function eraseWalls(doc, from, to, radius) {
   if (!validPoint(from) || !validPoint(to) || !Number.isFinite(radius) || radius <= 0 || radius > 2048) return false;
   return transaction(doc, draft => {
     const vertices = new Map(draft.vertices.map(v => [v.id, v]));
+    const detached = new Set();
     let changed = false;
     for (const edge of [...draft.edges]) {
       const a = vertices.get(edge.a), b = vertices.get(edge.b), cuts = capsuleCuts(a, b, from, to, radius);
@@ -581,7 +667,8 @@ export function eraseWalls(doc, from, to, radius) {
       const before = edgeGapIntervals(draft, edge), combined = mergeIntervals([...before, ...cuts]);
       if (before.length === combined.length && before.every((gap, i) => Math.abs(gap.start - combined[i].start) < EPS && Math.abs(gap.end - combined[i].end) < EPS)) continue;
       changed = true;
-      if (combined.length === 1 && combined[0].start <= EPS && combined[0].end >= 1 - EPS) {
+      if (combined.length === 1 && combined[0].start === 0 && combined[0].end === 1) {
+        detached.add(edge.a); detached.add(edge.b);
         removeEdge(draft, edge.id);
         continue;
       }
@@ -594,6 +681,7 @@ export function eraseWalls(doc, from, to, radius) {
       edge.doors = doors;
       setGaps(draft, edge, gaps);
     }
+    if (changed) { trimErasedEnds(draft); retainCutJunctions(draft, detached); }
     return changed;
   });
 }

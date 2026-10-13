@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { corridorEndTargets, resolveCorridorStart, fitCorridorEnd, corridorPreservesOpenings } from '../src/corridors.js';
-import { createDocument, addWall, addDoor, addCorridor, corridorSegments, validateDocument } from '../src/model.js';
+import { createDocument, addWall, addDoor, addCorridor, corridorSegments, validateDocument, eraseWalls } from '../src/model.js';
 
 const make = (points, links) => ({
   style: { doorWidth: 375, wallWidth: 50, roughness: 2.25 },
@@ -335,6 +335,19 @@ test('branches, erased or doorway rail ends and sealed mouths do not become corr
     if (modification === 'door') rail.doors.push({ id: 'invalid-import-end', t: 1 });
     if (modification === 'seal') addWall(doc, terminal, doc.vertices.find(vertex => vertex.id === target.vertexIds[1]));
     assert.equal(mouthAt(doc, end), undefined, modification);
+  }
+});
+
+test('trimmed erased corridor rails do not become new END targets after reopening', () => {
+  for (const direction of directions) {
+    const { doc, start, end } = straightCorridor(direction);
+    assert.ok(mouthAt(doc, end));
+    assert.equal(eraseWalls(doc, end, end, 400), true);
+    const reopened = validateDocument(JSON.parse(JSON.stringify(doc)));
+    assert.ok(reopened.edges.some(edge => edge.cutEnds?.a || edge.cutEnds?.b));
+    assert.equal(corridorEndTargets(reopened).length, 1, 'Only the uncut start remains a corridor mouth');
+    assert.ok(mouthAt(reopened, start));
+    assert.equal(mouthAt(reopened, end), undefined);
   }
 });
 

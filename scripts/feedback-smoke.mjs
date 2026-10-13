@@ -9,18 +9,19 @@ import { decodePngMetadata } from '../src/png.js';
 import { validateDocument } from '../src/model.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const packaged = process.argv.includes('--packaged');
 const artifacts = path.join(root, 'artifacts');
 await fs.mkdir(artifacts, { recursive: true });
 const exportPath = path.join(artifacts, 'feedback-expanded.png');
 await fs.rm(exportPath, { force: true });
 const env = { ...process.env };
 delete env.ELECTRON_RUN_AS_NODE;
-const desktop = await electron.launch({ args: [root], cwd: root, env, timeout: 45_000 });
+const desktop = await electron.launch({ ...(packaged ? { executablePath: path.join(root, 'dist', 'RevolaMapDrawer-win32-x64', 'RevolaMapDrawer.exe') } : { args: [root] }), cwd: root, env, timeout: 45_000 });
 const page = await desktop.firstWindow({ timeout: 45_000 });
 page.setDefaultTimeout(20_000);
 const errors = [];
 page.on('pageerror', error => errors.push(error.message));
-const evidence = { interactions: [], files: {} };
+const evidence = { packaged, interactions: [], files: {} };
 
 // Inspect the exported image without an image decoder's full 1 GiB RGBA surface.
 // Inflate sequentially and retain just the current and preceding grayscale+alpha rows.
@@ -192,9 +193,24 @@ try {
   assert.deepEqual(whollyErased.ship, initial.ship);
   await page.locator('#undo-button').click();
   assert.deepEqual(await snapshot('whole-erase-undone'), eraserBaseline);
+  await dragMap([[1000, 1800], [1400, 1800]]);
+  const terminalCut = await snapshot('terminal-erasure');
+  assert.equal(terminalCut.vertices.some(vertex => Math.abs(vertex.x - 1000) < 5 && vertex.y === 1800), false, 'Erased endpoint is removed from the saved graph');
+  assert.ok(terminalCut.vertices.some(vertex => Math.abs(vertex.x - 1600) < 5 && vertex.y === 1800), 'Surviving endpoint follows the exact brush cut');
+  assert.ok(terminalCut.edges.some(edge => edge.cutEnds?.a || edge.cutEnds?.b), 'Intentional cut survives project save');
+  await page.locator('[data-tool="select"]').click();
+  await clickMap(1000, 1800);
+  await expect(page.locator('#selection-badge')).toHaveText('—');
+  await page.screenshot({ path: path.join(artifacts, 'feedback-erased-endpoint.png') });
+  await page.locator('#undo-button').click();
+  assert.deepEqual(await snapshot('terminal-erasure-undone'), eraserBaseline, 'One undo restores the original endpoint');
+  await page.locator('#redo-button').click();
+  assert.deepEqual(await snapshot('terminal-erasure-redone'), terminalCut);
+  await page.locator('#undo-button').click();
+  await page.locator('[data-tool="eraser"]').click();
   await dragMap([[3000, 5700], [5000, 5700]]);
   assert.deepEqual(await snapshot('ship-protected'), eraserBaseline, 'General eraser leaves fixed ship artwork and anchor unchanged');
-  evidence.interactions.push('E selects adjustable eraser; partial and whole-wall erase, multi-point stroke undo/redo, protected ship');
+  evidence.interactions.push('E selects adjustable eraser; partial/terminal/whole-wall erase, removed endpoint cannot be selected, exact stroke undo/redo, saved cut markers and protected ship');
 
   await startNew();
   await page.locator('[data-tool="room"]').click();

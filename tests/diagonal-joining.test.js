@@ -37,7 +37,11 @@ test('corner start attraction stays bounded and does not target wholly erased co
   doc.edges.find(edge => edge.id === horizontal.id).gaps.push({ id: 'erased_horizontal_end', start: 0.95, end: 1 });
   doc.edges.find(edge => edge.id === vertical.id).gaps.push({ id: 'erased_vertical_start', start: 0, end: 0.05 });
   assert.deepEqual(snapWallStart(doc, { x: 2975, y: 3025 }), { x: 2975, y: 3025 }, 'Erasing a corner must not create an invisible attraction target');
-  assert.deepEqual(validateDocument(doc), doc);
+  const cleaned = validateDocument(doc);
+  assert.equal(cleaned.vertices.some(vertex => vertex.x === 3000 && vertex.y === 3000), false);
+  assert.equal(cleaned.vertices.length, 4);
+  assert.deepEqual(snapWallStart(cleaned, { x: 2975, y: 3025 }), { x: 2975, y: 3025 });
+  assert.deepEqual(validateDocument(cleaned), cleaned);
 });
 
 test('start attraction cannot jump from a door or across an erased interval to a nearby endpoint', () => {
@@ -121,8 +125,12 @@ test('a receiving diagonal preserves an erased free end and explicit zero joinin
     if (cut === 'erased') stub.gaps.push({ id: 'erased_diagonal_approach', start: 0.95, end: 1 });
     addWall(doc, { x: 1000, y: 1000 }, { x: 4000, y: 4000 }, cut === 'joining disabled' ? { joinTolerance: 0 } : {});
     assert.equal(doc.edges.length, 2, cut);
-    assert.ok(doc.vertices.some(vertex => vertex.x === 1975 && vertex.y === 2000), cut);
-    if (cut === 'erased') assert.deepEqual(doc.edges.find(edge => edge.id === stub.id).gaps, stub.gaps);
+    const expectedEnd = cut === 'erased' ? 1926.25 : 1975;
+    assert.ok(doc.vertices.some(vertex => vertex.x === expectedEnd && vertex.y === 2000), cut);
+    if (cut === 'erased') {
+      assert.equal(doc.vertices.some(vertex => vertex.x === 1975 && vertex.y === 2000), false);
+      assert.equal(doc.edges.find(edge => edge.id === stub.id).cutEnds.b, true);
+    }
     assert.deepEqual(validateDocument(doc), doc, cut);
   }
 });

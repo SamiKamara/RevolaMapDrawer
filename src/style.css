@@ -20,4 +20,7 @@
 .image-export:disabled:hover{background:var(--export-background)}
 .export-png{--export-background:#293b2e;--export-border:#4f6b58;--export-color:#d0e8d8;--export-hover:#354c3b}
 .export-svg{--export-background:#263238;--export-border:#4b626b;--export-color:#d1e2e8;--export-hover:#34444d}
-@media(max-width:1100px){.image-export-actions{gap:5px}.image-export{font-size:11px;padding:8px 9px}.document-title>span:nth-child(2){max-width:150px}}
+.topbar nav .save-all{border:1px solid #65856e;background:#344b3b;color:#daf2e1;font-weight:650}
+.topbar nav .save-all:hover{background:#415e49}
+.topbar nav .save-all:disabled:hover{background:#344b3b}
+@media(max-width:1100px){.topbar{gap:10px;padding:0 12px}.topbar nav button{padding:9px 7px}.keyhint{margin-left:5px}.image-export-actions{gap:5px}.image-export{font-size:11px;padding:8px 9px}.document-title>span:nth-child(2){max-width:100px}}

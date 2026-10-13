@@ -408,16 +408,16 @@ test('new cuts and partial door fills cannot reuse an unchanged later gap identi
   }
 });
 
-test('intersections remap free gaps on both sides without creating a doorway', () => {
+test('walls cross free erasures without creating invisible junctions or doorways', () => {
   const doc = createDocument();
   addWall(doc, { x: 100, y: 500 }, { x: 2100, y: 500 });
   eraseWalls(doc, { x: 1000, y: 500 }, { x: 1200, y: 500 }, 100);
   addWall(doc, { x: 1100, y: 100 }, { x: 1100, y: 900 });
   const cuts = doc.edges.filter(e => e.gaps.length);
-  assert.equal(cuts.length, 2);
-  assert.ok(cuts.some(e => e.gaps[0].end === 1));
-  assert.ok(cuts.some(e => e.gaps[0].start === 0));
-  assert.notEqual(cuts[0].gaps[0].id, cuts[1].gaps[0].id);
+  assert.equal(cuts.length, 1);
+  assert.equal(doc.edges.length, 2, 'Each visible wall remains independent');
+  assert.equal(doc.vertices.length, 4);
+  assert.equal(doc.vertices.some(vertex => vertex.x === 1100 && vertex.y === 500), false, 'No point survives on the erased skeleton');
   assert.equal(doc.edges.reduce((n, e) => n + e.doors.length, 0), 0);
   validateDocument(doc);
 });
@@ -675,9 +675,12 @@ test('corner attraction does not close intentional doors or erased ends', () => 
   addWall(erased, { x: 100, y: 500 }, { x: 900, y: 500 });
   const [stem] = addWall(erased, { x: 925, y: 1600 }, { x: 925, y: 800 });
   eraseWalls(erased, { x: 925, y: 800 }, { x: 925, y: 800 }, 75);
-  assert.equal(moveVertex(erased, stem.b, { x: 925, y: 525 }), true);
+  assert.equal(moveVertex(erased, stem.b, { x: 925, y: 525 }), false, 'The erased original endpoint cannot be moved');
   assert.equal(erased.vertices.length, 4);
-  assert.equal(erased.vertices.find(v => v.id === stem.b).y, 525);
+  assert.equal(erased.vertices.some(v => v.id === stem.b), false);
+  const surviving = erased.edges.find(edge => edge.id === stem.id);
+  assert.equal(erased.vertices.find(v => v.id === surviving.b).y, 875);
+  assert.equal(surviving.cutEnds.b, true, 'Automatic joining must retain the intentional cut');
   validateDocument(erased);
 });
 

@@ -45,7 +45,7 @@ Start above the airlock. The two upper airlock wall ports are the attachment poi
 | Paste | Ctrl+V | Preview a copy at the pointer; move and click to place, or press Escape to cancel. Repeat Ctrl+V for another copy. |
 | Wall | W | Click to chain walls, or drag to draw one wall. Drawing along an opening fills just the covered portion. Only 0°, 45°, 90° and equivalent directions are allowed. |
 | Door | D | Click to place a fixed-size opening; aim near the middle to center it between corners or branches. CENTER in the preview confirms snapping. Click an existing opening to restore the wall. |
-| Eraser | E | Drag across walls to erase freely; choose the brush diameter in the top bar. One stroke is one undo action. The ship artwork stays protected. |
+| Eraser | E | Drag across walls to erase freely; choose the brush diameter in the top bar. Hidden endpoints are removed and erased cuts do not attract later drawing. One stroke is one undo action. The ship artwork stays protected. |
 | Room | R | Start at DOOR, END or CENTER to attach a room with a centered door. Drag straight outward for a square room, sideways for a default depth, or diagonally to set both dimensions. Free rooms use **Rotate 45°** or **Draw a 45° room** in Quick Guide. |
 | Rotate room | Shift+R | Toggle a free room's 45° orientation, including during placement. Attached rooms align with their receiving wall or corridor mouth. |
 | Corridor | C | Drag a route for two parallel walls. CENTER or DOOR aligns the start; END continues an open corridor outward before turning. Finish near a target to fit the endpoint automatically. |
@@ -105,6 +105,12 @@ When finishing a corridor, aim near the same **CENTER** or **DOOR** targets used
 
 **Save project** writes the same editable document as `.revola`, useful for backup and interchange without the image. Older `.revola.json` projects remain readable. Keep a project copy if another image editor or optimizer will process your PNG: such programs may remove custom metadata.
 
+**Save all** saves all five formats together once the map is closed: wall PNG/SVG,
+floor PNG/SVG and the editable `.revola` project. In Windows, choose one folder;
+existing matching files require one replacement confirmation. The browser
+downloads one `<Map name>-all.zip` containing all five files. Browser downloads
+keep the unsaved reminder, so retain the downloaded project before closing.
+
 Save names use **Map name** plus the output layer: for `RevolaReserveMap-1`, wall exports are `RevolaReserveMap-1-walls.png` / `.svg`, floor exports are `RevolaReserveMap-1-floors.png` / `.svg`, and the editable project is `RevolaReserveMap-1-source.revola`. The Windows save dialog suggests these names; the browser uses them for downloads.
 
 **Save wall SVG** exports a transparent, self-contained image with white vector walls. Continuous wall runs are merged and unnecessary outline points are removed within a 0.25 map pixel tolerance; door and eraser cut endpoints and corner miters stay exact. The bundled ship PNG is embedded once to preserve its detail without a large raster trace. The SVG retains the full 8192 or 16384 canvas at its original scale, contains no editing overlays or external image dependencies, and omits project metadata. It cannot be reopened as an editable map; SVG export leaves unsaved changes marked, so also save wall PNG or a project to continue editing later.
@@ -133,7 +139,7 @@ npm run package
 npm run test:packaged
 ```
 
-`test:ui` and `test:packaged` each include wall SVG, floor export and airlock wall-start checks. Focused checks are also available as `test:feedback`, `test:joining`, `test:diagonal`, `test:doors`, `test:selection`, `test:clipboard`, `test:corridors`, `test:corridor-end`, `test:airlock`, `test:ship-ports` and `test:raster`. Run the checks relevant to changed behavior and record actual results in [docs/CHECKLIST.md](docs/CHECKLIST.md).
+`test:ui` and `test:packaged` each include wall SVG, floor export, airlock wall-start, eraser feedback and Save all checks. Focused checks are also available as `test:feedback`, `test:joining`, `test:diagonal`, `test:doors`, `test:selection`, `test:clipboard`, `test:corridors`, `test:corridor-end`, `test:airlock`, `test:ship-ports` and `test:raster`. Run the checks relevant to changed behavior and record actual results in [docs/CHECKLIST.md](docs/CHECKLIST.md).
 
 The Windows build is written to `dist/RevolaMapDrawer-win32-x64/`. Run **`RevolaMapDrawer.exe`** inside that folder; distribute the whole folder, not only the executable. Rebuild after source changes to refresh the packaged version used by the launcher and desktop shortcut. Build output, dependencies and generated test artifacts are excluded from source control.
 

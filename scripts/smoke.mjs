@@ -53,12 +53,15 @@ try {
   assert.equal(await page.evaluate(() => typeof window.revolaDesktop?.openFile), 'function');
   assert.equal(await page.evaluate(() => typeof window.require), 'undefined');
   await page.locator('#fit-button').click();
+  const settled = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await settled();
 
   const canvas = page.locator('#map-canvas');
   const rect = await canvas.boundingBox();
   assert.ok(rect && rect.width > 300 && rect.height > 300);
   const pointerAt = async (x, y) => {
     await page.mouse.move(x, y);
+    await settled();
     const values = (await page.locator('#pointer-position').textContent()).match(/-?\d+(?:\.\d+)?/g)?.map(Number);
     assert.equal(values?.length, 2, 'Visible pointer readout exposes map coordinates');
     return { x: values[0], y: values[1] };

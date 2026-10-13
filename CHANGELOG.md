@@ -5,6 +5,16 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-14
+
+Floor closure, eraser geometry and combined saves for the specialized
+**Revola: Post Hyper** editor, shared by the offline Windows application and browser version.
+
+- Detect closed maps from visible wall coverage, including overlapping wall ends whose centerlines do not meet; preserve genuinely open exterior doors and erased cuts.
+- Remove erased wall geometry and unused graph points so invisible wall skeletons no longer attract or interfere with later editing; support older saved erasures.
+- Add **Save all** for wall PNG/SVG, floor PNG/SVG and the editable `.revola` project, retaining the existing layer suffixes.
+- Save the complete set to one selected folder in Windows, with one overwrite confirmation and rollback on write failure; download one ZIP in the browser.
+
 ## [0.11.1] - 2026-10-12
 
 Consistent save filenames for the specialized **Revola: Post Hyper** editor,
