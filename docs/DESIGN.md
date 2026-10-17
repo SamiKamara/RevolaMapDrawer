@@ -1,6 +1,6 @@
 # Revola Map Drawer — implementation design
 
-Implementation baseline: version 0.12.0. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
+Implementation baseline: version 0.13.0. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
 
 ## Product and first milestone
 
@@ -28,13 +28,34 @@ The first runnable milestone established manual walls, fixed-width door cuts, un
 
 ## Browser distribution
 
-The browser version uses the same `index.html`, `src/` geometry, rendering and local file-input/download paths as the native application. `npm run build:web` emits a separate allowlisted static build in ignored `web-dist/`, with minified content-hashed JavaScript/CSS and byte-identical hashed ship/background PNGs. Vercel serves only this output, without server functions, map uploads, analytics, remote fonts or external runtime dependencies. Keep the native file-based loading contract unchanged.
+The browser version uses the same `index.html`, `src/` geometry, rendering and local file-input/download paths as the native application. `npm run build:web` emits a separate allowlisted static build in ignored `web-dist/`, with minified content-hashed JavaScript/CSS, bundled ship vectors and the byte-identical hashed background PNG. Vercel serves only this output, without server functions, map uploads, analytics, remote fonts or external runtime dependencies. Keep the native file-based loading contract unchanged.
 
-Hashed assets have one-year immutable browser caching. A web-only service worker caches the complete editor shell and fixed ship, serves repeat/offline loads locally, and caches the optional star background on first use. Load that background only after floor analysis finds a closed map. It can be unavailable on a first offline closure; floor analysis and exports do not depend on the background. Offline caching stores application files only; there is no automatic map persistence. Downloads preserve the existing conservative dirty-state behavior because their completion cannot be confirmed.
+Hashed assets have one-year immutable browser caching. A web-only service worker caches the complete editor shell including ship vectors, serves repeat/offline loads locally, and caches the optional star background on first use. Load that background only after floor analysis finds a closed map. It can be unavailable on a first offline closure; floor analysis and exports do not depend on the background. Offline caching stores application files only; there is no automatic map persistence. Downloads preserve the existing conservative dirty-state behavior because their completion cannot be confirmed.
 
 An updated worker waits until every previous editor tab closes, preventing a running editor from switching source versions. Reopening online allows the browser to discover an update; the first reopening may still use the previous worker until it finishes installing. Cached versions and browser storage can be evicted. See [WEB.md](WEB.md) for deployment, measured transfer sizes and exact verification scope.
 
 ## Document and geometry contracts
+
+### Version 0.13.0 rectangular rooms and vector ship
+
+The separate rectangular-room tool creates four-corner rooms through the same
+gesture, attachment validation, centered door, rotation and Shift-square flow as
+chamfered Room. Both tools produce ordinary graph edges and retain the version 2
+document schema. Rectangles retain a useful minimum footprint (450 px on the default grid),
+doorway clearance and the fixed 375 px opening. Recognized rectangular outlines remain resizable.
+
+The fixed ship and airlock now use compact white vector geometry shared by Canvas
+and wall SVG export. Simplify the hull deliberately instead of tracing raster edge
+noise; preserve recognizable hull, engines and cockpit partition. Keep both 375 px
+doorways, exact anchor, pinned ports and door-centered mirror transform. The ship
+remains protected artwork outside the editable wall graph. Preserve the existing
+floor/closure barrier and its original coverage unless explicitly verified changes
+are required. Source reference PNGs and the derived raster reference stay unchanged.
+
+Wall SVG no longer embeds an image and needs no ship-image IPC or fetch. It is a
+self-contained vector image at the existing world bounds. The browser bundles ship
+geometry in its hashed application module; only the optional star background
+remains a separate image. Historical raster descriptions below document earlier versions.
 
 ### Version 0.12.0 visible closure and eraser endpoints
 
@@ -195,7 +216,7 @@ Recognized room sides first attempt shape-preserving resizing. The room's other 
 
 ## Reference fidelity
 
-Inspect the supplied transparent reference PNGs composited on black. Record wall thickness, clear door width, corridor width, chamfer, and anchor bounds in `REFERENCE_ANALYSIS.md`, distinguishing measurements from provisional interpretation. Use original ship pixels where a clean crop is possible; retain attribution to the supplied file and a reproducible extraction script. The anchor must mirror horizontally without changing the upper airlock connection position. Wall roughness is seeded and stable between redraws, save/load and export; it must not become grey wall fill. Antialiasing may change alpha only.
+Inspect the supplied transparent reference PNGs composited on black. Record wall thickness, clear door width, corridor width, chamfer, and anchor bounds in `REFERENCE_ANALYSIS.md`, distinguishing measurements from provisional interpretation. Use the compact shared ship vectors introduced in 0.13.0; retain attribution to the supplied file and a reproducible extraction script. The anchor must mirror horizontally without changing the upper airlock connection position. Wall roughness is seeded and stable between redraws, save/load and export; it must not become grey wall fill. Antialiasing may change alpha only.
 
 ## Saving and opening
 
@@ -230,7 +251,7 @@ Native dialogs handle cancel without false success. Save/load errors leave the c
 
 ## Interface
 
-Dark desktop workspace inspired by conventional graphics editors: top File actions, narrow left tool rail, contextual options, black central canvas and right document panel. Tools: Select (V), Wall (W), Door (D), Eraser (E), Room (R), Corridor (C), Hand (H). Quick Guide sits below Document, explicitly explains **Rotate 45°**, and includes a direct rotation button; Shift+R also toggles rotation. Eraser brush diameters are 100/200/400/800 map pixels. Keep the internal workspace concise: no brand logo, welcome/example overlay, fixed-direction or wall-dimension explanation, duplicate document canvas/background/expansion notes, preview/export caption or offline/version badges. Canvas heading retains the current dimensions. Selection retains Copy/Paste/Delete actions and concise live statistics, with no idle instructions or clipboard explanation. Current tool help and error/operation feedback remain available. Scroll zoom anchors at cursor, Space+drag/middle mouse pans, F fits the map, Escape cancels an in-progress gesture. Ctrl+Z/Y, Ctrl+S, Ctrl+O follow standard conventions. Document replacement requires confirmation when unsaved; reversible drawing/erasing uses undo. Keep high contrast and named accessible controls; an empty map opens directly to the canvas and fixed airlock.
+Dark desktop workspace inspired by conventional graphics editors: top File actions, narrow left tool rail, contextual options, black central canvas and right document panel. Tools: Select (V), Wall (W), Door (D), Eraser (E), Room (R), Rectangular room (B), Corridor (C), Hand (H). Quick Guide sits below Document, explicitly explains **Rotate 45°**, and includes a direct rotation button; Shift+R also toggles rotation. Eraser brush diameters are 100/200/400/800 map pixels. Keep the internal workspace concise: no brand logo, welcome/example overlay, fixed-direction or wall-dimension explanation, duplicate document canvas/background/expansion notes, preview/export caption or offline/version badges. Canvas heading retains the current dimensions. Selection retains Copy/Paste/Delete actions and concise live statistics, with no idle instructions or clipboard explanation. Current tool help and error/operation feedback remain available. Scroll zoom anchors at cursor, Space+drag/middle mouse pans, F fits the map, Escape cancels an in-progress gesture. Ctrl+Z/Y, Ctrl+S, Ctrl+O follow standard conventions. Document replacement requires confirmation when unsaved; reversible drawing/erasing uses undo. Keep high contrast and named accessible controls; an empty map opens directly to the canvas and fixed airlock.
 
 ## Agent implementation protocol
 

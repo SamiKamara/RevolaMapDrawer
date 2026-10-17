@@ -144,7 +144,6 @@ async function renderContentPng(document, { paint, metadata, grayscale, onProgre
 
 /** Return a complete editable wall PNG without allocating a full-map canvas. */
 export async function renderMapPng(document, { shipImage, onProgress } = {}) {
-  if (!shipImage) throw new Error('The ship image must be loaded before exporting the map.');
   return renderContentPng(document, { paint: context => drawMap(context, document, { shipImage }), metadata: document, grayscale: 255, onProgress });
 }
 

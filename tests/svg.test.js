@@ -1,13 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { createDocument } from '../src/model.js';
 import { drawMap } from '../src/render.js';
 import { renderMapSvg } from '../src/svg.js';
+import { SHIP_VECTOR_OUTLINES, SHIP_VECTOR_POINT_COUNT } from '../src/ship-vector.js';
 
-const shipBytes = readFileSync(new URL('../assets/ship.png', import.meta.url));
-const shipDataUrl = `data:image/png;base64,${shipBytes.toString('base64')}`;
-const svg = document => renderMapSvg(document, { shipDataUrl });
+const svg = document => renderMapSvg(document);
 
 function documentWithWalls(points, { roughness = 0, reverse = false } = {}) {
   const document = createDocument();
@@ -121,7 +119,7 @@ test('SVG retains diagonal doorway length, sharp joined corners and erased corne
   const firstEnd = Math.max(...exported[1].map(along)), secondStart = Math.min(...exported[2].map(along));
   assert.ok(Math.abs(secondStart - firstEnd - 375) < 1e-9);
   const before = svg(document);
-  assert.equal((before.match(/<path /g) ?? []).length, 1);
+  assert.equal((before.match(/<path /g) ?? []).length, 2);
   assert.ok(before.includes('fill-rule="nonzero"'));
   assert.ok(!before.includes('<rect') && !before.includes('stroke='));
   document.edges[0].gaps.push({ id: 'corner-gap', start: 0.999998, end: 1 });
@@ -167,19 +165,19 @@ test('rough SVG outlines are unchanged by reversed collinear graph subdivisions'
   }
 });
 
-test('SVG embeds the unchanged ship once, retains native scale, and mirrors about the outer doorway center', () => {
+test('SVG uses a compact true vector ship, retains native scale, and mirrors about the outer doorway center', () => {
   const document = createDocument();
   for (const mirrored of [false, true]) {
     document.ship.mirrored = mirrored;
     const output = svg(document);
-    assert.equal((output.match(/<image /g) ?? []).length, 1);
-    assert.equal((output.match(/data:image\/png;base64,/g) ?? []).length, 1);
-    assert.ok(output.includes('x="-1269" y="-70" width="2459" height="1931"'));
+    assert.equal((output.match(/<image /g) ?? []).length, 0);
+    assert.ok(!/data:|href=|url\(/.test(output), 'The file contains only built-in vectors, with no raster or external assets');
+    assert.equal((output.match(/data-ship="true"/g) ?? []).length, 1);
     assert.ok(output.includes(`transform="translate(${mirrored ? 4125 : 4096} 4740)${mirrored ? ' scale(-1 1)' : ''}"`));
-    const encoded = /href="data:image\/png;base64,([^"]+)"/.exec(output)[1];
-    assert.deepEqual(Buffer.from(encoded, 'base64'), shipBytes);
-    assert.ok(output.length < shipDataUrl.length + 400, 'Empty map overhead does not trace thousands of raster outline points');
-    assert.ok(!output.includes('<path '));
+    assert.ok(output.length < 2400, 'The simplified prefab does not trace every alpha pixel');
+    const polygons = polygonsFromSvg(output);
+    assert.equal(polygons.reduce((sum, ring) => sum + ring.length, 0), SHIP_VECTOR_POINT_COUNT);
+    assert.deepEqual(polygons, SHIP_VECTOR_OUTLINES);
   }
 });
 
@@ -189,9 +187,9 @@ test('SVG keeps both door centers and the corridor path aligned when ship facing
   const wallPath = pathData(svg(document));
   for (const mirrored of [true, false]) {
     document.ship.mirrored = mirrored;
-    const output = svg(document), image = /<image\s[^>]+>/.exec(output)[0];
-    const [, translateX, translateY, scale] = /transform="translate\(([-\d.]+) ([-\d.]+)\)( scale\(-1 1\))?"/.exec(image);
-    const left = Number(/\sx="([-\d.]+)"/.exec(image)[1]), top = Number(/\sy="([-\d.]+)"/.exec(image)[1]);
+    const output = svg(document), ship = /<path data-ship="true"[^>]+>/.exec(output)[0];
+    const [, translateX, translateY, scale] = /transform="translate\(([-\d.]+) ([-\d.]+)\)( scale\(-1 1\))?"/.exec(ship);
+    const left = -1269, top = -70;
     for (const localY of [30, 638]) {
       assert.equal(Number(translateX) + (scale ? -1 : 1) * (left + 1283.5), 4110.5);
       assert.equal(Number(translateY) + top + localY, localY === 30 ? 4700 : 5308);
@@ -217,13 +215,13 @@ test('expanded SVG preserves world origin, title safety, determinism and the exa
     'The viewBox moves the canvas window without translating or scaling world geometry');
 });
 
-test('SVG rejects invalid documents and unsafe or missing asset URLs', () => {
+test('SVG rejects invalid documents and never reads caller-supplied asset URLs', () => {
   assert.throws(() => svg({}), /Unsupported Revola project/);
   const document = createDocument();
+  const expected = renderMapSvg(document);
   for (const value of [undefined, 'file:///assets/ship.png', 'https://example.test/ship.png',
-    'data:image/svg+xml;base64,PHN2Zz4=', `${shipDataUrl}" onload="alert(1)`,
-    `data:image/png;base64,${'A'.repeat(3 * 1024 * 1024)}`]) {
-    assert.throws(() => renderMapSvg(document, { shipDataUrl: value }), /bundled ship PNG/);
+    'data:image/svg+xml;base64,PHN2Zz4=', '" onload="alert(1)']) {
+    assert.equal(renderMapSvg(document, { shipDataUrl: value }), expected);
   }
   const invalid = documentWithWalls([{ x: 1000, y: 1000 }, { x: 2300, y: 1700 }]);
   assert.throws(() => svg(invalid), /45° direction/);

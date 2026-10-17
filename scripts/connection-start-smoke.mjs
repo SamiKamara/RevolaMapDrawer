@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractFile } from '@electron/asar';
 import { createDocument, addWall, addDoor, addCorridor, validateDocument } from '../src/model.js';
+import { SHIP_VECTOR_OUTLINES, SHIP_VECTOR_POINT_COUNT } from '../src/ship-vector.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packaged = process.argv.includes('--packaged') || process.env.PACKAGED === '1';
@@ -14,7 +15,7 @@ const artifacts = path.join(root, 'artifacts');
 await fs.mkdir(artifacts, { recursive: true });
 const destination = name => path.join(artifacts, `${prefix}-${name}`);
 const executablePath = path.join(root, 'dist', 'RevolaMapDrawer-win32-x64', 'RevolaMapDrawer.exe');
-const matchingSourceFiles = ['index.html', 'src/app.js', 'src/corridors.js', 'src/model.js', 'src/room-start.js', 'src/rooms.js', 'src/ship.js', 'src/render.js', 'assets/ship.png'];
+const matchingSourceFiles = ['index.html', 'src/app.js', 'src/corridors.js', 'src/model.js', 'src/room-start.js', 'src/rooms.js', 'src/ship.js', 'src/render.js', 'src/ship-vector.js'];
 if (packaged) {
   const archive = path.join(path.dirname(executablePath), 'resources', 'app.asar');
   for (const file of matchingSourceFiles) assert.ok((await fs.readFile(path.join(root, file))).equals(extractFile(archive, file)), `Packaged ${file} matches current source`);
@@ -70,12 +71,12 @@ try {
   await expect(page.locator('#status-message')).not.toHaveText('Preparing workspace…');
   const canvas = page.locator('#map-canvas'); await expect(canvas).toBeVisible();
   if (packaged) assert.match((await page.evaluate(() => location.href)).toLowerCase(), /\/dist\/revolamapdrawer-win32-x64\/resources\/app(?:\.asar)?\/index\.html$/);
-  await page.evaluate(() => {
+  await page.evaluate(({ pointCount, first }) => {
     // Observe actual editor labels and dashed Canvas previews. Target lookup,
     // event handlers, camera transforms, document and drawing remain intact.
     window.__revolaConnectionDraws = { labels: [], paths: [], shipDraws: 0 };
     const prototype = CanvasRenderingContext2D.prototype;
-    for (const method of ['beginPath', 'moveTo', 'lineTo', 'stroke', 'fillText', 'drawImage']) {
+    for (const method of ['beginPath', 'moveTo', 'lineTo', 'stroke', 'fill', 'fillText']) {
       const original = prototype[method];
       prototype[method] = function (...args) {
         if (this.canvas.id === 'map-canvas') {
@@ -83,15 +84,15 @@ try {
           if (method === 'moveTo' || method === 'lineTo') this.__revolaConnectionPath?.push({ x: args[0], y: args[1] });
           if (method === 'stroke' && this.getLineDash().length) window.__revolaConnectionDraws.paths.push({ color: this.strokeStyle, points: this.__revolaConnectionPath?.map(point => ({ ...point })) });
           if (method === 'fillText') window.__revolaConnectionDraws.labels.push(String(args[0]));
-          if (method === 'drawImage' && /(?:^|\/)ship\.png(?:$|\?)/.test(args[0]?.currentSrc || args[0]?.src || '')) window.__revolaConnectionDraws.shipDraws++;
+          if (method === 'fill' && this.__revolaConnectionPath?.length === pointCount &&
+              this.__revolaConnectionPath[0].x === first.x && this.__revolaConnectionPath[0].y === first.y) window.__revolaConnectionDraws.shipDraws++;
         }
         return original.apply(this, args);
       };
     }
-  });
+  }, { pointCount: SHIP_VECTOR_POINT_COUNT, first: SHIP_VECTOR_OUTLINES[0][0] });
   const settled = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  // Tool feedback can replace the startup status before the bundled PNG has
-  // decoded. Wait for a real rendered ship rather than racing asset readiness.
+  // Wait for a completed vector-ship fill before measuring the rendered view.
   await page.locator('#fit-button').click();
   await expect.poll(() => page.evaluate(() => window.__revolaConnectionDraws.shipDraws), { timeout: 30_000 }).toBeGreaterThan(0);
   let view, mapPoint;

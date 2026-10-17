@@ -34,7 +34,7 @@ export function isShipPort(ship, point, tolerance = 1e-6) {
     Math.abs(point.x - port.x) < tolerance && Math.abs(point.y - port.y) < tolerance);
 }
 
-// These are interaction targets only: the protected raster remains outside the
+// These are interaction targets only: the protected vector remains outside the
 // editable graph, and existing ship port coordinates do not move.
 export function shipDoorways(ship) {
   if (!Number.isFinite(ship?.x) || !Number.isFinite(ship?.y)) return [];

@@ -23,10 +23,10 @@ let doc = model.createDocument();
 let savedState = JSON.stringify(doc);
 let history = [], future = [];
 let tool = 'wall', shipImage, selected = emptySelection(), selectionMode = 'single', pointer = null, wallStart = null, gesture = null;
+const isRoomTool = value => value === 'room' || value === 'rectangle';
 let spaceHeld = false, busy = false, scheduled = false;
 // Map fragments stay local to this editor session, including across New/Open.
 let clipboard = null, paste = null;
-let shipDataUrl;
 let floor = null, floorKey = '', floorPendingKey = '', starsPattern, starsRequested = false;
 function loadStars() {
   if (starsRequested || starsPattern) return;
@@ -71,6 +71,7 @@ const descriptions = {
   door: ['Door tool', 'Click a wall to cut a 375 px opening. Aim near the middle between corners or branches to snap exactly to CENTER. Click an existing opening to restore the wall.'],
   eraser: ['Eraser tool', 'Drag to erase any length of wall. Choose Brush size in the top bar. One stroke is one undo step. The fixed ship stays protected.'],
   room: ['Room tool', 'Hold Shift while dragging to keep width and depth equal. Start at DOOR, END or CENTER for a centered door. Drag outward, sideways or diagonally to size the room; the adjoining side stays centered on the start. Free rooms use Rotate 45° or Shift + R.'],
+  rectangle: ['Rectangle room tool', 'Drag a room with four square corners. Hold Shift to keep width and depth equal. Start at DOOR, END or CENTER for a centered door. Free rooms use Rotate 45° or Shift + R.'],
   corridor: ['Corridor tool', 'Drag a route to draw a 580 px corridor. CENTER or DOOR aligns the start; from END, continue outward before turning. The ship’s outer airlock door also aligns. Finish near a target to align the endpoint while keeping your start and turn directions. Use broad turns.'],
   hand: ['Hand tool', 'Drag to move around the map. Scroll to zoom at your cursor, or press F to fit the whole map.'],
 };
@@ -191,7 +192,7 @@ function setTool(next) {
   }
   $('active-tool-name').textContent = descriptions[next][0];
   $('tool-guide').textContent = descriptions[next][1];
-  $('rotate-option').hidden = next !== 'room';
+  $('rotate-option').hidden = !isRoomTool(next);
   $('eraser-option').hidden = next !== 'eraser';
   canvas.style.cursor = next === 'hand' ? 'grab' : next === 'select' ? 'default' : 'crosshair';
   status(descriptions[next][1]); renderSoon();
@@ -292,7 +293,7 @@ function handle(point, radius = 4, color = '#b5e8c6') {
 function roomPreview() {
   if (!gesture || gesture.type !== 'room') return [];
   if (gesture.target) return gesture.segments || [];
-  return model.roomSegments(gesture.start, gesture.end, $('rotate-room').checked, doc.style.chamfer);
+  return model.roomSegments(gesture.start, gesture.end, $('rotate-room').checked, gesture.rectangular ? 0 : doc.style.chamfer);
 }
 function updateRoom(current, aim, square = current.square) {
   current.square = Boolean(square); current.aim = { ...aim };
@@ -308,7 +309,7 @@ function updateRoom(current, aim, square = current.square) {
   if (key === current.previewKey) return;
   current.previewKey = key; current.segments = []; current.valid = false;
   try {
-    const options = { square: current.square };
+    const options = { square: current.square, rectangular: current.rectangular };
     current.segments = attachedRoomSegments(doc, current.target, current.end, options);
     addAttachedRoom(clone(doc), current.target, current.end, options);
     current.valid = true;
@@ -434,7 +435,7 @@ function render() {
   ctx.restore();
   // Drawing previews may cross the current boundary; commit expands the map
   // without moving the camera, content or original center.
-  if (pointer && drawable(pointer) && !inside(pointer) && ['wall', 'room', 'corridor'].includes(tool)) {
+  if (pointer && drawable(pointer) && !inside(pointer) && ['wall', 'room', 'rectangle', 'corridor'].includes(tool)) {
     ctx.strokeStyle = '#51725c'; ctx.lineWidth = 1 / camera.scale; ctx.setLineDash([5 / camera.scale, 5 / camera.scale]);
     ctx.strokeRect(-4096, -4096, 16384, 16384); ctx.setLineDash([]);
   }
@@ -494,8 +495,8 @@ function render() {
       ctx.fillText(`END · ${targetLabel(endTarget)}`, 0, -20); ctx.restore();
     }
   }
-  if (['corridor', 'room'].includes(tool) && (gesture?.type === tool || (!gesture && pointer && drawable(pointer)))) {
-    const target = gesture?.type === tool ? gesture.target : tool === 'room' ? roomTarget(pointer) : corridorTarget(pointer);
+  if ((tool === 'corridor' || isRoomTool(tool)) && (gesture?.type === (isRoomTool(tool) ? 'room' : tool) || (!gesture && pointer && drawable(pointer)))) {
+    const target = gesture ? gesture.target : isRoomTool(tool) ? roomTarget(pointer) : corridorTarget(pointer);
     const start = gesture?.type === 'corridor' ? gesture.points[0] : gesture?.type === 'room' ? gesture.start : target?.point ?? model.snapPoint(pointer, doc.style.grid);
     handle(start, target ? 5 : 3);
     if (target) {
@@ -569,10 +570,10 @@ canvas.addEventListener('pointerdown', event => {
     try { model.eraseWalls(gesture.preview, point, point, gesture.radius); }
     catch (error) { gesture = null; status(error.message, true); return; }
     canvas.setPointerCapture(event.pointerId); refresh();
-  } else if (tool === 'room') {
+  } else if (isRoomTool(tool)) {
     const target = roomTarget(point);
     const start = target?.point ?? model.snapPoint(point, doc.style.grid);
-    gesture = { type: 'room', target, start, pointerStart: { ...point }, end: { ...start }, square: event.shiftKey, valid: false, segments: [] };
+    gesture = { type: 'room', rectangular: tool === 'rectangle', target, start, pointerStart: { ...point }, end: { ...start }, square: event.shiftKey, valid: false, segments: [] };
     status(target ? `Room start aligned to the ${targetName(target)}. Drag toward clear space to size the room.` : 'Drag to size a room.');
     canvas.setPointerCapture(event.pointerId); refresh();
   } else if (tool === 'corridor') {
@@ -665,9 +666,9 @@ function finishPointer(event) {
   else if (current.type === 'room') {
     updateRoom(current, world(local(event)), event.shiftKey);
     if (distance(current.pointerStart, world(local(event))) * camera.scale > 3 && distance(current.start, current.end) > 5) commit(() => current.target
-      ? addAttachedRoom(doc, current.target, current.end, { square: current.square })
-      : model.addRoom(doc, current.start, current.end, $('rotate-room').checked),
-    current.target ? `Room placed with its door at the ${targetName(current.target)}.` : 'Room placed. Drag a side to resize it while keeping its chamfers.');
+      ? addAttachedRoom(doc, current.target, current.end, { square: current.square, rectangular: current.rectangular })
+      : model.addRoom(doc, current.start, current.end, $('rotate-room').checked, { rectangular: current.rectangular }),
+    current.target ? `Room placed with its door at the ${targetName(current.target)}.` : current.rectangular ? 'Rectangular room placed. Drag a side to resize it.' : 'Room placed. Drag a side to resize it while keeping its chamfers.');
   }
   else if (current.type === 'corridor' && distance(current.pointerStart, world(local(event))) * camera.scale > 3) {
     const route = corridorRoute(current, world(local(event)));
@@ -718,22 +719,6 @@ async function openDocument() {
   } else { $('file-input').value = ''; $('file-input').click(); }
 }
 function safeName(name) { return (name || 'Untitled map').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim().slice(0, 80).replace(/[. ]+$/, '') || 'Untitled map'; }
-async function embeddedShip() {
-  if (shipDataUrl) return shipDataUrl;
-  if (window.revolaDesktop) shipDataUrl = await window.revolaDesktop.shipPngDataUrl();
-  else {
-    const response = await fetch(new URL('../assets/ship.png', import.meta.url));
-    if (!response.ok) throw new Error('The bundled ship image could not be loaded.');
-    const blob = new Blob([await response.arrayBuffer()], { type: 'image/png' });
-    shipDataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error('The bundled ship image could not be embedded.'));
-      reader.readAsDataURL(blob);
-    });
-  }
-  return shipDataUrl;
-}
 async function exportBytes(snapshot, format, exportFloor) {
   if (format.layer === 'floor' && format.kind === 'png') {
     return renderFloorPng(snapshot, { floor: exportFloor,
@@ -751,7 +736,7 @@ async function exportBytes(snapshot, format, exportFloor) {
   }
   if (format.kind === 'svg') {
     status('Preparing transparent SVG…');
-    return new TextEncoder().encode(renderMapSvg(snapshot, { shipDataUrl: await embeddedShip() }));
+    return new TextEncoder().encode(renderMapSvg(snapshot));
   }
   return new TextEncoder().encode(JSON.stringify(snapshot, null, 2));
 }
@@ -853,7 +838,7 @@ function refreshRotation() {
 $('rotate-room').addEventListener('change', refreshRotation);
 $('eraser-size').addEventListener('change', renderSoon);
 $('guide-rotate-room').addEventListener('click', () => {
-  const rotated = $('rotate-room').checked; if (tool !== 'room') setTool('room');
+  const rotated = $('rotate-room').checked; if (!isRoomTool(tool)) setTool('room');
   $('rotate-room').checked = !rotated; refreshRotation(); status($('rotate-room').checked ? 'Room rotation set to 45°. Drag on the canvas to place it.' : 'Room rotation set to 0°.');
 });
 $('fit-button').addEventListener('click', fit);
@@ -885,11 +870,11 @@ window.addEventListener('keydown', event => {
     updateRoom(gesture, gesture.aim ?? pointer ?? gesture.pointerStart, true); renderSoon();
   }
   if (event.shiftKey && event.key.toLowerCase() === 'r') {
-    event.preventDefault(); if (tool !== 'room') setTool('room');
+    event.preventDefault(); if (!isRoomTool(tool)) setTool('room');
     $('rotate-room').checked = !$('rotate-room').checked; refreshRotation(); return;
   }
   if (event.code === 'Space') { event.preventDefault(); spaceHeld = true; canvas.style.cursor = 'grab'; }
-  const tools = { v: 'select', w: 'wall', d: 'door', e: 'eraser', r: 'room', c: 'corridor', h: 'hand' };
+  const tools = { v: 'select', w: 'wall', d: 'door', e: 'eraser', r: 'room', b: 'rectangle', c: 'corridor', h: 'hand' };
   if (tools[event.key.toLowerCase()]) setTool(tools[event.key.toLowerCase()]);
   else if (event.key.toLowerCase() === 'f') fit();
   else if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); deleteSelected(); }

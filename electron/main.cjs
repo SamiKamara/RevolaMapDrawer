@@ -112,12 +112,6 @@ ipcMain.handle('revola:save-all', oneSave(async (options) => {
   return writeFileSet(directory, files, { existing });
 }));
 
-ipcMain.handle('revola:ship-png', async (event) => {
-  trusted(event);
-  // Only the fixed bundled artwork is exposed; SVG stays self-contained and pixel-exact.
-  return `data:image/png;base64,${(await fs.readFile(path.join(ROOT, 'assets', 'ship.png'))).toString('base64')}`;
-});
-
 ipcMain.on('revola:dirty', (event, value) => {
   try { trusted(event); } catch { return; }
   dirty = value === true;

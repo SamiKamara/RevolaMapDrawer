@@ -67,13 +67,13 @@ test('draft upload accepts only clean exact local/remote tagged source and canon
 });
 
 test('production allowlist rejects repository metadata, originals, dependencies and future stray files', () => {
-  for (const name of ['', '/src', '/src/app.js', '\\electron\\preload.cjs', '/assets/ship.png', '/assets/ship-floor-contour.js', 'package.json', 'index.html']) {
+  for (const name of ['', '/src', '/src/app.js', '\\electron\\preload.cjs', '/src/ship-vector.js', '/assets/editor-stars.png', '/assets/ship-floor-contour.js', 'package.json', 'index.html']) {
     assert.equal(isRuntimePath(name), true, name);
   }
   for (const name of ['.git/config', '.github/workflows/release.yml', 'AGENTS.md', 'README.md', 'LICENSE', 'docs/DESIGN.md',
     'tests/model.test.js', 'scripts/package-app.mjs', 'package-lock.json', 'node_modules/electron/package.json',
     'RevolaCandiMapASample.png', 'alustava toteutusohje.txt', 'personal.revola.json', 'src/../private.js',
-    'assets/.private.js', 'src/nested/private.js', 'src/.env.js', 'dist/RevolaMapDrawer.exe']) {
+    'assets/ship.png', '/assets/ship.png', '\\assets\\ship.png', 'assets/.private.js', 'src/nested/private.js', 'src/.env.js', 'dist/RevolaMapDrawer.exe']) {
     assert.equal(isRuntimePath(name), false, name);
   }
   assert.deepEqual(runtimeManifest({ name: 'app', version: '1.2.3', description: 'specialized tool', license: 'MIT', type: 'module',
@@ -124,11 +124,12 @@ test('package verification detects changed licenses, stale source, development m
   for (const folder of ['src', 'assets', 'electron', 'docs']) await fs.mkdir(path.join(source, folder), { recursive: true });
   for (const folder of ['src', 'assets', 'electron']) await fs.mkdir(path.join(stage, folder), { recursive: true });
   await fs.mkdir(path.join(packaged, 'resources'), { recursive: true });
-  const files = ['index.html', 'src/app.js', 'assets/ship.png', 'electron/main.cjs'];
+  const files = ['index.html', 'src/app.js', 'src/ship-vector.js', 'assets/editor-stars.png', 'electron/main.cjs'];
   for (const file of files) {
     await fs.writeFile(path.join(source, file), `original ${file}`);
     await fs.copyFile(path.join(source, file), path.join(stage, file));
   }
+  await fs.writeFile(path.join(source, 'assets', 'ship.png'), 'source reference only');
   await fs.writeFile(path.join(source, 'package.json'), JSON.stringify(packageJson));
   await fs.writeFile(path.join(source, 'LICENSE'), 'MIT fixture copyright and permission notice\n');
   await fs.copyFile(path.join(source, 'LICENSE'), path.join(packaged, 'LICENSE-RevolaMapDrawer.txt'));
@@ -141,6 +142,11 @@ test('package verification detects changed licenses, stale source, development m
   const rebuild = async () => { await createPackage(stage, archive); uncache(archive); };
   await rebuild();
   assert.equal((await verifyPackagedSource(source, packaged)).files, files.length);
+  await fs.copyFile(path.join(source, 'assets', 'ship.png'), path.join(stage, 'assets', 'ship.png'));
+  await rebuild();
+  await assert.rejects(verifyPackagedSource(source, packaged), /Unexpected file.*assets\/ship\.png/);
+  await fs.unlink(path.join(stage, 'assets', 'ship.png'));
+  await rebuild();
   const packagedLicense = path.join(packaged, 'LICENSE-RevolaMapDrawer.txt');
   await fs.unlink(packagedLicense);
   await assert.rejects(verifyPackagedSource(source, packaged), /ENOENT.*LICENSE-RevolaMapDrawer\.txt/);

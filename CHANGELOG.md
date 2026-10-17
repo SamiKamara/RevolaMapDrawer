@@ -5,6 +5,16 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-17
+
+Rectangular rooms and a compact vector ship for the specialized
+**Revola: Post Hyper** editor, shared by the offline Windows application and browser version.
+
+- Add a rectangular room drawing tool with four square corners, sharing the existing room attachment, centered doorway, 45° rotation, Shift square constraint and undo behavior.
+- Replace the fixed ship and airlock raster rendering with simplified white vector outlines, retaining both exact 375 px doorways, pinned attachment points, scale and door-centered mirroring.
+- Export wall SVGs entirely as vectors without embedded PNGs or external resources. The editor and wall PNG export use the same ship geometry.
+- Bundle ship vectors into the browser runtime so offline startup and SVG export need no ship image download.
+
 ## [0.12.0] - 2026-10-14
 
 Floor closure, eraser geometry and combined saves for the specialized

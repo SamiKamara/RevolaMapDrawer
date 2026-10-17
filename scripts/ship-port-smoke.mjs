@@ -15,7 +15,7 @@ const artifacts = path.join(root, 'artifacts');
 await fs.mkdir(artifacts, { recursive: true });
 const destination = name => path.join(artifacts, `${prefix}-${name}`);
 const executablePath = path.join(root, 'dist', 'RevolaMapDrawer-win32-x64', 'RevolaMapDrawer.exe');
-const matchingSourceFiles = ['index.html', 'src/app.js', 'src/model.js', 'src/ship.js', 'src/render.js', 'assets/ship.png'];
+const matchingSourceFiles = ['index.html', 'src/app.js', 'src/model.js', 'src/ship.js', 'src/render.js', 'src/ship-vector.js'];
 if (packaged) {
   const archive = path.join(path.dirname(executablePath), 'resources', 'app.asar');
   for (const file of matchingSourceFiles) assert.ok((await fs.readFile(path.join(root, file))).equals(extractFile(archive, file)), `Packaged ${file} matches current source`);

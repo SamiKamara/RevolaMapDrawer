@@ -1,5 +1,6 @@
 /** Shared world-space renderer for the editing canvas and transparent exports. */
 import { shipWorldPoint } from './ship.js';
+import { appendShipPath } from './ship-vector.js';
 
 export const SHIP_BOUNDS = Object.freeze({ width: 2459, height: 1931 });
 export const SHIP_ANCHOR = Object.freeze({
@@ -12,17 +13,22 @@ export const SHIP_ANCHOR = Object.freeze({
 let shipPromise;
 export function loadShip() {
   if (!shipPromise) {
-    shipPromise = new Promise((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error('The bundled ship image could not be loaded.'));
-      image.src = new URL('../assets/ship.png', import.meta.url).href;
+    // Keep the existing CanvasImageSource API for callers that need an isolated
+    // prefab image. The editor and exports draw these same vectors directly.
+    shipPromise = Promise.resolve().then(() => {
+      const canvas = globalThis.document.createElement('canvas');
+      canvas.width = SHIP_BOUNDS.width; canvas.height = SHIP_BOUNDS.height;
+      const context = canvas.getContext('2d');
+      context.translate(SHIP_ANCHOR.x, SHIP_ANCHOR.y);
+      context.fillStyle = '#fff'; context.beginPath();
+      appendShipPath(context); context.fill();
+      return canvas;
     });
   }
   return shipPromise;
 }
 
-/** Actual image bounds, taking mirroring about the upper airlock entrance into account. */
+/** Native prefab bounds, taking mirroring about the upper airlock entrance into account. */
 export function shipBounds(ship) {
   const origin = shipWorldPoint(ship, { x: 0, y: 0 });
   const left = ship.mirrored
@@ -180,7 +186,7 @@ function addJoint(ctx, joint, style) {
 }
 
 /** Does not clear or paint a background. The caller controls pan/zoom and export dimensions. */
-export function drawMap(ctx, document, { shipImage, drawShip = true } = {}) {
+export function drawMap(ctx, document, { drawShip = true } = {}) {
   const vertices = new Map(document.vertices.map((vertex) => [vertex.id, vertex]));
   const style = { wallWidth: 50, doorWidth: 375, roughness: 2.25, ...document.style };
   const lines = new Map(), joints = new Map();
@@ -237,12 +243,14 @@ export function drawMap(ctx, document, { shipImage, drawShip = true } = {}) {
   }
   for (const joint of joints.values()) addJoint(ctx, joint, style);
   ctx.fill();
-  if (drawShip && shipImage && document.ship) {
+  if (drawShip && document.ship) {
     ctx.save();
     const origin = shipWorldPoint(document.ship, { x: 0, y: 0 });
     ctx.translate(origin.x, origin.y);
     if (document.ship.mirrored) ctx.scale(-1, 1);
-    ctx.drawImage(shipImage, -SHIP_ANCHOR.x, -SHIP_ANCHOR.y, SHIP_BOUNDS.width, SHIP_BOUNDS.height);
+    ctx.beginPath();
+    appendShipPath(ctx);
+    ctx.fill();
     ctx.restore();
   }
   ctx.restore();

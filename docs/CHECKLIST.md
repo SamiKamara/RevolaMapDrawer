@@ -2,6 +2,71 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Rectangular rooms and vector ship — version 0.13.0, 2026-10-17
+
+The owner requested four-corner rooms, simplified vector ship/airlock artwork,
+commit/push to `main`, an updated release and Vercel production deployment.
+Version **0.13.0** is selected for this feature milestone.
+
+- [x] Add rectangular rooms with the existing room tool's free/attached behavior.
+- [x] Replace ship rendering and wall SVG's embedded PNG with compact shared vectors.
+- [ ] Verify geometry/persistence, source UI, browser, native package and portable archive.
+- [x] Inspect and launch the actual rebuilt desktop test shortcut.
+- [ ] Commit/push `main`, verify immutable v0.13.0 assets and publish the requested release.
+- [ ] Deploy and verify the same browser runtime in Vercel production.
+
+Original reference PNGs, Finnish brief and the derived raster reference remain unchanged.
+Verified preparation:
+
+- `npm test`: **339/339** tests pass. Rectangular geometry covers free/rotated,
+  attached, existing-door and corridor-mouth placement; minimum 450 px default-grid
+  footprints prevent overlapping opposing walls. Existing chamfered behavior stays
+  unchanged. Projects retain version 2 and ordinary editable graph edges.
+- Dedicated source rectangular-room UI checks pass placement, live Shift changes,
+  rotation, resizing, cancellation, exact native reopen and one-step undo/redo.
+  Both ship facings preserve exact door center (4110.5,4700). All eight tools remain
+  visible at 1008 by 661 content size. Evidence: ignored rectangular-room PNG/JSON.
+- Ship/airlock use **144 points in five vector rings**. Actual native/browser SVGs
+  are **10,760 / 10,772 bytes** for normal/mirrored test maps and **12,223 bytes**
+  expanded, contain no image/data URL/external reference, and have **zero stable
+  wall differences and zero isolated-ship pixel differences** against Canvas.
+  Existing floor contour/barrier stays unchanged; <=1 px vector-edge probes verify
+  full coverage inside its footprint plus the 12 px rim. Original reference and
+  derived ship PNG bytes remain unchanged and are excluded from runtime packages.
+- `npm run test:raster` passes 8192 and 16384 PNG export, white RGB, transparency,
+  exact editable metadata, bounded stripe memory and zero stable interior/clear
+  differences. Direct vector tessellation under stripe translation differs only
+  at antialias edges: ship-only maximum 10/255 alpha and 12 seam pixels over 1/255
+  (0.0231% of 52,000 sampled seam pixels, maximum 6/255). Its explicit limits are
+  10/255 and 0.03%; ordinary wall limits remain 8/255 and 0.01%. Tight comparison
+  crops remain unchanged. Evidence: ignored export-raster-results.json.
+- `npm run test:airlock` passes measured 375 px openings, exact door-centered
+  mirroring, white vectors, both facings, native persistence and history. Preview
+  checks now respect the existing prohibition on saving during a gesture and
+  verify exact cancellation before placement.
+- Complete `npm run test:ui` and `npm run test:packaged` pass, including all
+  rectangular-room checks and actual native Save all/export/reopen behavior.
+  `npm run package` verifies **23 runtime files**, version 0.13.0 and current source
+  bytes; `assets/ship.png` is absent from the application archive.
+- Automatic `postpackage` refreshed the desktop shortcut. Separate `-VerifyOnly`
+  readback confirms target `<repository>/dist/RevolaMapDrawer-win32-x64/RevolaMapDrawer.exe`,
+  empty arguments, repository working directory and existing paths. Launched the
+  actual `.lnk` through Windows Shell; Computer Use selected the exact packaged
+  executable and visibly confirmed its vector ship, eight tools and active
+  Rectangular room/Rotate 45 degrees controls. Closed the untouched verification
+  window before the release rebuild. The shortcut remains outside Git.
+- `npm run build:web` / `npm run test:web` pass build **1ce1148188de663f**, seven
+  files and **275,880 total bytes**. First installation measures **50,575 Brotli
+  response-body bytes** (66,857 gzip estimate); controlled reload and offline
+  rectangular-room/modifier actions make zero host requests. No uploads,
+  third-party requests or renderer errors. Worker update protection, exact local
+  persistence, pure-vector SVG, floors and compact layout pass.
+
+Limitations: ship artwork is fixed and simplified, outside the editable graph.
+Its legacy floor coverage is retained; the original hand-drawn raster edge noise
+is intentionally absent. Broader existing branched-movement, detach/rejoin and
+advanced corridor-route limitations remain unchanged.
+
 ## Floor, eraser and Save all feedback — version 0.12.0, 2026-10-14
 
 The owner requested the three fixes, commit/push to `main`, a new GitHub release

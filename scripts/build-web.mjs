@@ -46,7 +46,7 @@ async function verifyOutputDirectory(root, outputDirectory) {
   }
 }
 
-/** Build only the browser runtime. PNGs retain their original bytes and geometry. */
+/** Build only the browser runtime. The optional background keeps its PNG bytes. */
 export async function buildWeb({ root = repositoryRoot, outputDirectory = path.join(root, 'web-dist'), metricsFile = path.join(root, 'artifacts', 'web-build.json') } = {}) {
   root = path.resolve(root);
   outputDirectory = path.resolve(outputDirectory);
@@ -60,7 +60,7 @@ export async function buildWeb({ root = repositoryRoot, outputDirectory = path.j
     if (source) sourceNames.set(file, source);
     return file;
   };
-  for (const name of ['ship', 'editor-stars']) {
+  for (const name of ['editor-stars']) {
     const source = `assets/${name}.png`;
     const bytes = await fs.readFile(path.join(root, source));
     const file = addFile(versionedName(name, 'png', bytes), bytes, source);
@@ -106,7 +106,7 @@ export async function buildWeb({ root = repositoryRoot, outputDirectory = path.j
 
   // Cache every module needed by open tabs before installation succeeds. Stars
   // are deliberately omitted: their larger image is fetched only on closure.
-  const shell = ['/index.html', `/${appFile}`, `/${cssFile}`, `/${registerFile}`, `/${[...outputFiles.keys()].find(file => sourceNames.get(file) === 'assets/ship.png')}`, '/LICENSE-RevolaMapDrawer.txt'];
+  const shell = ['/index.html', `/${appFile}`, `/${cssFile}`, `/${registerFile}`, '/LICENSE-RevolaMapDrawer.txt'];
   const lazyAssets = [`/${[...outputFiles.keys()].find(file => sourceNames.get(file) === 'assets/editor-stars.png')}`];
   const serviceWorkerTemplate = await fs.readFile(path.join(root, 'web', 'service-worker.js'), 'utf8');
   const buildId = digest([...outputFiles].sort(([a], [b]) => a.localeCompare(b, 'en')).map(([file, bytes]) => `${file}:${digest(bytes)}`).join('\n') + `\nworker:${digest(serviceWorkerTemplate)}\nesbuild:${esbuild.version}`).slice(0, 16);

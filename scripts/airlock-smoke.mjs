@@ -14,7 +14,7 @@ const artifacts = path.join(root, 'artifacts');
 await fs.mkdir(artifacts, { recursive: true });
 const destination = name => path.join(artifacts, `${prefix}-${name}`);
 const executablePath = path.join(root, 'dist', 'RevolaMapDrawer-win32-x64', 'RevolaMapDrawer.exe');
-const matchingSourceFiles = ['index.html', 'src/app.js', 'src/corridors.js', 'src/model.js', 'src/ship.js', 'src/render.js', 'assets/ship.png'];
+const matchingSourceFiles = ['index.html', 'src/app.js', 'src/corridors.js', 'src/model.js', 'src/ship.js', 'src/render.js', 'src/ship-vector.js'];
 if (packaged) {
   const archive = path.join(path.dirname(executablePath), 'resources', 'app.asar');
   for (const file of matchingSourceFiles) assert.ok((await fs.readFile(path.join(root, file))).equals(extractFile(archive, file)), `Packaged ${file} matches current source`);
@@ -30,8 +30,9 @@ try {
   await desktop.evaluate(({ dialog }) => {
     // Stub file choices only. Production preload, IPC, validation and native
     // filesystem writes remain in use for every saved/reopened project.
-    global.__revolaAirlock = { saves: [], opens: [] };
+    global.__revolaAirlock = { saves: [], opens: [], saveCalls: 0 };
     dialog.showSaveDialog = async () => {
+      global.__revolaAirlock.saveCalls++;
       const filePath = global.__revolaAirlock.saves.shift();
       return filePath ? { canceled: false, filePath } : { canceled: true };
     };
@@ -68,16 +69,23 @@ try {
     mapPoint = (x, y) => ({ x: state.x + (x * state.a + state.e) / state.ratioX,
       y: state.y + (y * state.d + state.f) / state.ratioY });
   };
-  const snapshot = async (name, { programmatic = false } = {}) => {
+  const snapshot = async name => {
     const filePath = destination(`${name}.revola.json`); await fs.rm(filePath, { force: true });
     await desktop.evaluate((_electron, target) => global.__revolaAirlock.saves.push(target), filePath);
-    if (programmatic) await page.locator('#project-button').evaluate(button => button.click());
-    else await page.locator('#project-button').click();
+    await page.locator('#project-button').click();
     await expect.poll(async () => fs.stat(filePath).then(stat => stat.size).catch(() => 0)).toBeGreaterThan(100);
     await expect(page.locator('#project-button')).toBeEnabled();
     const document = JSON.parse(await fs.readFile(filePath, 'utf8'));
     assert.deepEqual(validateDocument(document), document, 'Native project validates without normalization');
     return document;
+  };
+  const previewBlocksSave = async () => {
+    await expect(page.locator('#project-button')).toBeDisabled();
+    const calls = await desktop.evaluate(() => global.__revolaAirlock.saveCalls);
+    await page.locator('#project-button').evaluate(button => button.click());
+    await settled();
+    assert.equal(await desktop.evaluate(() => global.__revolaAirlock.saveCalls), calls,
+      'An active route preview cannot open a native save dialog');
   };
   const open = async (filePath, name) => {
     await desktop.evaluate((_electron, source) => global.__revolaAirlock.opens.push(source), filePath);
@@ -87,7 +95,7 @@ try {
     await expect(page.locator('#document-title')).toHaveText(name);
     await expect(page.locator('#status-message')).toContainText('Opened ');
     await page.locator('#fit-button').click(); await calibrate();
-    await page.locator('[data-tool="corridor"]').click();
+    await page.locator('[data-tool="corridor"]').click(); await settled();
     await expect(page.locator('#undo-button')).toBeDisabled();
     await expect(page.locator('#dirty-dot')).not.toHaveClass(/dirty/);
   };
@@ -184,7 +192,7 @@ try {
     await page.mouse.down(); await expect(page.locator('#status-message')).toContainText('door center');
     await page.mouse.move(b.x, b.y, { steps: 10 }); await marker(center);
     await expect(page.locator('#undo-button')).toBeDisabled(); await expect(page.locator('#dirty-dot')).not.toHaveClass(/dirty/);
-    assert.deepEqual(await snapshot(`${name}-preview`, { programmatic: true }), before, 'Live route preview leaves exact saved document unchanged');
+    await previewBlocksSave();
     await page.screenshot({ path: destination(`${name}-preview.png`) });
     await page.keyboard.press('Escape'); await page.mouse.up();
     assert.deepEqual(await snapshot(`${name}-canceled`), before, 'Escape cancels without altering geometry or prefab');
@@ -247,8 +255,17 @@ try {
     await expect(page.locator('#status-message')).toContainText('Corridor endpoint aligned to the door center');
     await expect(page.locator('#status-message')).toContainText('Release to place');
     await expect(page.locator('#undo-button')).toBeDisabled(); await expect(page.locator('#dirty-dot')).not.toHaveClass(/dirty/);
-    assert.deepEqual(await snapshot(`${name}-arrival-preview`, { programmatic: true }), arrivalBefore, 'Arrival preview preserves exact original wall and ship');
+    await previewBlocksSave();
     await page.screenshot({ path: destination(`${name}-arrival-preview.png`) });
+    await page.keyboard.press('Escape'); await page.mouse.up();
+    assert.deepEqual(await snapshot(`${name}-arrival-canceled`), arrivalBefore,
+      'Canceling an arrival preview preserves the exact original wall and ship');
+    await expect(page.locator('#undo-button')).toBeDisabled(); await expect(page.locator('#dirty-dot')).not.toHaveClass(/dirty/);
+    await page.mouse.move(arrivalStart.x, arrivalStart.y); await page.mouse.down();
+    await expect(page.locator('#status-message')).toContainText('wall midpoint');
+    await page.mouse.move(arrivalAim.x, arrivalAim.y, { steps: 10 });
+    await expect(page.locator('#status-message')).toContainText('Corridor endpoint aligned to the door center');
+    await expect(page.locator('#status-message')).toContainText('Release to place');
     await page.mouse.up(); await expect(page.locator('#status-message')).toContainText('Corridor endpoint aligned to the door center');
     const arrivalAfter = await snapshot(`${name}-arrived`), arrivalExpected = structuredClone(arrivalBefore);
     // Expected start/end come from literal independently measured coordinates;
@@ -273,7 +290,8 @@ try {
     await open(destination(`${name}-arrived.revola.json`), arrivalBefore.name);
     assert.deepEqual(await snapshot(`${name}-arrival-reopened`), arrivalAfter);
     evidence.placements.push({ name: `${name}-arrival`, start, end: center, corridorWidth: 580, rails: arrivalRails });
-    evidence.interactions.push({ name: `${name}-arrival`, previewUnchanged: true, exactEndpoint: center, oneStepUndoRedo: true, nativeReopenExact: true });
+    evidence.interactions.push({ name: `${name}-arrival`, previewUnchanged: true, previewSaveBlocked: true,
+      cancellationUnchanged: true, exactEndpoint: center, oneStepUndoRedo: true, nativeReopenExact: true });
   }
   assert.deepEqual(errors, [], 'No unhandled renderer errors');
   await fs.writeFile(destination('results.json'), JSON.stringify(evidence, null, 2));

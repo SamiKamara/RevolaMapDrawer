@@ -687,11 +687,16 @@ export function eraseWalls(doc, from, to, radius) {
 }
 
 export function roomSegments(start, end, rotated = false, chamfer = DEFAULTS.chamfer) {
-  if (!validPoint(start) || !validPoint(end) || !Number.isFinite(chamfer) || chamfer <= 0) fail('Invalid room geometry.');
+  if (!validPoint(start) || !validPoint(end) || !Number.isFinite(chamfer) || chamfer < 0) fail('Invalid room geometry.');
   const left = Math.min(start.x, end.x), right = Math.max(start.x, end.x), top = Math.min(start.y, end.y), bottom = Math.max(start.y, end.y);
-  if (right - left <= 2 * chamfer || bottom - top <= 2 * chamfer) fail(`Rooms must be wider and taller than ${2 * chamfer} pixels.`);
-  let points = [{ x: left + chamfer, y: top }, { x: right - chamfer, y: top }, { x: right, y: top + chamfer }, { x: right, y: bottom - chamfer },
-    { x: right - chamfer, y: bottom }, { x: left + chamfer, y: bottom }, { x: left, y: bottom - chamfer }, { x: left, y: top + chamfer }];
+  // Removing chamfers must not permit a footprint whose opposite wall blocks
+  // its usable interior. Keep a doorway-sized rectangular room on the 25 px grid.
+  const minimum = chamfer === 0 ? DEFAULTS.doorWidth + DEFAULTS.wallWidth : 2 * chamfer;
+  if (right - left <= minimum || bottom - top <= minimum) fail(`Rooms must be wider and taller than ${minimum} pixels.`);
+  let points = chamfer === 0
+    ? [{ x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: left, y: bottom }]
+    : [{ x: left + chamfer, y: top }, { x: right - chamfer, y: top }, { x: right, y: top + chamfer }, { x: right, y: bottom - chamfer },
+      { x: right - chamfer, y: bottom }, { x: left + chamfer, y: bottom }, { x: left, y: bottom - chamfer }, { x: left, y: top + chamfer }];
   if (rotated) {
     const center = { x: (left + right) / 2, y: (top + bottom) / 2 };
     points = points.map(p => clean({ x: center.x + (p.x - center.x - p.y + center.y) * Math.SQRT1_2, y: center.y + (p.x - center.x + p.y - center.y) * Math.SQRT1_2 }));
@@ -699,9 +704,9 @@ export function roomSegments(start, end, rotated = false, chamfer = DEFAULTS.cha
   return points.map((a, i) => ({ a, b: points[(i + 1) % points.length] }));
 }
 
-export function addRoom(doc, start, end, rotated = false) {
+export function addRoom(doc, start, end, rotated = false, options = {}) {
   return transaction(doc, draft => {
-    const result = roomSegments(start, end, rotated, doc.style.chamfer).flatMap(({ a, b }) => insertWall(draft, a, b));
+    const result = roomSegments(start, end, rotated, options.rectangular ? 0 : doc.style.chamfer).flatMap(({ a, b }) => insertWall(draft, a, b));
     joinNearWallFaces(draft, result.map(edge => edge.id));
     validateDocument(draft);
     return result;

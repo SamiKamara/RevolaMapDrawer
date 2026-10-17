@@ -20,9 +20,9 @@ Build, test and deployment instructions, including measured transfer sizes and c
 
 ## Portable Windows package
 
-The source repository is public. The latest portable release is [v0.12.0](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.12.0). The first published portable release was [v0.10.2](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.2).
+The source repository is public. Download the [latest portable release](https://github.com/SamiKamara/RevolaMapDrawer/releases/latest). The first published portable release was [v0.10.2](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.10.2).
 
-1. Open [v0.12.0](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.12.0) and download `RevolaMapDrawer-0.12.0-win-x64.zip`. GitHub's automatic **Source code** archives are for development and do not contain a runnable packaged app.
+1. Open the [latest release](https://github.com/SamiKamara/RevolaMapDrawer/releases/latest) and download its `RevolaMapDrawer-VERSION-win-x64.zip`. GitHub's automatic **Source code** archives are for development and do not contain a runnable packaged app.
 2. Extract the ZIP completely to a folder you can write to. Keep the entire `RevolaMapDrawer-win32-x64` folder together, including `resources` and the supporting DLLs and license files.
 3. Run **`RevolaMapDrawer.exe`** inside that extracted folder.
 
@@ -47,6 +47,7 @@ Start above the airlock. The two upper airlock wall ports are the attachment poi
 | Door | D | Click to place a fixed-size opening; aim near the middle to center it between corners or branches. CENTER in the preview confirms snapping. Click an existing opening to restore the wall. |
 | Eraser | E | Drag across walls to erase freely; choose the brush diameter in the top bar. Hidden endpoints are removed and erased cuts do not attract later drawing. One stroke is one undo action. The ship artwork stays protected. |
 | Room | R | Start at DOOR, END or CENTER to attach a room with a centered door. Drag straight outward for a square room, sideways for a default depth, or diagonally to set both dimensions. Free rooms use **Rotate 45°** or **Draw a 45° room** in Quick Guide. |
+| Rectangular room | B | Draw a room with four square corners using the same free/attached placement, Shift square sizing and rotation controls as Room. |
 | Rotate room | Shift+R | Toggle a free room's 45° orientation, including during placement. Attached rooms align with their receiving wall or corridor mouth. |
 | Corridor | C | Drag a route for two parallel walls. CENTER or DOOR aligns the start; END continues an open corridor outward before turning. Finish near a target to fit the endpoint automatically. |
 | Hand | H | Pan the canvas. Space + drag or the middle mouse button also pans. |
@@ -92,7 +93,7 @@ When new geometry crosses the default boundary, the original 8192 square occupie
 | --- | --- | --- |
 | Save project | `.revola` JSON graph, openings, style and ship orientation | Yes |
 | Save wall PNG | Transparent white walls and ship, plus embedded project data | Yes, while its metadata is retained |
-| Save wall SVG | Transparent vector walls with one embedded ship PNG | No |
+| Save wall SVG | Transparent vector walls, ship and airlock | No |
 | Save floor PNG / SVG | Black floor on transparency, available for closed maps | No |
 
 The editor checks whether the ship has a route to open space, treating doors and erased openings as traversable. Close every opening in the outer boundary; internal doors are allowed. A closed map automatically displays a solid black floor beneath the white walls and the supplied repeating star texture outside it. Only the interior reachable from the ship is filled; sealed courtyard voids stay transparent. The floor extends **12 map pixels** beyond the outer wall silhouette, including the ship hull.
@@ -113,7 +114,7 @@ keep the unsaved reminder, so retain the downloaded project before closing.
 
 Save names use **Map name** plus the output layer: for `RevolaReserveMap-1`, wall exports are `RevolaReserveMap-1-walls.png` / `.svg`, floor exports are `RevolaReserveMap-1-floors.png` / `.svg`, and the editable project is `RevolaReserveMap-1-source.revola`. The Windows save dialog suggests these names; the browser uses them for downloads.
 
-**Save wall SVG** exports a transparent, self-contained image with white vector walls. Continuous wall runs are merged and unnecessary outline points are removed within a 0.25 map pixel tolerance; door and eraser cut endpoints and corner miters stay exact. The bundled ship PNG is embedded once to preserve its detail without a large raster trace. The SVG retains the full 8192 or 16384 canvas at its original scale, contains no editing overlays or external image dependencies, and omits project metadata. It cannot be reopened as an editable map; SVG export leaves unsaved changes marked, so also save wall PNG or a project to continue editing later.
+**Save wall SVG** exports a transparent, self-contained image with white vector walls, ship and airlock. Continuous wall runs are merged and unnecessary outline points are removed within a 0.25 map pixel tolerance; door and eraser cut endpoints and corner miters stay exact. The ship uses deliberately simplified vector outlines shared with the editor and PNG export, without embedded images. The SVG retains the full 8192 or 16384 canvas at its original scale, contains no editing overlays or external image dependencies, and omits project metadata. It cannot be reopened as an editable map; SVG export leaves unsaved changes marked, so also save wall PNG or a project to continue editing later.
 
 A PNG with no Revola metadata, including the two supplied reference images, cannot be opened as an editable map. The editor does not infer wall topology from raster pixels. Damaged or invalid imports are rejected before replacing the current map. PNG import is bounded to 32 MiB and embedded project metadata to 4 MiB. Version 1 maps still open; new saves use version 2 to retain arbitrary erased gaps and centered expansion. The older 0.1 app cannot open version 2 maps.
 
@@ -161,8 +162,8 @@ The unit tests cover geometry constraints, doorway behavior, rendering determini
 - A dedicated detach/rejoin tool is still pending. Individual walls can be deleted and redrawn; newly intersecting walls automatically share graph vertices.
 - Corridor turns sharper than 90°, very close corners and self-overlapping routes are rejected. Draw a simpler route or use manual walls to build more complex intersections.
 - Endpoint fitting preserves the start and existing segment directions, moves any route point by at most 300 map pixels and skips unsafe connections. A straight route cannot align to an off-ray target; parallel wall arrivals do not align. It does not add turns or create a doorway.
-- The ship and airlock are a fixed raster anchor, not editable wall graph objects. The normal door tool does not cut the ship.
-- Wall texture is a deterministic approximation of the reference's irregular edges. The ship is extracted from source pixels, with unrelated upper room walls masked and a bounded symmetric airlock correction. The hull outside that correction stays unchanged. Dimensions inferred from the raster references and the extraction steps are documented in [docs/REFERENCE_ANALYSIS.md](docs/REFERENCE_ANALYSIS.md).
+- The ship and airlock are fixed vector artwork outside the editable wall graph. The normal door tool does not cut the ship.
+- Wall texture approximates the reference's irregular edges deterministically. The ship deliberately simplifies the supplied silhouette, with compact outlines instead of traced edge noise. Both doorways, attachment points, scale and mirroring retain their measured geometry. The floor retains the original ship contour coverage. Dimensions and reference provenance are documented in [docs/REFERENCE_ANALYSIS.md](docs/REFERENCE_ANALYSIS.md).
 - PNG export uses a canvas at most 256 rows tall, with overlapping guard rows to avoid seams, including at 16384 × 16384. It does not allocate a full-map RGBA canvas. Large exports may take a moment; a progress percentage is shown in the status bar.
 - Floor generation is bounded for dense geometry. If its analysis cannot complete safely, the floor and star preview are omitted and floor exports stay disabled.
 

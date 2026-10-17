@@ -113,6 +113,19 @@ async function verifyDrawingModifiers(page, snapshot, open, prefix = '') {
   assert.equal(Math.min(...square.vertices.map(vertex => vertex.y)), 1200); assert.equal(Math.max(...square.vertices.map(vertex => vertex.y)), 2300);
   assert.deepEqual(square.ship, squareBase.ship); await history('shift-square', squareBase, square);
 
+  const rectangleBase = await loadBlank('rectangular-room-web');
+  await page.locator('[data-tool="rectangle"]').click(); await page.locator('#rotate-room').uncheck();
+  camera = await calibrate();
+  const rectangleStart = camera.point({ x: 2000, y: 1200 }), rectangleEnd = camera.point({ x: 3100, y: 1800 });
+  await page.mouse.move(rectangleStart.x, rectangleStart.y); await page.mouse.down();
+  await resetPreview(); await page.mouse.move(rectangleEnd.x, rectangleEnd.y);
+  await preview('rectangular-room-preview', [{ x: 2000, y: 1200 }, { x: 3100, y: 1200 }, { x: 3100, y: 1800 }, { x: 2000, y: 1800 }]);
+  await page.mouse.up(); await expect(page.locator('#status-message')).toContainText(/room placed/i);
+  const rectangle = await snapshot('rectangular-room-placed');
+  assert.equal(rectangle.vertices.length, 4); assert.equal(rectangle.edges.length, 4);
+  assert.deepEqual(rectangle.vertices.map(({ x, y }) => [x, y]).sort(), [[2000, 1200], [2000, 1800], [3100, 1200], [3100, 1800]]);
+  assert.deepEqual(rectangle.ship, rectangleBase.ship); await history('rectangular-room', rectangleBase, rectangle);
+
   const corridorBase = await loadBlank('short-offset-airlock-web');
   await page.locator('[data-tool="corridor"]').click(); camera = await calibrate();
   const pivot = camera.point({ x: 4110.5, y: 4700 }), scale = camera.view.a / camera.view.ratioX;
@@ -132,6 +145,7 @@ async function verifyDrawingModifiers(page, snapshot, open, prefix = '') {
   }).length, 1, 'Offset press preserves the exact 50 px vertical rail from the 580 px centered airlock start');
   assert.deepEqual(corridor.ship, corridorBase.ship); await history('short-offset-airlock', corridorBase, corridor);
   return { offline: true, shiftSquare: { side: 1100, keyTransitionsAtStationaryPointer: true, heldBeforePressAndAtRelease: true, exactDownloadAndHistory: true },
+    rectangularRoom: { corners: 4, width: 1100, height: 600, exactDownloadAndHistory: true },
     shortCorridor: { length: 50, width: 580, rawPressOffset: 100, exactDoorCenter: { x: 4110.5, y: 4700 }, positivePreview: true, exactDownloadAndHistory: true } };
 }
 
@@ -199,8 +213,8 @@ if (process.argv.length > 2) {
     assert.deepEqual(await snapshot('legacy-reopened'), fixture, 'Published browser retains legacy .revola.json compatibility');
     const png = await write('#export-button', 'editable.png'); assert.deepEqual(validateDocument(decodePngMetadata(png)), fixture);
     const svg = (await write('#svg-button', 'walls.svg')).toString('utf8');
-    const embedded = svg.match(/(?:href|xlink:href)="data:image\/png;base64,([^"]+)"/);
-    assert.ok(embedded); assert.ok(Buffer.from(embedded[1], 'base64').equals(await fs.readFile(path.join(root, 'assets', 'ship.png'))));
+    assert.match(svg, /<path/);
+    assert.ok(!/<image\b|data:image|(?:href|src)=/i.test(svg), 'Published SVG contains only self-contained vector geometry');
     await settle();
     result.localActions = finished.slice(localStart);
     assert.ok(result.localActions.filter(item => !item.fromServiceWorker).every(item => new URL(item.url).pathname === '/sw.js'), 'Production imports and exports make no resource requests to the host');
@@ -226,7 +240,7 @@ if (process.argv.length > 2) {
     assert.ok(result.drawingActions.filter(item => !item.fromServiceWorker).every(item => new URL(item.url).pathname === '/sw.js'), 'Production Shift and short corridor drawing use no host resources while offline');
     assert.ok(requests.every(item => ['GET', 'HEAD'].includes(item.method) && (!/^https?:/.test(item.url) || new URL(item.url).origin === deployed.origin)), 'Production editor sends no uploads and contacts no other domain');
     assert.deepEqual(errors, []);
-    result.interactions.push('Published cache/security headers match the static deployment', 'Warm controlled reload uses cached resources', 'All five downloads use exact Map name suffixes and extensions', 'New .revola and legacy .revola.json reopen with exact project geometry', 'Local browser project/PNG/SVG downloads preserve exact fixture topology and embed ship bytes without resource traffic', 'Installed production app reloads offline and exports PNG/SVG floors', 'Shift square and short offset airlock corridor previews, downloads and undo/redo work offline', 'No map uploads or third-party requests');
+    result.interactions.push('Published cache/security headers match the static deployment', 'Warm controlled reload uses cached resources', 'All five downloads use exact Map name suffixes and extensions', 'New .revola and legacy .revola.json reopen with exact project geometry', 'Local browser project/PNG/SVG downloads preserve exact fixture topology and retain vector ship geometry without resource traffic', 'Installed production app reloads offline and exports PNG/SVG floors', 'Shift square and short offset airlock corridor previews, downloads and undo/redo work offline', 'No map uploads or third-party requests');
     result.files = { projectBytes: Buffer.byteLength(JSON.stringify(fixture)), pngBytes: png.length, svgBytes: Buffer.byteLength(svg) };
     await fs.writeFile(destination('production-results.json'), JSON.stringify(result, null, 2));
     console.log(JSON.stringify({ ...result, evidenceFile: destination('production-results.json') }, null, 2));
@@ -384,9 +398,8 @@ try {
   assert.deepEqual(await snapshot('after-history'), project, 'Undo/redo restores exact saved topology and openings');
   const png = await write('#export-button', 'editable.png'); evidence.png = await inspectPng(png, project);
   const svg = (await write('#svg-button', 'walls.svg')).toString('utf8');
-  const embedded = svg.match(/(?:href|xlink:href)="data:image\/png;base64,([^"]+)"/);
-  assert.ok(embedded, 'SVG embeds ship artwork for standalone offline use');
-  assert.ok(Buffer.from(embedded[1], 'base64').equals(await fs.readFile(path.join(root, 'assets', 'ship.png'))));
+  assert.match(svg, /<path/);
+  assert.ok(!/<image\b|data:image|(?:href|src)=/i.test(svg), 'SVG contains only self-contained vector geometry');
   assert.ok(!/(?:href|src)="https?:\/\//.test(svg), 'SVG has no remote dependencies');
   await expect(page.locator('#dirty-dot')).toHaveClass(/dirty/);
   await open(destination('project.revola'), project.name);
@@ -408,7 +421,7 @@ try {
   const localRequests = hostRequests.slice(localStart);
   assert.ok(localRequests.every(item => item.path === '/sw.js' && item.bodyBytes === 0), 'Editing, history, local file imports and all wall exports make zero resource requests to the host; automatic worker revalidation carries no body');
   evidence.transfers.editImportExport = summarize(localRequests);
-  evidence.interactions.push('UI draws connected walls and a 375 px door; history and JSON/editable PNG reopen preserve exact topology; transparent white raster and embedded SVG verified; invalid and oversized imports preserve the map; all actions stay local');
+  evidence.interactions.push('UI draws connected walls and a 375 px door; history and JSON/editable PNG reopen preserve exact topology; transparent white raster and pure vector SVG verified; invalid and oversized imports preserve the map; all actions stay local');
   await page.screenshot({ path: destination('editor.png') });
 
   const example = createExampleDocument(), examplePath = destination('example-fixture.revola.json');

@@ -59,6 +59,7 @@ export function isRuntimePath(candidate) {
   const name = candidate.replaceAll('\\', '/').replace(/^\//, '');
   if (!name) return true;
   if (name.split('/').some(part => !part || part === '.' || part === '..')) return false;
+  if (name === 'assets/ship.png') return false;
   if (['index.html', 'package.json', 'src', 'electron', 'assets'].includes(name)) return true;
   return /^(src\/[a-zA-Z0-9_-]+\.(?:js|css)|electron\/[a-zA-Z0-9_-]+\.cjs|assets\/[a-zA-Z0-9_-]+\.(?:png|js))$/.test(name);
 }

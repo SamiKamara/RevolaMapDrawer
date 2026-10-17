@@ -16,7 +16,8 @@ You may use and share maps exported by the application without adding a Revola M
 | --- | --- |
 | `alustava toteutusohje.txt` | Original Finnish implementation brief, preserved unchanged as a source reference. |
 | `RevolaCandiMapASample.png`, `RevolaCandiMapBSample.png` | Original supplied reference maps, preserved unchanged. Used to measure the editor's fixed geometry. Not included in the portable application. |
-| `assets/ship.png` | Derived from the supplied Map A reference with the documented crop and bounded symmetric airlock correction. Bundled in the application and included in map exports. See [reference analysis](REFERENCE_ANALYSIS.md) for extraction, coordinates and preservation evidence. |
+| `assets/ship.png` | Preserved raster reference derived from supplied Map A with the documented crop and symmetric airlock correction. Since 0.13.0 it is excluded from runtime distributions and exports. See [reference analysis](REFERENCE_ANALYSIS.md). |
+| `src/ship-vector.js` | Maintained simplified white ship/airlock geometry derived from the supplied reference, shared by the editor and PNG/SVG wall exports. Bundled as code without raster image embedding. |
 | `assets/ship-floor-contour.js` | Maintained runtime geometry derived from the bundled ship image for floor generation. |
 | `assets/editor-stars.png` | Supplied editor background artwork, bundled for offline use. It is an editor aid and is excluded from map exports. |
 | Source code, documentation and project assets | Project implementation and maintained materials under the MIT License, unless separately identified as third-party material. |

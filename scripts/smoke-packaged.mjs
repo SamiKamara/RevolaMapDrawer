@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { extractFile } from '@electron/asar';
 import { validateDocument } from '../src/model.js';
 import { createExampleDocument } from './example-fixture.mjs';
+import { isRuntimePath } from './release-utils.mjs';
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const artifacts = path.join(root, 'artifacts');
@@ -14,7 +15,7 @@ const archive = path.join(path.dirname(executablePath), 'resources', 'app.asar')
 const sourceFiles = ['index.html',
   ...(await fs.readdir(path.join(root, 'assets'))).map(file => `assets/${file}`),
   ...(await fs.readdir(path.join(root, 'src'))).filter(file => /\.(js|css)$/.test(file)).map(file => `src/${file}`),
-  ...(await fs.readdir(path.join(root, 'electron'))).filter(file => file.endsWith('.cjs')).map(file => `electron/${file}`)];
+  ...(await fs.readdir(path.join(root, 'electron'))).filter(file => file.endsWith('.cjs')).map(file => `electron/${file}`)].filter(isRuntimePath);
 for (const file of sourceFiles) {
   assert.ok((await fs.readFile(path.join(root, file))).equals(extractFile(archive, file)), `The packaged file must match current source: ${file}`);
 }

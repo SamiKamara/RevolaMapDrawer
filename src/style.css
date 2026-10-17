@@ -12,6 +12,7 @@
 .clipboard-actions{display:flex;gap:7px}
 .clipboard-actions .wide-button{gap:7px;padding:8px 6px}
 .clipboard-actions kbd{font:9px "Segoe UI",sans-serif;color:#8da896}
+@media(max-height:700px){.toolrail{gap:4px;padding-top:8px}.toolrail button{height:39px}.rail-divider{margin:4px 0}.rail-bottom{margin-bottom:16px;gap:8px}}
 
 .selection-section .danger{margin-top:12px}
 .image-export-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}

@@ -15,6 +15,65 @@ function applyProposal(doc, proposal) {
   return copy;
 }
 
+test('rectangular room primitives have exactly four square corners in every drag quadrant and rotation', () => {
+  for (const rotated of [false, true]) for (const xSign of [-1, 1]) for (const ySign of [-1, 1]) {
+    const start = { x: 3000, y: 2500 }, end = { x: start.x + 1100 * xSign, y: start.y + 700 * ySign };
+    const segments = roomSegments(start, end, rotated, 0), inputs = structuredClone([start, end]);
+    assert.equal(segments.length, 4);
+    for (let i = 0; i < 4; i++) {
+      assert.deepEqual(segments[i].b, segments[(i + 1) % 4].a);
+      const one = { x: segments[i].b.x - segments[i].a.x, y: segments[i].b.y - segments[i].a.y };
+      const two = { x: segments[(i + 1) % 4].b.x - segments[(i + 1) % 4].a.x, y: segments[(i + 1) % 4].b.y - segments[(i + 1) % 4].a.y };
+      near(one.x * two.x + one.y * two.y, 0);
+    }
+    const doc = createDocument(); addRoom(doc, start, end, rotated, { rectangular: true });
+    assert.equal(doc.vertices.length, 4); assert.equal(doc.edges.length, 4); assert.equal(doc.style.chamfer, 220);
+    const room = detectRoom(doc, doc.edges[0].id);
+    assert.equal(room.kind, 'rectangle'); assert.equal(room.orientation, rotated ? 45 : 0); assert.equal(room.chamfer, 0);
+    near(room.bounds.right - room.bounds.left, 1100); near(room.bounds.bottom - room.bounds.top, 700);
+    assert.deepEqual(validateDocument(JSON.parse(JSON.stringify(doc))), doc);
+    assert.deepEqual([start, end], inputs);
+  }
+});
+
+test('rectangular rooms share square sizing and shape-preserving room resizing', () => {
+  for (const rotated of [false, true]) {
+    const doc = createDocument(), start = { x: 2000, y: 1200 }, aim = { x: 3100, y: 1800 };
+    addRoom(doc, start, constrainRoomEnd(start, aim, { square: true }), rotated, { rectangular: true });
+    const room = detectRoom(doc, doc.edges[0].id);
+    near(room.bounds.right - room.bounds.left, 1100); near(room.bounds.bottom - room.bounds.top, 1100);
+    const axis = room.frame[room.side.axis], proposal = proposeRoomResize(doc, doc.edges[0].id, { x: axis.x * 200, y: axis.y * 200 });
+    assert.equal(proposal.blocked, false);
+    const resized = applyProposal(doc, proposal), detected = detectRoom(resized, doc.edges[0].id);
+    assert.equal(detected.kind, 'rectangle'); assert.equal(detected.corners.length, 4);
+    assert.deepEqual(validateDocument(resized), resized);
+  }
+});
+
+test('rectangular room bounds expand around the original center and invalid placements roll back', () => {
+  const doc = createDocument(), original = structuredClone(doc);
+  addRoom(doc, { x: 400, y: 1000 }, { x: -500, y: 2000 }, false, { rectangular: true });
+  assert.deepEqual([doc.width, doc.height, doc.originX, doc.originY], [16384, 16384, -4096, -4096]);
+  assert.deepEqual(doc.ship, original.ship);
+  for (const end of [{ x: -5000, y: 2000 }, { x: 400, y: 2000 }]) {
+    const before = structuredClone(doc);
+    assert.throws(() => addRoom(doc, { x: 400, y: 1000 }, end, false, { rectangular: true }));
+    assert.deepEqual(doc, before);
+  }
+  assert.throws(() => roomSegments({ x: 0, y: 0 }, { x: 1000, y: 1000 }, false, -1), /Invalid room geometry/);
+});
+
+test('free rectangular rooms reject footprints too shallow for usable interior space', () => {
+  for (const rotated of [false, true]) for (const [width, depth] of [[25, 25], [1000, 25], [425, 1000]]) {
+    const doc = createDocument(), before = structuredClone(doc), start = { x: 1000, y: 1000 }, end = { x: 1000 + width, y: 1000 + depth };
+    assert.throws(() => roomSegments(start, end, rotated, 0), /wider and taller than 425/);
+    assert.throws(() => addRoom(doc, start, end, rotated, { rectangular: true }), /wider and taller than 425/);
+    assert.deepEqual(doc, before);
+  }
+  const doc = createDocument(); addRoom(doc, { x: 1000, y: 1000 }, { x: 1450, y: 1450 }, false, { rectangular: true });
+  assert.equal(doc.edges.length, 4); assert.equal(detectRoom(doc, doc.edges[0].id).kind, 'rectangle');
+});
+
 test('square sizing preserves the free start corner and drag signs for upright and rotated rooms', () => {
   for (const rotated of [false, true]) for (const xSign of [-1, 1]) for (const ySign of [-1, 1]) {
     const start = { x: 3000.5, y: 3000.25 }, aim = { x: start.x + xSign * 1100, y: start.y + ySign * 600 };

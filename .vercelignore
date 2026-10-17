@@ -16,10 +16,10 @@
 !src/save-all.js
 !src/selection.js
 !src/ship.js
+!src/ship-vector.js
 !src/svg.js
 !src/style.css
 !assets
-!assets/ship.png
 !assets/editor-stars.png
 !assets/ship-floor-contour.js
 !web

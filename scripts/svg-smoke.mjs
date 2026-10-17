@@ -18,7 +18,7 @@ const artifacts = path.join(root, 'artifacts');
 await fs.mkdir(artifacts, { recursive: true });
 const destination = name => path.join(artifacts, `${prefix}-${name}`);
 const executablePath = path.join(root, 'dist', 'RevolaMapDrawer-win32-x64', 'RevolaMapDrawer.exe');
-const matchingSourceFiles = ['index.html', 'src/app.js', 'src/svg.js', 'src/ship.js', 'src/render.js', 'src/style.css', 'electron/main.cjs', 'electron/preload.cjs'];
+const matchingSourceFiles = ['index.html', 'src/app.js', 'src/svg.js', 'src/ship.js', 'src/ship-vector.js', 'src/render.js', 'src/style.css', 'electron/main.cjs', 'electron/preload.cjs'];
 if (packaged) {
   const archive = path.join(path.dirname(executablePath), 'resources', 'app.asar');
   for (const file of matchingSourceFiles) {
@@ -47,7 +47,6 @@ addWall(expanded, { x: -1500, y: -1000 }, { x: 500, y: -1000 }, { joinTolerance:
 assert.deepEqual(validateDocument(expanded), expanded);
 const expandedPath = destination('expanded-fixture.revola.json');
 await fs.writeFile(expandedPath, JSON.stringify(expanded));
-const shipPng = await fs.readFile(path.join(root, 'assets', 'ship.png'));
 const blockedPath = destination('blocked-directory');
 await fs.mkdir(blockedPath, { recursive: true });
 
@@ -120,9 +119,7 @@ try {
     assert.deepEqual(dialog.filters[0].extensions, ['svg']);
     assert.equal(dialog.defaultPath, `${document.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'Untitled map'}-walls.svg`);
     const svg = bytes.toString('utf8');
-    const pngs = [...svg.matchAll(/data:image\/png;base64,([A-Za-z\d+/=]+)/g)];
-    assert.equal(pngs.length, 1, 'The original ship is embedded only once');
-    assert.ok(Buffer.from(pngs[0][1], 'base64').equals(shipPng), 'Embedded ship keeps the supplied PNG bytes exactly');
+    assert.equal((svg.match(/data-ship="true"/g) ?? []).length, 1, 'The simplified vector ship appears once');
     const parsed = await page.evaluate(svg => {
       const xml = new DOMParser().parseFromString(svg, 'image/svg+xml');
       const root = xml.documentElement;
@@ -137,7 +134,8 @@ try {
     assert.equal(Number(parsed.width), document.width); assert.equal(Number(parsed.height), document.height);
     assert.equal(parsed.viewBox, `${document.originX} ${document.originY} ${document.width} ${document.height}`, 'SVG viewport retains the original world origin');
     assert.equal(parsed.title, document.name, 'Map name is safely escaped as XML text');
-    assert.ok(parsed.paths > 0); assert.equal(parsed.images, 1); assert.equal(parsed.metadata, 0);
+    assert.ok(parsed.paths > 1); assert.equal(parsed.images, 0); assert.equal(parsed.metadata, 0);
+    assert.ok(!/data:|href=|url\(/.test(svg), 'The complete wall SVG contains true vectors without raster or external assets');
     assert.equal(parsed.forbidden, 0, 'No background, editing overlays, labels or executable content are exported');
     let originalPoints = 0;
     drawMap({ save() {}, restore() {}, beginPath() {}, fill() {}, closePath() {},
@@ -152,7 +150,7 @@ try {
     }
     assert.ok(pointCount < originalPoints, 'Actual SVG removes unnecessary sampled wall points');
     const raster = await inspectRaster(svg, document);
-    evidence.exports.push({ name, defaultName: dialog.defaultPath, bytes: bytes.length, wallDataBytes: bytes.length - Math.ceil(shipPng.length / 3) * 4,
+    evidence.exports.push({ name, defaultName: dialog.defaultPath, bytes: bytes.length,
       originalWallPoints: originalPoints, exportedWallPoints: pointCount, removedWallPoints: originalPoints - pointCount, parsed, raster });
     return bytes;
   };
@@ -160,11 +158,10 @@ try {
   async function inspectRaster(svg, source) {
     // Crop at native map scale instead of allocating a 16384-square RGBA canvas.
     return page.evaluate(async ({ svg, source }) => {
-      const { drawMap, loadShip, shipBounds } = await import('./src/render.js');
-      const shipImage = await loadShip();
+      const { drawMap, shipBounds } = await import('./src/render.js');
       const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
       const image = new Image(); image.src = url; await image.decode();
-      // Bounds and isolated raster expectation use literal measured dimensions
+      // Bounds and isolated vector expectation use literal measured dimensions
       // and the 29 px mirrored correction, independently of renderer helpers.
       const ship = { left: source.ship.x + (source.ship.mirrored ? 29 + 1269 - 2459 : -1269),
         top: source.ship.y - 70, right: source.ship.x + (source.ship.mirrored ? 29 + 1269 : 2459 - 1269),
@@ -190,7 +187,7 @@ try {
           const a = actual.getContext('2d', { willReadFrequently: true });
           const b = baseline.getContext('2d', { willReadFrequently: true });
           // Reframe only the SVG root viewport to this world-space crop. Its
-          // actual written geometry/image elements remain unchanged, and the
+          // actual written vector geometry remains unchanged, and the
           // browser never needs to rasterize a 1 GiB full-size export surface.
           const crop = new DOMParser().parseFromString(svg, 'image/svg+xml');
           crop.documentElement.setAttribute('width', region.width);
@@ -198,18 +195,16 @@ try {
           crop.documentElement.setAttribute('viewBox', `${region.x} ${region.y} ${region.width} ${region.height}`);
           // The crop's first 70 rows also include user walls at the pinned
           // ports. Test their composite silhouettes above, then isolate the
-          // unchanged image element for a strict raster-asset comparison.
-          if (region.shipOnly) for (const path of crop.querySelectorAll('path')) path.remove();
+          // fixed ship path for a strict Canvas/SVG vector comparison.
+          if (region.shipOnly) for (const path of crop.querySelectorAll('path:not([data-ship])')) path.remove();
           const cropUrl = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(crop)], { type: 'image/svg+xml' }));
           const cropImage = new Image(); cropImage.src = cropUrl;
           try { await cropImage.decode(); a.drawImage(cropImage, 0, 0); }
           finally { URL.revokeObjectURL(cropUrl); }
           b.translate(-region.x, -region.y);
           if (region.shipOnly) {
-            b.translate(source.ship.x + (source.ship.mirrored ? 29 : 0), source.ship.y);
-            if (source.ship.mirrored) b.scale(-1, 1);
-            b.drawImage(shipImage, -1269, -70);
-          } else drawMap(b, source, { shipImage });
+            drawMap(b, { vertices: [], edges: [], ship: source.ship });
+          } else drawMap(b, source);
           const pixels = a.getImageData(0, 0, region.width, region.height).data;
           const reference = b.getImageData(0, 0, region.width, region.height).data;
           let nonwhite = 0, visible = 0, transparent = 0, stableCompared = 0, stableDifferences = 0, differences = 0, maxAlphaDifference = 0;
@@ -245,7 +240,7 @@ try {
         assert.equal(region.stableDifferences, 0, `${region.name}: solid interiors and transparent cuts match the map renderer`);
         if (region.name === 'empty background') assert.equal(region.visible, 0);
         else assert.ok(region.visible > 0, `${region.name}: expected geometry is present`);
-        if (region.shipOnly) assert.equal(region.differences, 0, `Ship pixels match the original renderer exactly, including mirroring: ${JSON.stringify(region.differenceSamples)}`);
+        if (region.shipOnly) assert.equal(region.differences, 0, `Ship vectors match the Canvas renderer exactly, including mirroring: ${JSON.stringify(region.differenceSamples)}`);
       }
       return result;
     });
@@ -352,7 +347,7 @@ try {
       assert.equal(download.suggestedFilename(), 'RevolaReserveMap-1-walls.svg');
       await download.saveAs(destination('browser.svg'));
       const downloaded = await fs.readFile(destination('browser.svg'));
-      assert.ok(downloaded.equals(await fs.readFile(destination('mirrored.svg'))), 'Browser download matches native SVG byte for byte, including original embedded ship PNG');
+      assert.ok(downloaded.equals(await fs.readFile(destination('mirrored.svg'))), 'Browser download matches native SVG byte for byte, including the vector ship');
       await expect(preview.locator('#svg-button')).toBeEnabled();
       await expect(preview.locator('#dirty-dot')).toHaveClass(/dirty/);
       await expect(preview.locator('#status-message')).toContainText('Downloaded');
@@ -360,12 +355,12 @@ try {
       // Opening the written file separately requires no editor/server or assets.
       const standalone = await browser.newPage();
       await standalone.goto(pathToFileURL(destination('browser.svg')).href);
-      assert.equal(await standalone.locator('svg > image, svg image').count(), 1);
-      assert.ok((await standalone.locator('image').getAttribute('href')).startsWith('data:image/png;base64,'));
+      assert.equal(await standalone.locator('image').count(), 0);
+      assert.equal(await standalone.locator('path[data-ship]').count(), 1);
       assert.deepEqual(browserErrors, [], 'Browser export has no renderer errors');
       evidence.browserPreview = { downloadName: download.suggestedFilename(), bytes: downloaded.length, nativeBytesIdentical: true,
         dirtyAfterExport: true, standaloneOfflineFile: true, rendererErrors: browserErrors };
-      evidence.interactions.push('Browser fallback imports a project, embeds the exact bundled PNG through fetch/FileReader, downloads byte-identical SVG and retains dirty state; downloaded SVG opens separately offline');
+      evidence.interactions.push('Browser fallback imports a project, downloads byte-identical true vector SVG and retains dirty state; downloaded SVG opens separately offline');
     } finally {
       await browser?.close(); await new Promise(resolve => server.close(resolve));
     }

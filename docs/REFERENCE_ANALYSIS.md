@@ -6,6 +6,19 @@ These references guide a specialized map tool for **Revola: Post Hyper**. Their 
 
 ## Inspection and reproducibility
 
+Since version 0.13.0, `src/ship-vector.js` replaces the runtime raster artwork with
+five white polygon rings and **144 points** in total. The maintained coordinates
+derive from the alpha >=128 reference silhouette simplified with a 6 px tolerance;
+the airlock is regularized to straight measured wall faces. This deliberately
+removes raster edge noise, retains transparent engine/cockpit apertures, and uses
+the same vector paths in the editor, PNG rendering and SVG. The asset-local anchor,
+375 px doorways, fixed graph ports and door-centered mirror pivot remain unchanged.
+The source PNG and extraction evidence below remain preserved references; they are
+excluded from runtime distributions. The existing floor contour/barrier remains
+unchanged. Geometry checks sample every vector edge at <=1 px spacing to verify it
+lies inside the original floor footprint plus its 12 px rim. Historical statements
+about exact raster rendering below describe versions before 0.13.0.
+
 Both images are **8192 × 8192 RGBA**. Every RGB channel has extrema `(255, 255)`: the image contains white RGB throughout, and alpha defines both the transparent background and wall silhouettes. Viewing the original on white hides almost all content. The analysis previews composite the original onto black; these black previews are documentation only and must never become map exports.
 
 From the repository root, run `python scripts/analyze-references.py` with Pillow installed to regenerate the previews, scan evidence in `docs/reference-analysis/measurements.json`, and the corrected ship asset. The original source PNGs remain unchanged. The generated `docs/reference-analysis/` directory is local verification evidence and excluded from source control; this maintained document records the relevant findings. The airlock correction reflects existing left-wall pixels and clears the exact doorway intervals; no image generation, tracing or resampling is used for `assets/ship.png`.

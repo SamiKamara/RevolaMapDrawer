@@ -1,12 +1,12 @@
 /** Compact, self-contained SVG export of the shared world-space renderer. */
 import { validateDocument } from './model.js';
-import { drawMap, SHIP_ANCHOR, SHIP_BOUNDS } from './render.js';
+import { drawMap } from './render.js';
 import { shipWorldPoint } from './ship.js';
+import { SHIP_VECTOR_OUTLINES } from './ship-vector.js';
 
 // Leave room for the maximum 0.000708 px displacement from decimal rounding.
 // Caps and miter polygons are never rounded or approximately simplified.
 const SIDE_TOLERANCE = 0.249;
-const MAX_SHIP_DATA_URL = 2 * 1024 * 1024;
 
 function distanceToSegmentSquared(point, a, b) {
   const dx = b.x - a.x, dy = b.y - a.y;
@@ -119,26 +119,14 @@ function xmlText(value) {
     .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
-function checkedShipDataUrl(value) {
-  // The caller supplies the unchanged bundled PNG. Never permit document URLs,
-  // arbitrary SVG data, XML attributes or external asset/network references.
-  if (typeof value !== 'string' || value.length > MAX_SHIP_DATA_URL ||
-      !/^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]*={0,2}$/.test(value) ||
-      (value.length - 'data:image/png;base64,'.length) % 4 !== 0) {
-    throw new Error('SVG export requires the bundled ship PNG as a base64 data URL.');
-  }
-  return value;
-}
-
 /**
  * Export a validated Revola document with a transparent background. Walls share
- * one nonzero-fill path, and the original ship PNG is embedded exactly once.
+ * one nonzero-fill path, and the fixed ship uses a compact true vector path.
  * Wall-side approximation plus coordinate rounding stays below 0.25 map px.
  * This visual interchange format deliberately omits editable project metadata.
  */
-export function renderMapSvg(document, { shipDataUrl } = {}) {
+export function renderMapSvg(document) {
   const map = validateDocument(document);
-  const ship = checkedShipDataUrl(shipDataUrl);
   const path = collectPolygons(map).map(points => polygonPath(simplifyPolygon(points))).join('');
   const viewBox = `${number(map.originX)} ${number(map.originY)} ${map.width} ${map.height}`;
   const mirror = map.ship.mirrored ? ' scale(-1 1)' : '';
@@ -146,6 +134,7 @@ export function renderMapSvg(document, { shipDataUrl } = {}) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${map.width}" height="${map.height}" viewBox="${viewBox}">` +
     `<title>${xmlText(map.name)}</title>` +
     (path ? `<path fill="#fff" fill-rule="nonzero" d="${path}"/>` : '') +
-    `<image x="${-SHIP_ANCHOR.x}" y="${-SHIP_ANCHOR.y}" width="${SHIP_BOUNDS.width}" height="${SHIP_BOUNDS.height}"` +
-    ` transform="translate(${number(origin.x)} ${number(origin.y)})${mirror}" href="${ship}"/></svg>`;
+    `<path data-ship="true" fill="#fff" fill-rule="nonzero"` +
+    ` transform="translate(${number(origin.x)} ${number(origin.y)})${mirror}"` +
+    ` d="${SHIP_VECTOR_OUTLINES.map(points => polygonPath(points)).join('')}"/></svg>`;
 }

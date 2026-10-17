@@ -71,12 +71,16 @@ function frame(doc, target, aim, options = {}) {
   }
   const signedDepth = dot(delta, normal);
   if (signedDepth < -axisDeadZone - EPS) fail('Drag the room outward from its connection.');
-  const grid = doc.style.grid, chamfer = doc.style.chamfer;
+  const grid = doc.style.grid, chamfer = options.rectangular ? 0 : doc.style.chamfer;
   const clearance = doc.style.wallWidth / 2 + doc.style.roughness;
   const minimumBaseHalf = Math.max(doc.style.doorWidth / 2 + clearance,
     target.source === 'corridor' ? doc.style.corridorWidth / 2 : 0);
   const minimumHalfWidth = Math.ceil((chamfer + minimumBaseHalf) / grid) * grid;
-  const minimumDepth = (Math.floor(2 * chamfer / grid) + 1) * grid;
+  // A square-corner room still needs usable depth behind the receiving doorway;
+  // removing its chamfers must not collapse it into overlapping wall faces.
+  const minimumDepth = options.rectangular
+    ? (Math.floor((doc.style.doorWidth + doc.style.wallWidth) / grid) + 1) * grid
+    : (Math.floor(2 * chamfer / grid) + 1) * grid;
   const rawTangent = Math.abs(dot(delta, tangent));
   const tangentSize = rawTangent > axisDeadZone ? Math.round(rawTangent / grid) * grid : 0;
   const normalSize = signedDepth > axisDeadZone ? Math.round(signedDepth / grid) * grid : 0;
@@ -97,9 +101,11 @@ function frame(doc, target, aim, options = {}) {
   const toWorld = (x, y) => ({ x: clean(target.point.x + tangent.x * x + normal.x * y),
     y: clean(target.point.y + tangent.y * x + normal.y * y) });
   const toLocal = point => ({ x: dot(sub(point, target.point), tangent), y: dot(sub(point, target.point), normal) });
-  const local = [{ x: -baseHalf, y: 0 }, { x: baseHalf, y: 0 }, { x: halfWidth, y: chamfer },
-    { x: halfWidth, y: depth - chamfer }, { x: baseHalf, y: depth }, { x: -baseHalf, y: depth },
-    { x: -halfWidth, y: depth - chamfer }, { x: -halfWidth, y: chamfer }];
+  const local = options.rectangular
+    ? [{ x: -halfWidth, y: 0 }, { x: halfWidth, y: 0 }, { x: halfWidth, y: depth }, { x: -halfWidth, y: depth }]
+    : [{ x: -baseHalf, y: 0 }, { x: baseHalf, y: 0 }, { x: halfWidth, y: chamfer },
+      { x: halfWidth, y: depth - chamfer }, { x: baseHalf, y: depth }, { x: -baseHalf, y: depth },
+      { x: -halfWidth, y: depth - chamfer }, { x: -halfWidth, y: chamfer }];
   const points = local.map(({ x, y }) => toWorld(x, y));
   return { tangent, normal, halfWidth, depth, baseHalf, local, points, toWorld, toLocal,
     segments: points.map((a, index) => ({ a, b: points[(index + 1) % points.length] })) };
@@ -107,7 +113,8 @@ function frame(doc, target, aim, options = {}) {
 
 /** Preview the proposed room's actual doorway gap, with the base midpoint fixed
  * exactly at the target. Host orientation takes precedence over free rotation.
- * options.square makes width/depth equal without moving the attachment.
+ * options.square makes width/depth equal without moving the attachment;
+ * options.rectangular uses four square corners instead of fixed chamfers.
  */
 export function attachedRoomSegments(doc, target, aim, options = {}) {
   const shape = frame(doc, target, aim, options), halfDoor = doc.style.doorWidth / 2;
@@ -231,7 +238,7 @@ function missingBase(doc, shape) {
   return missing;
 }
 
-/** Add an attached chamfered room and its one exact centered connection.
+/** Add an attached room and its one exact centered connection.
  * Reuse existing solid base geometry/door IDs; drawing never fills saved cuts.
  * A failed preview or placement preserves graph, bounds, ship and all IDs.
  */

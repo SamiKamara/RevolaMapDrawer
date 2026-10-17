@@ -35,7 +35,7 @@ test('Vercel upload includes every transitive browser input while excluding unre
     write: false, format: 'esm', platform: 'browser', metafile: true });
   const imported = Object.keys(bundle.metafile.inputs);
   assert.ok(imported.includes('src/room-start.js'), 'The dependency scan must include the attached-room module');
-  const required = [...new Set([...imported, 'src/style.css', 'assets/ship.png', 'assets/editor-stars.png',
+  const required = [...new Set([...imported, 'src/style.css', 'assets/editor-stars.png',
     'web/register.js', 'web/service-worker.js', 'scripts/build-web.mjs', 'index.html',
     'package.json', 'package-lock.json', 'LICENSE', 'vercel.json', '.vercelignore'])];
   assert.deepEqual(git(['check-ignore', '--no-index', '--stdin'], required.join('\n') + '\n'), [],
@@ -69,15 +69,15 @@ test('web build contains only hashed browser runtime, notices and a bounded offl
     .filter(item => item.isFile()).map(item => path.relative(outputDirectory, path.join(item.parentPath, item.name)).replaceAll(path.sep, '/')).sort();
   assert.deepEqual(actualFiles, manifest.assets.map(item => item.path).sort());
   assert.deepEqual(actualFiles.filter(name => !name.startsWith('assets/')), ['LICENSE-RevolaMapDrawer.txt', 'index.html', 'sw.js']);
-  assert.equal(actualFiles.length, 8);
-  const expectedNames = ['app', 'style', 'register', 'ship', 'editor-stars'];
+  assert.equal(actualFiles.length, 7);
+  const expectedNames = ['app', 'style', 'register', 'editor-stars'];
   for (const name of expectedNames) assert.equal(actualFiles.filter(file => file.startsWith(`assets/${name}.`)).length, 1, name);
   for (const asset of manifest.assets) {
     const bytes = await fs.readFile(path.join(outputDirectory, asset.path));
     assert.equal(sha256(bytes), asset.sha256); assert.equal(bytes.length, asset.bytes);
     if (asset.path.startsWith('assets/')) assert.match(asset.path, new RegExp(`\\.${asset.sha256.slice(0, 16)}\\.(js|css|png)$`));
   }
-  for (const name of ['ship', 'editor-stars']) {
+  for (const name of ['editor-stars']) {
     const asset = manifest.assets.find(item => item.source === `assets/${name}.png`);
     assert.ok((await fs.readFile(path.join(outputDirectory, asset.path))).equals(await fs.readFile(path.join(root, asset.source))), `${name} artwork bytes retain exact dimensions, transparency and scale`);
   }
@@ -90,7 +90,8 @@ test('web build contains only hashed browser runtime, notices and a bounded offl
   assert.ok(!app.includes('../assets/ship.png') && !app.includes('../assets/editor-stars.png'));
   for (const lazy of manifest.lazyAssets) assert.ok(!manifest.shell.includes(lazy), 'Optional stars are never prefetched');
   assert.equal(manifest.lazyAssets.length, 1); assert.match(manifest.lazyAssets[0], /editor-stars\.[a-f0-9]{16}\.png$/);
-  assert.ok(manifest.shell.includes('/index.html') && manifest.shell.some(name => name.includes('/ship.')));
+  assert.ok(manifest.shell.includes('/index.html') && manifest.shell.some(name => name.includes('/app.')));
+  assert.ok(!manifest.assets.some(asset => /ship.*\.png$/.test(asset.path)), 'Ship geometry is bundled as vectors without a raster download');
   assert.ok(manifest.totals.firstVisit.brotliBytes < 250_000, 'Complete initial shell stays below the static transfer budget');
   const second = await buildWeb({ root, outputDirectory, metricsFile: null });
   assert.deepEqual(second, manifest, 'Identical source produces identical URLs and worker cache identity');

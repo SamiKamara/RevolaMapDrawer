@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { drawMap, segmentVisibleParts, shipBounds, SHIP_ANCHOR, SHIP_BOUNDS } from '../src/render.js';
+import { SHIP_VECTOR_OUTLINES } from '../src/ship-vector.js';
 
 test('physical door clearance is 375 map pixels on horizontal and diagonal edges', () => {
   for (const b of [{ x: 1000, y: 0 }, { x: 1000, y: 1000 }]) {
@@ -77,7 +78,10 @@ test('ship mirrors around the outer doorway center and reports the corresponding
   drawMap(context, document, { shipImage: image });
   assert.ok(context.calls.some((call) => JSON.stringify(call) === JSON.stringify(['translate', 4125, 4740])));
   assert.ok(context.calls.some((call) => JSON.stringify(call) === JSON.stringify(['scale', -1, 1])));
-  assert.deepEqual(context.calls.find(([name]) => name === 'drawImage'), ['drawImage', image, -1269, -70, 2459, 1931]);
+  assert.equal(context.calls.filter(([name]) => name === 'drawImage').length, 0);
+  assert.equal(context.calls.filter(([name]) => name === 'closePath').length, SHIP_VECTOR_OUTLINES.length);
+  assert.equal(context.calls.filter(([name]) => name === 'moveTo' || name === 'lineTo').length,
+    SHIP_VECTOR_OUTLINES.reduce((sum, ring) => sum + ring.length, 0));
   const bounds = shipBounds(document.ship);
   assert.equal(bounds.left, document.ship.x + 29 - (SHIP_BOUNDS.width - SHIP_ANCHOR.x));
   assert.equal(bounds.right - bounds.left, SHIP_BOUNDS.width);
@@ -85,7 +89,7 @@ test('ship mirrors around the outer doorway center and reports the corresponding
   assert.equal(bounds.bottom, 6601);
 });
 
-test('Canvas reflects both raster door centers around one fixed world point without moving drawn walls', () => {
+test('Canvas reflects both vector door centers around one fixed world point without moving drawn walls', () => {
   const document = { vertices: [{ id: 'a', x: 3820.5, y: 4700 }, { id: 'b', x: 3820.5, y: 3200 }],
     edges: [{ id: 'rail', a: 'a', b: 'b', doors: [], gaps: [] }], ship: { x: 4096, y: 4740, mirrored: false } };
   const image = {}, first = recordingContext();
@@ -96,9 +100,10 @@ test('Canvas reflects both raster door centers around one fixed world point with
     const context = recordingContext(); drawMap(context, document, { shipImage: image });
     const [, translateX, translateY] = context.calls.find(([name]) => name === 'translate');
     const scaleX = context.calls.find(([name]) => name === 'scale')?.[1] ?? 1;
-    const [, , left, top, width, height] = context.calls.find(([name]) => name === 'drawImage');
+    const { x: anchorX, y: anchorY } = SHIP_ANCHOR;
+    const left = -anchorX, top = -anchorY, { width, height } = SHIP_BOUNDS;
     for (const localY of [30, 638]) {
-      assert.equal(translateX + scaleX * (left + 1283.5), 4110.5, 'Outer and inner raster cuts share the unchanged corridor center');
+      assert.equal(translateX + scaleX * (left + 1283.5), 4110.5, 'Outer and inner vector cuts share the unchanged corridor center');
       assert.equal(translateY + top + localY, localY === 30 ? 4700 : 5308);
     }
     const bounds = shipBounds(document.ship);

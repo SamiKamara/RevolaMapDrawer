@@ -31,7 +31,6 @@ for (let index = 1; index < points.length; index++) addWall(fixture, { x: points
 assert.deepEqual(validateDocument(fixture), fixture); assert.equal(generateFloor(fixture).closed, true);
 const fixturePath = destination('fixture.revola'); await fs.writeFile(fixturePath, JSON.stringify(fixture));
 const blank = createDocument(); blank.name = 'Open map'; const blankPath = destination('open-fixture.revola'); await fs.writeFile(blankPath, JSON.stringify(blank));
-const shipDataUrl = `data:image/png;base64,${(await fs.readFile(path.join(root, 'assets/ship.png'))).toString('base64')}`;
 const saveSelectors = ['#save-all-button', '#export-button', '#svg-button', '#floor-png-button', '#floor-svg-button', '#project-button'];
 const exportBase = name => (name || 'Untitled map').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim().slice(0, 80).replace(/[. ]+$/, '') || 'Untitled map';
 
@@ -97,7 +96,7 @@ async function inspectPng(bytes, source, grayscale, fullRaster = true) {
 async function inspectSet(files, source, fullRaster = true) {
   assert.deepEqual(files.map(file => file.name), SAVE_ALL_FORMATS.map(format => exportBase(source.name) + format.suffix));
   assert.deepEqual(validateDocument(JSON.parse(files[4].bytes.toString('utf8'))), source);
-  assert.equal(files[1].bytes.toString('utf8'), renderMapSvg(source, { shipDataUrl }));
+  assert.equal(files[1].bytes.toString('utf8'), renderMapSvg(source));
   assert.equal(files[3].bytes.toString('utf8'), renderFloorSvg(source, { floor: generateFloor(source) }));
   return { files: files.map(file => ({ name: file.name, bytes: file.bytes.length })),
     walls: await inspectPng(files[0].bytes, source, 255, fullRaster), floor: await inspectPng(files[2].bytes, source, 0, fullRaster), exactSvgAndEditableSource: true };
