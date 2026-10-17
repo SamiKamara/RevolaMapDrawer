@@ -15,6 +15,10 @@ Rectangular rooms and a compact vector ship for the specialized
 - Export wall SVGs entirely as vectors without embedded PNGs or external resources. The editor and wall PNG export use the same ship geometry.
 - Bundle ship vectors into the browser runtime so offline startup and SVG export need no ship image download.
 
+Published as the latest Windows x64 portable release with its SHA-256 checksum:
+[v0.13.0](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.13.0).
+The same changes are deployed at [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app).
+
 ## [0.12.0] - 2026-10-14
 
 Floor closure, eraser geometry and combined saves for the specialized

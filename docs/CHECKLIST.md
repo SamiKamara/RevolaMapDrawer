@@ -10,10 +10,10 @@ Version **0.13.0** is selected for this feature milestone.
 
 - [x] Add rectangular rooms with the existing room tool's free/attached behavior.
 - [x] Replace ship rendering and wall SVG's embedded PNG with compact shared vectors.
-- [ ] Verify geometry/persistence, source UI, browser, native package and portable archive.
+- [x] Verify geometry/persistence, source UI, browser, native package and portable archive.
 - [x] Inspect and launch the actual rebuilt desktop test shortcut.
-- [ ] Commit/push `main`, verify immutable v0.13.0 assets and publish the requested release.
-- [ ] Deploy and verify the same browser runtime in Vercel production.
+- [x] Commit/push `main`, verify immutable v0.13.0 assets and publish the requested release.
+- [x] Deploy and verify the same browser runtime in Vercel production.
 
 Original reference PNGs, Finnish brief and the derived raster reference remain unchanged.
 Verified preparation:
@@ -61,6 +61,43 @@ Verified preparation:
   rectangular-room/modifier actions make zero host requests. No uploads,
   third-party requests or renderer errors. Worker update protection, exact local
   persistence, pure-vector SVG, floors and compact layout pass.
+
+Release and deployment verification:
+
+- `scripts/create-release.ps1 -Version 0.13.0 -Push` passes its complete local
+  build and fresh clean-main checks, creates immutable `v0.13.0` on **78d1977**
+  and pushes that tag. The wrapper verifies all **77 ZIP file contents** and an
+  extracted offline native save/reopen of the exact **36-wall** graph, with zero
+  renderer errors/network requests. Local ZIP: **162,699,904 bytes**, SHA-256
+  `e3755666c796f7a685e050314c005cab49316cefed69fb7c7eed715af56b352e`.
+- Main CI [39032318922](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/39032318922)
+  passes every source/native/web/package step at the exact implementation commit.
+  Tagged release [39032583019](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/39032583019)
+  also passes its complete native build, ZIP and extracted portable checks.
+- Downloaded both actual GitHub draft assets and verified the ZIP against both
+  `SHA256SUMS.txt` and GitHub's asset digest: **162,699,873 bytes**, SHA-256
+  `5cae931b6aea8d854097c1ec7252e4c5348a411fa1241af1ba4e5dd62e8cb5a1`.
+  Extracted the downloaded archive and ran the maintained portable verifier
+  against canonical `v0.13.0` Git bytes (independent of machine line endings).
+  All **23 runtime files**, minimal manifest and notices match. Native offline
+  save/reopen restores exact **36-wall** geometry with zero network/renderer
+  errors. Evidence: ignored rooms-vector-hosted-portable.log and hosted-reviewed/.
+- Reviewed the two assets and release notes, removed the draft-only note and
+  published the requested [v0.13.0](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.13.0).
+  GitHub reports `draft=false`, `prerelease=false` and confirms this as latest.
+  The immutable tag remains on **78d1977**; repository visibility is unchanged.
+- Vercel deployment **dpl_CVEfxpqgLqp8Zxj5YeRkF3LswkLg** is Production Ready and
+  aliased to [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app).
+  Production browser smoke and Save all checks pass. All **seven** fetched
+  production files match local build **1ce1148188de663f** SHA-256 byte for byte,
+  including app **75ea7265d07d1ca1**. Real production checks cover rectangular
+  offline placement/history, exact local reopen, pure-vector SVG, all five Save
+  all files, cached/offline floors and zero map uploads/third-party requests.
+  Evidence: ignored rooms-vector-vercel-deploy.log, web-production-results.json,
+  save-all-production-results.json and rooms-vector-production-parity.json.
+- After the guarded release rebuild, repeated source/package parity and actual
+  shortcut `-VerifyOnly` pass. Launched the real `.lnk` again and selected
+  Rectangular room visibly; the untouched current packaged editor is left open.
 
 Limitations: ship artwork is fixed and simplified, outside the editable graph.
 Its legacy floor coverage is retained; the original hand-drawn raster edge noise
