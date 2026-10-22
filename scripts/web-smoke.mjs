@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { brotliCompressSync, createInflate } from 'node:zlib';
 import { once } from 'node:events';
-import { createDocument, addWall, validateDocument } from '../src/model.js';
+import { createDocument, addWall, addRoom, validateDocument } from '../src/model.js';
 import { generateFloor } from '../src/floors.js';
 import { decodePngMetadata, MAX_METADATA_BYTES, MAX_PNG_BYTES } from '../src/png.js';
 import { createExampleDocument } from './example-fixture.mjs';
@@ -82,8 +82,8 @@ async function verifyDrawingModifiers(page, snapshot, open, prefix = '') {
     await expect(page.locator('#status-message')).not.toHaveClass(/error/);
     await page.screenshot({ path: destination(`${prefix}${name}.png`) });
   };
-  const loadBlank = async name => {
-    const fixture = createDocument(); fixture.name = name;
+  const loadBlank = async (name, fixture = createDocument()) => {
+    fixture.name = name;
     const file = destination(`${prefix}${name}-fixture.revola.json`); await fs.writeFile(file, JSON.stringify(fixture));
     await open(file, name); await page.locator('#fit-button').click();
     await expect(page.locator('#undo-button')).toBeDisabled(); await expect(page.locator('#dirty-dot')).not.toHaveClass(/dirty/);
@@ -126,6 +126,37 @@ async function verifyDrawingModifiers(page, snapshot, open, prefix = '') {
   assert.deepEqual(rectangle.vertices.map(({ x, y }) => [x, y]).sort(), [[2000, 1200], [2000, 1800], [3100, 1200], [3100, 1800]]);
   assert.deepEqual(rectangle.ship, rectangleBase.ship); await history('rectangular-room', rectangleBase, rectangle);
 
+  const overhangs = [];
+  for (const hostRectangle of [false, true]) for (const rectangular of [false, true]) {
+    const host = createDocument();
+    addRoom(host, { x: 2700, y: 2600 }, { x: 4300, y: 4000 }, false, { rectangular: hostRectangle });
+    const name = `overhang-${hostRectangle}-${rectangular}`, before = await loadBlank(name, host);
+    await page.locator(`[data-tool="${rectangular ? 'rectangle' : 'room'}"]`).click();
+    await page.locator('#rotate-room').uncheck(); camera = await calibrate();
+    const from = camera.point({ x: 3500, y: 2600 }), to = camera.point({ x: 5000, y: 1400 });
+    await page.mouse.move(from.x, from.y); await page.mouse.down(); await resetPreview(); await page.mouse.move(to.x, to.y);
+    await preview(`${name}-preview`, [{ x: rectangular ? 2000 : 2220, y: 1400 }, { x: rectangular ? 5000 : 4780, y: 1400 }]);
+    await page.mouse.up(); await expect(page.locator('#status-message')).toContainText(/room placed/i);
+    const after = await snapshot(`${name}-placed`);
+    assert.equal(Math.min(...after.vertices.map(point => point.x)), 2000);
+    assert.equal(Math.max(...after.vertices.map(point => point.x)), 5000);
+    assert.equal(after.edges.flatMap(edge => edge.doors).length, 1);
+    await history(name, before, after);
+    await open(destination(`${prefix}${name}-placed.revola`), name);
+    assert.deepEqual(await snapshot(`${name}-reopened`), after);
+    const blockedHost = structuredClone(before);
+    addWall(blockedHost, { x: 2100, y: 1800 }, { x: 2400, y: 1800 }, { joinTolerance: 0 });
+    const blocked = await loadBlank(`${name}-blocked`, blockedHost);
+    await page.locator(`[data-tool="${rectangular ? 'rectangle' : 'room'}"]`).click(); camera = await calibrate();
+    const blockedFrom = camera.point({ x: 3500, y: 2600 }), blockedTo = camera.point({ x: 5000, y: 1400 });
+    await page.mouse.move(blockedFrom.x, blockedFrom.y); await page.mouse.down(); await page.mouse.move(blockedTo.x, blockedTo.y); await page.mouse.up();
+    await expect(page.locator('#status-message')).toHaveClass(/error/);
+    assert.deepEqual(await snapshot(`${name}-blocked-unchanged`), blocked);
+    await expect(page.locator('#undo-button')).toBeDisabled();
+    overhangs.push({ hostRectangle, rectangular, hostWidth: 1600, width: 3000, positivePreview: true,
+      exactDownloadAndHistory: true, exactReopen: true, obstructionRejected: true });
+  }
+
   const corridorBase = await loadBlank('short-offset-airlock-web');
   await page.locator('[data-tool="corridor"]').click(); camera = await calibrate();
   const pivot = camera.point({ x: 4110.5, y: 4700 }), scale = camera.view.a / camera.view.ratioX;
@@ -146,6 +177,7 @@ async function verifyDrawingModifiers(page, snapshot, open, prefix = '') {
   assert.deepEqual(corridor.ship, corridorBase.ship); await history('short-offset-airlock', corridorBase, corridor);
   return { offline: true, shiftSquare: { side: 1100, keyTransitionsAtStationaryPointer: true, heldBeforePressAndAtRelease: true, exactDownloadAndHistory: true },
     rectangularRoom: { corners: 4, width: 1100, height: 600, exactDownloadAndHistory: true },
+    overhangs,
     shortCorridor: { length: 50, width: 580, rawPressOffset: 100, exactDoorCenter: { x: 4110.5, y: 4700 }, positivePreview: true, exactDownloadAndHistory: true } };
 }
 

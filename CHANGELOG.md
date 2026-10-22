@@ -5,6 +5,15 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-10-22
+
+Attached-room correction for the specialized **Revola: Post Hyper** editor,
+shared by the offline Windows application and browser version.
+
+- Allow chamfered and rectangular rooms drawn against another room to extend beyond the host wall's corners when the new footprint is clear.
+- Reuse the original corner junctions and centered doorway, preserving existing doors and saved geometry while rejecting obstructed placements.
+- Keep diagonal shared boundaries stable despite coordinate rounding.
+
 ## [0.13.0] - 2026-10-17
 
 Rectangular rooms and a compact vector ship for the specialized

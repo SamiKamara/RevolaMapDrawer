@@ -137,7 +137,10 @@ function intersection(a, b, c, d) {
 
 function strictlyInsideRoom(shape, point) {
   const p = shape.toLocal(point);
-  return shape.local.every((a, index) => cross(sub(shape.local[(index + 1) % shape.local.length], a), sub(p, a)) > EPS);
+  return shape.local.every((a, index) => {
+    const side = sub(shape.local[(index + 1) % shape.local.length], a);
+    return cross(side, sub(p, a)) > EPS * Math.hypot(side.x, side.y);
+  });
 }
 
 function insidePolygon(polygon, point) {
@@ -186,12 +189,8 @@ function checkConnection(doc, target, shape) {
     } else if (!resolveDoorPlacement(doc, target.edgeId, target.point, { centerTolerance: 0 })) {
       fail('A centered doorway does not fit this wall.');
     }
-    // Extending a structural corner/branch would silently make a competing
-    // shared boundary. Only solid unbranched free ends may extend the base.
-    for (const [point, needsExtension] of [[span.a, low < -EPS], [span.b, high > span.length + EPS]]) {
-      if (needsExtension && (isShipPort(doc.ship, point) || doc.edges.filter(edge => edge.a === point.id || edge.b === point.id).length !== 1)) {
-        fail('The room base would cross a wall corner or branch.');
-      }
+    for (const [point, extendsPast] of [[span.a, low < -EPS], [span.b, high > span.length + EPS]]) {
+      if (extendsPast && isShipPort(doc.ship, point)) fail('The room base would cross a fixed ship port.');
     }
   }
   const vertices = new Map(doc.vertices.map(vertex => [vertex.id, vertex]));
@@ -207,6 +206,11 @@ function checkConnection(doc, target, shape) {
       if (hostIds.has(edge.id) && Math.abs(localA.y) <= EPS && Math.abs(localB.y) <= EPS
         && Math.abs(shape.toLocal(hit.point).y) <= EPS) continue;
       if (index === 0 && !hit.overlap && localA.y <= EPS && localB.y <= EPS) {
+        // The receiving wall may extend past its host's corners. Reuse those
+        // exact joints when their other walls stay on the non-room side;
+        // unrelated touches, overlaps and walls entering the room still fail.
+        if (span && [span.a, span.b].some(point => same(point, hit.point)
+          && (edge.a === point.id || edge.b === point.id) && !isShipPort(doc.ship, point))) continue;
         if (railIds.has(edge.id) && mouthPoints.some(point => same(point, hit.point))) continue;
         if (target.source === 'ship' && isShipPort(doc.ship, hit.point)
           && [a, b].some(point => same(point, hit.point))) continue;

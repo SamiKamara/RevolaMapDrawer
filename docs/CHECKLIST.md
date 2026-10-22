@@ -2,6 +2,44 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Attached-room overhang — version 0.13.1, 2026-10-22
+
+The owner requested that both room tools extend beyond a host room's wall limits
+when unobstructed, plus commit/push to `main`, an updated release and Vercel.
+Version **0.13.1** is selected for this correction.
+
+- [x] Allow clear overhangs past host corners with shared original junctions.
+- [x] Verify both child/host types in all eight directions, new/existing doors,
+  Shift square sizing and atomic collision rejection in focused geometry checks.
+- [-] Verify complete geometry/persistence, source UI, browser and native delivery.
+- [ ] Inspect and launch the actual rebuilt desktop test shortcut.
+- [ ] Commit/push `main`, verify immutable v0.13.1 assets and update GitHub release.
+- [ ] Deploy and verify the same browser runtime in Vercel production.
+
+Existing constraints remain: no unrelated boundary touches, wall intersections,
+enclosed geometry, competing openings or protected ship/pin changes. The original
+brief and reference images remain unchanged. Detailed verification follows below.
+
+Verified source/browser preparation:
+
+- `npm test`: **343/343** pass. New regressions cover both child and host types,
+  all eight directions, new and reused doors, Shift square sizing, one-sided
+  overhangs, exact shared corner vertices, JSON round trips, centered 16384
+  expansion, fixed ship ports and atomic rejection of inward/outward obstacles.
+- Complete `npm run test:ui` passes. Extended native room smoke checks draw
+  **3000 px** rooms against **1600 px** hosts in all four type combinations,
+  then verify one-step undo/redo and exact native save/reopen. Reviewed the
+  actual resulting chamfered-room screenshot; the wider room joins both old
+  corners without changing their geometry. Evidence: ignored overhang-ui.log,
+  rectangular-room-overhang-*.png and rectangular-room-results.json.
+- `npm run build:web` and `npm run test:web` pass final build **4dc738ed052b027c**,
+  app **91ff1feeaa2ec15b**, seven files / **275,933 bytes**. First installation
+  uses **50,562 Brotli body bytes** (66,881 gzip estimate). All four child/host
+  overhang combinations have green previews, exact downloads/undo/redo/reopen
+  and rejected outboard obstructions while offline: **zero host requests/bytes**.
+  No uploads, third-party requests or renderer errors. Evidence: ignored
+  web-results.json and web-overhang-*-preview.png.
+
 ## Rectangular rooms and vector ship — version 0.13.0, 2026-10-17
 
 The owner requested four-corner rooms, simplified vector ship/airlock artwork,

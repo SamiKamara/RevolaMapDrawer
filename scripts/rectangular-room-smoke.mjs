@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractFile } from '@electron/asar';
-import { createDocument, addWall, addDoor, addCorridor, validateDocument } from '../src/model.js';
+import { createDocument, addWall, addDoor, addCorridor, addRoom, validateDocument } from '../src/model.js';
 import { detectRoom } from '../src/rooms.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -179,6 +179,25 @@ try {
   const wallAfter = await snapshot('door-placed'); dimensions(wallAfter, 2000, 1200);
   assert.deepEqual(doors(wallAfter), doors(wallBefore)); await history('door', wallBefore, wallAfter);
   evidence.placements.push({ name: 'existing-door', exactDoorIdAndCenter: true, exactUndoRedo: true });
+
+  for (const hostRectangle of [false, true]) for (const rectangular of [false, true]) {
+    const host = createDocument();
+    addRoom(host, { x: 2700, y: 2600 }, { x: 4300, y: 4000 }, false, { rectangular: hostRectangle });
+    const name = `overhang-${hostRectangle}-${rectangular}`, before = await fixture(name, host);
+    await page.locator(`[data-tool="${rectangular ? 'rectangle' : 'room'}"]`).click();
+    await drag({ x: 3500, y: 2600 }, { x: 5000, y: 1400 });
+    const after = await snapshot(`${name}-placed`);
+    assert.ok(after.edges.length > before.edges.length);
+    near(Math.min(...after.vertices.map(point => point.x)), 2000);
+    near(Math.max(...after.vertices.map(point => point.x)), 5000);
+    assert.equal(doors(after).length, 1); near(doors(after)[0].x, 3500); near(doors(after)[0].y, 2600);
+    await page.screenshot({ path: destination(`${name}.png`) });
+    await history(name, before, after);
+    await open(destination(`${name}-placed.revola`), after.name);
+    assert.deepEqual(await snapshot(`${name}-reopened`), after);
+    evidence.placements.push({ name: 'host-room-overhang', hostRectangle, rectangular, width: 3000,
+      hostWidth: 1600, exactUndoRedo: true, nativeReopen: true });
+  }
 
   const corridor = createDocument(); addCorridor(corridor, [{ x: 3500, y: 4500 }, { x: 3500, y: 3500 }]);
   const corridorBefore = await fixture('corridor-rectangle', corridor);

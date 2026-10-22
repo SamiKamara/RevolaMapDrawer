@@ -1,6 +1,6 @@
 # Revola Map Drawer — implementation design
 
-Implementation baseline: version 0.13.0. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
+Implementation baseline: version 0.13.1. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
 
 ## Product and first milestone
 
@@ -35,6 +35,18 @@ Hashed assets have one-year immutable browser caching. A web-only service worker
 An updated worker waits until every previous editor tab closes, preventing a running editor from switching source versions. Reopening online allows the browser to discover an update; the first reopening may still use the previous worker until it finishes installing. Cached versions and browser storage can be evicted. See [WEB.md](WEB.md) for deployment, measured transfer sizes and exact verification scope.
 
 ## Document and geometry contracts
+
+### Version 0.13.1 attached rooms beyond host corners
+
+Both room tools may extend their receiving side beyond either end of the host
+room's wall. Reuse the exact original corner vertices when their incident walls
+stay entirely on the non-room side of that receiving line. Preserve centered
+375 px doors, existing door IDs, shared topology and all original geometry.
+Unrelated boundary touches, overlapping walls, inward host geometry, outward
+branches, enclosed walls and competing openings still reject the entire edit.
+Use map-distance tolerance for convex interior tests so diagonal host corners
+remain on the shared boundary despite coordinate rounding. Preview, commit,
+undo/redo, centered expansion and version 2 persistence retain their existing flow.
 
 ### Version 0.13.0 rectangular rooms and vector ship
 
