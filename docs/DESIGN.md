@@ -18,6 +18,7 @@ The first runnable milestone established manual walls, fixed-width door cuts, un
 
 ## Architecture and ownership boundaries
 
+- **Companion repository:** [SamiKamara/Revola](https://github.com/SamiKamara/Revola), locally `C:\Users\samin\Desktop\Revola` on this computer. Drawer is [SamiKamara/RevolaMapDrawer](https://github.com/SamiKamara/RevolaMapDrawer), locally `C:\Users\samin\Desktop\RevolaMapDrawer`. Read both `AGENTS.md` files and assess both projects before changing the shared map contract or either generation path. See [repository roles, synchronization and machine-specific paths](../README.md#companion-unity-project-and-local-checkouts); these paths are development references, not runtime dependencies.
 - Electron desktop shell with an isolated renderer, no Node integration, a small preload bridge, native file dialogs, and local files only. A local HTTP preview also permits browser QA. The desktop distribution must not need a running development server.
 - Dependency-light vanilla JavaScript ES modules, HTML and CSS. Canvas 2D provides pan, zoom, editing overlays and raster export. The pure geometry and serialization modules must run in Node tests.
 - `src/model.js`: document schema, graph vertices/edges, snapped construction, intersections, doors, primitives and constraints. Geometry uses map pixels and is independent of zoom.

@@ -2,6 +2,44 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Commit checkpoint — 2026-10-22
+
+- [x] Owner authorized committing and pushing the manual patrol feature and
+  companion-repository documentation to both **main** branches. Fresh fetches
+  confirmed both branches matched origin/main before these commits.
+- [x] Commit the feature separately from maintenance instructions: Drawer
+  `59fbfa31c6eab3c3527ab152532f7f4efb79c313`, Unity
+  `043ee0823e8efebc6ee9acefc833de1a76f53dc9`. Unity provenance now identifies that
+  exact Drawer commit. All 12 vendored module hashes verify; contents match the
+  recorded source after accounting for Windows/Git line-ending differences.
+- [x] The previously verified runtime code is unchanged by commit preparation;
+  the 31 distinct native Unity cases retain passing latest results. Packaged
+  runtime bytes still match current source (30 files/34 entries). Shortcut
+  read-back confirms the direct executable, empty arguments, repository working
+  directory and existing paths. Launched the actual `.lnk` again and observed the
+  working packaged editor through Computer Use. Source/UI/package/offline evidence remains in
+  the manual-patrol milestone below.
+
+## Companion repository maintenance instructions — 2026-10-22
+
+- [x] Add prominent reciprocal instructions to both repositories' root `AGENTS.md`,
+  including canonical GitHub repositories and this computer's exact local checkouts:
+  `C:\Users\samin\Desktop\RevolaMapDrawer` and `C:\Users\samin\Desktop\Revola`.
+- [x] Document the integration in Drawer README/design and Unity Map Manager/runtime
+  documentation. Require assessing the companion project, making necessary matching
+  changes and explaining when the existing counterpart remains compatible. Cover
+  editor/runtime generation, metadata/geometry, authored NPC routes, catalogs,
+  defaults/previews and the vendored producer/resource refresh process.
+- [x] Verify local directories, referenced integration files and both configured
+  Git origins; check both agent guides and integration references contain both
+  machine-specific paths. `git diff --check` passes in both repositories.
+- [x] This follow-up changes documentation only, so no runtime counterpart changes
+  or new geometry/UI suites were needed. Existing packaged runtime bytes still
+  match current source (`--verify-package`: 30 files/34 entries). Read back the actual
+  desktop shortcut, confirm direct target/empty arguments/working directory and
+  existing paths, launch the exact `.lnk`, and observe the working packaged editor
+  through Computer Use. A package rebuild was unnecessary for these excluded docs.
+
 ## Manual NPC patrol routes — local unreleased continuation, 2026-10-22
 
 - [x] Add **Patrol points (manual)** to NPC Advanced setup. Ask for 1–128 points,
@@ -50,7 +88,8 @@ the return to point 1, and reserves targets before automatic props. Authored dyn
 obstacles retain the game's ordinary avoidance behavior. Manual routes are not
 silently replaced if invalid. Physical movement through every user-authored route
 and a new standalone player build are outside this milestone's verification.
-No new version, commit, push, release or Vercel deployment was requested.
+No new version, release or Vercel deployment was requested. Commits and pushes
+were subsequently authorized; see the commit checkpoint above.
 
 ## Version 0.14.0 release preparation — 2026-10-22
 

@@ -1,5 +1,16 @@
 # Revola Map Drawer
 
+## Companion Unity repository — check both projects
+
+- This editor and the Revola game's Map Manager share a map format and generation contract. Drawer repository: [SamiKamara/RevolaMapDrawer](https://github.com/SamiKamara/RevolaMapDrawer). Companion Unity repository: [SamiKamara/Revola](https://github.com/SamiKamara/Revola).
+- On this specific computer, the Drawer checkout is `C:\Users\samin\Desktop\RevolaMapDrawer` and the Unity checkout is `C:\Users\samin\Desktop\Revola`. These are machine-specific development locations, not runtime dependencies. If either checkout moves, update these references in both repositories.
+- Before changing map drawing/export, project or PNG metadata, geometry/coordinate conventions, authored objects/NPC routes, catalogs/previews/defaults, or Unity integration, read the companion checkout's `AGENTS.md` and relevant Map Manager documentation. Assess both repositories and implement any needed matching changes in the same task. If no companion change is needed, record the compatibility reason in the handoff.
+- In Unity, check both editor Map Manager generation and built-game user-map import/generation/reopen under `Assets/RevolaMapManager`. Unity's `Tools/UserMaps/MapDrawer` is a vendored producer snapshot, not a live link to this checkout. Relevant producer changes require synchronizing that snapshot/provenance, rebuilding `RevolaUserMapExporter.txt` and refreshing build resources; copying Drawer files alone is insufficient.
+- Unity prefab/shop/NPC-default/sprite changes may require refreshing this editor's schema, weapon catalog, displayed defaults and vectors. Preserve old projects, optional authoring, category-specific automatic generation and architecture-only image exports. Verify affected flows on both sides; do not infer runtime correctness from editor-only checks.
+- Repository roles, local locations and integration entry points are also documented in [README.md](README.md) and the companion `Assets/RevolaMapManager/Documentation/README_MAP_MANAGER.md`.
+
+## Implementation
+
 - Read `docs/DESIGN.md`, `docs/CHECKLIST.md` and relevant reference notes before changing the implementation. The original Finnish brief and both source PNGs remain unchanged.
 - Keep the interface English and the application offline. The native app loads bundled files without a development server.
 - Preserve the 8192 default canvas and centered automatic expansion to 16384, measured wall/door/corridor dimensions, shared graph topology, 45-degree directions, white wall pixels, transparent export and pinned ship ports. Expanded maps retain the original world center and geometry scale.

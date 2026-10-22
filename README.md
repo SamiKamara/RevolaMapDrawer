@@ -8,6 +8,44 @@ Draw on an **8192 × 8192** canvas and export transparent wall PNG/SVG images. D
 
 The Windows application runs locally without an account, internet connection or development server. The supported native distribution is **Windows x64**. Other native operating systems and architectures have not been packaged or verified. See the [changelog](CHANGELOG.md) for version history and the [verification checklist](docs/CHECKLIST.md) for completed checks and exact limitations.
 
+## Companion Unity project and local checkouts
+
+This editor is developed together with the **Revola: Post Hyper** Unity game. Drawer
+authors editable projects/PNG metadata and architecture exports; the game's Map
+Manager imports them and generates playable maps in both the Unity editor and
+built-game runtime.
+
+| Project | Repository | Local checkout on this specific computer |
+| --- | --- | --- |
+| Map Drawer | [SamiKamara/RevolaMapDrawer](https://github.com/SamiKamara/RevolaMapDrawer) | `C:\Users\samin\Desktop\RevolaMapDrawer` |
+| Unity game / Map Manager | [SamiKamara/Revola](https://github.com/SamiKamara/Revola) | `C:\Users\samin\Desktop\Revola` |
+
+These paths identify this machine's development checkouts. They are not portable
+installation paths or application dependencies; update the documentation and both
+`AGENTS.md` files if the checkouts move.
+
+When changing either project's map-related behavior, inspect the companion project
+and make any needed matching changes in the same task. This includes geometry,
+units/origins, project/PNG metadata, authored objects and patrol routes, generation
+defaults, prefab/catalog mappings, shop names and sprite-based previews. Preserve
+old projects and the automatic fallback for categories without authored objects.
+If the companion needs no change, record why its existing behavior remains compatible.
+
+Unity integration lives in `Assets/RevolaMapManager`: shared parsing/geometry,
+`Editor/Generation` and `Runtime/UserMaps`. `Tools/UserMaps/MapDrawer` in the Unity
+repo is a **vendored snapshot**, not a live reference to this checkout. Producer
+changes require updating its modules and `provenance.json` hashes, rebuilding the
+bundled `Runtime/Resources/RevolaUserMapExporter.txt`, and refreshing build support
+with `UserMapBuildSupport.Prepare`. Unity-side catalog/default/artwork changes may
+require refreshing Drawer's `src/object-schema.js`, `src/weapon-catalog.js`,
+`src/npc-defaults.js` and object vectors. Verify affected editor and runtime paths
+as well as Drawer persistence/export; a test in one repository covers only that side.
+
+Start with both repositories' `AGENTS.md`, this editor's [design](docs/DESIGN.md),
+and the game's [Map Manager documentation](https://github.com/SamiKamara/Revola/blob/main/Assets/RevolaMapManager/Documentation/README_MAP_MANAGER.md),
+[runtime user maps](https://github.com/SamiKamara/Revola/blob/main/Assets/RevolaMapManager/Documentation/USER_MAPS.md)
+and [authored-object contract](https://github.com/SamiKamara/Revola/blob/main/Assets/RevolaMapManager/Documentation/AUTHORED_MAP_OBJECTS.md).
+
 ## Browser application
 
 Open [Revola Map Drawer in your browser](https://revolamapdrawer.vercel.app).
