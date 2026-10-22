@@ -16,6 +16,10 @@ Gameplay object authoring for **Revola: Post Hyper**, shared by the offline Wind
 - Rename Laser pistol to Suppressed pistol; retire Gunpowder pistol, Laser assault gun and Laser shotgun from new placement/content/weapon lists while retaining old saved placements.
 - Synchronize all weapon choices with both game shops and their English names; add Ravager Assault Gun and LAF Laser Rifle, matching vector previews and trusted Unity prefab/loadout support.
 
+Published as the latest Windows x64 portable release with its SHA-256 checksum:
+[v0.14.0](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.14.0).
+The same feature set is deployed at [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app).
+
 ## [0.13.1] - 2026-10-22
 
 Attached-room correction for the specialized **Revola: Post Hyper** editor,

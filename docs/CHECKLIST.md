@@ -20,8 +20,36 @@ Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pen
   the direct current packaged executable, empty arguments, repository working
   directory and existing paths. Launched the actual `.lnk` through Windows Shell;
   Computer Use observed the working packaged editor and its gameplay toolbar.
-- [-] Commit/push both main branches, create immutable v0.14.0 tag, verify and
-  publish its GitHub release, deploy and verify Vercel production.
+- [x] Commit and push both main branches: Drawer
+  `9177678af1449df9692b12178941d9f8eeb28c33`, companion Unity integration
+  `9d6ba09f40e3c3a5dc0622c8df71b5ff26b37753`. Unity's vendored producer provenance
+  points to this exact Drawer source. Both main branches match their remotes.
+- [x] Create/push immutable annotated tag **v0.14.0** at the Drawer source commit.
+  GitHub [application verification](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/39780764013)
+  and [release build](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/39781403272)
+  both pass, including the extracted portable application's offline verification.
+- [x] Download the CI draft's ZIP and checksum and verify SHA-256 against both
+  `SHA256SUMS.txt` and GitHub's asset digest. Published
+  [v0.14.0](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.14.0)
+  at **2026-10-22 12:56:43 UTC**; API confirms latest release, not draft/prerelease,
+  with exactly the portable ZIP and checksum. ZIP: **162,734,196 bytes**, SHA-256
+  `e44e5ee896c92f6183dde80505bbec3e2827ef5dcf1ae6b986270305622eafc2`.
+- [x] Deploy the same source to [Vercel production](https://revolamapdrawer.vercel.app),
+  deployment `dpl_8ai6oKuSUnrsrZVvN5JtxwsfEB8c`, build ID **5ba507a64ba0d31b**.
+  `npm run test:web -- --url https://revolamapdrawer.vercel.app` passes the real
+  production palettes, native browser downloads/reopen, cached/offline reload,
+  floor exports, cache/security headers and absence of map uploads/third-party
+  requests. Zero renderer errors. Downloaded production service worker exactly
+  matches the verified local 0.14.0 build (SHA-256
+  `8f53442a8865bd778258da7ff9a883670a4f822455d1b3cc3abd32a63fe7df62`).
+- [x] After the final tag build, read back and launch the actual desktop shortcut
+  again. Computer Use observed all three door choices and selected **Hinged door**
+  in the working packaged editor. The current build is left available for testing.
+
+The final publication record changes documentation only; the release tag remains
+on the verified feature commit. Gameplay/geometry limitations recorded below
+still apply. The companion Unity integration was committed/pushed; no new full
+game distribution was requested or published.
 
 ## Door snapping previews and explicit hinged doors — local unreleased continuation, 2026-10-22
 
