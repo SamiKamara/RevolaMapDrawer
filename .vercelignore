@@ -9,6 +9,13 @@
 !src/export.js
 !src/floors.js
 !src/model.js
+!src/object-schema.js
+!src/weapon-catalog.js
+!src/objects.js
+!src/object-editor.js
+!src/object-visuals.js
+!src/object-vectors.js
+!src/npc-defaults.js
 !src/png.js
 !src/render.js
 !src/room-start.js

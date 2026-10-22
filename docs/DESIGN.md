@@ -1,6 +1,6 @@
 # Revola Map Drawer — implementation design
 
-Implementation baseline: version 0.13.1. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
+Implementation baseline: version 0.14.0. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
 
 ## Product and first milestone
 
@@ -35,6 +35,88 @@ Hashed assets have one-year immutable browser caching. A web-only service worker
 An updated worker waits until every previous editor tab closes, preventing a running editor from switching source versions. Reopening online allows the browser to discover an update; the first reopening may still use the previous worker until it finishes installing. Cached versions and browser storage can be evicted. See [WEB.md](WEB.md) for deployment, measured transfer sizes and exact verification scope.
 
 ## Document and geometry contracts
+
+### Version 0.14.0 optional gameplay objects
+
+Version 2 projects may include `objects:[{id,category,type,x,y,rotation,doorId?,npc?,npcWeapon?,visualVariant?}]`.
+Absence and an empty array retain automatic game generation. Categories are `npc`,
+`doors`, `crates`, `barrels`, `weapons`, `devices`; positions use the original world
+pixels and rotation is clockwise degrees from source +X. Catalog keys identify
+canonical game prefabs through a fixed allowlist, never imported asset paths/code.
+At most 4096 objects are accepted. NPC `npc` contains only explicitly overridden
+allowlisted fields; false and zero remain meaningful overrides. Other fields use
+the game's existing generation preset. States are standing (0), random wander (1)
+and patrol (8); the game selects native reachable patrol destinations.
+
+Six object tools appear below the architecture tools. NPC, weapon, device and
+crate tools open type/content lists; crates default to Empty. Non-door placement
+uses a position click and a facing click. Select allows individual selection,
+dragging, rotation through Aim rotation, and Delete; history covers completed edits.
+Hovering an NPC exposes Advanced setup; every field can return to Generator default.
+An optional `npcWeapon` selects one usable weapon; an absent key keeps the random
+melee/ranged pool. Explicit weapon selection can cross the random-pool type.
+Defaults in parentheses come from RevolaGladiatorGob, with the standard generator's
+random 0/1/8 state listed instead of the prefab's Standing state. Custom profiles
+may supply other defaults. NPC `visualVariant` is sampled 50/50 on placement and
+persisted for the editor only; legacy NPCs display male without changing their data.
+Objects use traced monochrome game vectors with colored facing/selection aids;
+PNG and SVG pixels
+continue to show architecture alone. Editable PNG metadata and project JSON retain
+objects, including excluded ones so an author can repair them.
+
+The palette has ten shop weapons and eight devices. `src/weapon-catalog.js` is
+exported from the union of both canonical shop prefabs' serialized weapon rows
+and new managed weapons available in either shop. English shop TSV names take
+precedence over definition display-name fallbacks. Each entry records its stable
+key, item ID, canonical ground prefab, NPC eligibility and melee classification.
+Weapon spawns, crate contents and NPC choices share this source; NPC choices and
+random loadouts use only NPC-eligible entries. The catalog includes Ravager Assault
+Gun and LAF Laser Rifle. `UniLaserPistolGob` is labelled S7 Suppressed Pistol.
+Gunpowder pistol, Laser assault gun and Laser shotgun are absent from both shops'
+sellable union and remain unselectable; old saved spawns/loot still load.
+Retired weapon placements use the suppressed-pistol vector as an editor fallback.
+`assets/object-vectors/` contains the reproducible SVG traces and source provenance;
+the offline renderer consumes matching paths in `src/object-vectors.js` via Path2D.
+The tracer rejects colored source sprites and samples the actual default animation
+and female overrides. No raster originals or external resources are bundled.
+
+Game doors snap to stable graph-opening IDs or the two fixed ship openings. Hover
+and drag show the same center-aligned aperture highlight as architecture placement,
+a translucent door vector and DOOR SNAP; occupied openings show red OCCUPIED.
+Leaving the canvas clears this preview, which never enters project/export data.
+Door types are `auto` (legacy/default automatic choice), `sliding` and `hinged`.
+The hinged preview traces the canonical monochrome RevolaDoorA closed-leaf sprite.
+Positions follow the opening after wall edits; deleted openings invalidate objects.
+Both game generation paths plan only the authored openings when the door category
+is authored, so unselected openings cannot reserve invisible competing sweeps.
+An explicit type tries only that mechanism and uses the existing whole-sweep,
+wall-pocket and character-passage checks. A door that cannot pass those checks
+remains an open gap with diagnostics; it is not silently replaced by another type.
+
+Both projects independently validate centers against closed playable floor and
+actual white walls; sealed decorative ship holes remain excluded. Centers closer
+than 45 source pixels are rejected in document order. No full-prefab-radius margin
+is imposed on manual placements, allowing walls and close neighbors. Valid objects
+replace automatic population only in their own category; a category containing only
+excluded objects retains automatic generation. Automatic placements reserve the
+manual objects' footprints. Explicit NPC positions use ordinary NPC navigation and
+collisions without the automatic entry-occlusion motion constraint. Close placements
+can therefore overlap prefab extents or have limited initial movement. Patrol needs
+a reachable destination and reports an error if no suitable route exists. Individual
+objects are editable; geometry clipboard/marquee operations remain geometry-only.
+
+The matching Unity implementation lives in the sibling Revola checkout. Shared
+`MapAuthoredObjects` parsing/center validation feeds editor population and runtime
+user-map generation. The bundled producer keeps the optional data while emitting
+unchanged architecture. Build preparation includes a separate authored prefab pool
+without changing automatic pools; persisted runtime plans retain overrides, rotations,
+loadouts, crate contents and the authored flag.
+`MapDrawerWeaponCatalogExport.Refresh` also refreshes a trusted packaged JSON
+catalog during normal game build preparation. Authored weapon/drop paths and NPC
+inventory slots resolve through that trusted catalog, supporting newer managed
+prefabs without accepting source-supplied paths. Future shop changes require
+rerunning the visual/catalog export and tracing script and rebuilding Drawer;
+the offline app never reads the game installation dynamically.
 
 ### Version 0.13.1 attached rooms beyond host corners
 

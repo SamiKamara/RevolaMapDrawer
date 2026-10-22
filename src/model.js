@@ -2,6 +2,7 @@
 import { proposeRoomResize } from './rooms.js';
 import { resolveDoorPlacement } from './doors.js';
 import { isShipPort } from './ship.js';
+import { validateObjects } from './object-schema.js';
 
 export const DEFAULTS = Object.freeze({ width: 8192, height: 8192, wallWidth: 50, doorWidth: 375, corridorWidth: 580, chamfer: 220, roughness: 2.25, grid: 25 });
 const EPS = 1e-6;
@@ -132,6 +133,7 @@ export function validateDocument(input) {
   }
   trimErasedEnds(out);
   validateTopology(out, new Map(out.vertices.map(vertex => [vertex.id, vertex])));
+  if (input.objects !== undefined) out.objects = validateObjects(input.objects);
   return out;
 }
 

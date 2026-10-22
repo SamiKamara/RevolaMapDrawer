@@ -13,10 +13,20 @@ import { createDocument, addWall, addRoom, validateDocument } from '../src/model
 import { generateFloor } from '../src/floors.js';
 import { decodePngMetadata, MAX_METADATA_BYTES, MAX_PNG_BYTES } from '../src/png.js';
 import { createExampleDocument } from './example-fixture.mjs';
+import { WEAPONS, OBJECT_TYPES } from '../src/object-schema.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, 'web-dist'), artifacts = path.join(root, 'artifacts');
 const destination = name => path.join(artifacts, `web-${name}`);
+
+async function verifyGameplayPalettes(page) {
+  for (const category of ['weapons', 'crates', 'doors']) {
+    await page.locator(`[data-tool="${category}"]`).click();
+    assert.deepEqual(await page.locator('#object-picker-list button').allTextContents(), OBJECT_TYPES[category].map(([, label]) => label), `Current ${category} palette is bundled`);
+    await page.locator('#object-picker-close').click();
+  }
+  assert.equal(WEAPONS.length, 10);
+}
 await fs.access(path.join(output, 'index.html'));
 await fs.mkdir(artifacts, { recursive: true });
 
@@ -221,6 +231,7 @@ if (process.argv.length > 2) {
     assert.equal(initial.status(), 200); assert.match(initial.headers()['content-security-policy'], /connect-src 'self'/);
     await expect(page.locator('#map-canvas')).toBeVisible();
     await expect(page.locator('#status-message')).not.toHaveText('Preparing workspace…');
+    await verifyGameplayPalettes(page);
     await page.evaluate(() => navigator.serviceWorker.ready); await settle();
     assert.equal(await page.evaluate(() => typeof window.revolaDesktop), 'undefined');
     const accepted = await page.locator('#file-input').getAttribute('accept');
@@ -367,6 +378,7 @@ try {
   await page.goto(origin, { waitUntil: 'networkidle' });
   await expect(page.locator('#status-message')).not.toHaveText('Preparing workspace…');
   await expect(page.locator('#map-canvas')).toBeVisible();
+  await verifyGameplayPalettes(page);
   assert.equal(await page.evaluate(() => typeof window.revolaDesktop), 'undefined');
   const accepted = await page.locator('#file-input').getAttribute('accept');
   for (const extension of ['.revola', '.revola.json', '.png']) assert.ok(accepted.split(',').includes(extension));

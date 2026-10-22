@@ -2,6 +2,255 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Version 0.14.0 release preparation — 2026-10-22
+
+- [x] Owner requested commits/pushes for both repositories, a Drawer release and
+  a Vercel production update. Selected feature version **0.14.0**; package,
+  lockfile and dated changelog agree. Earlier local milestones below are included.
+- [x] `scripts/build-release.ps1 -Version 0.14.0` passed all **353** unit tests,
+  the full source UI suite, package verification and the full packaged UI suite.
+  The verified portable ZIP contains 34 entries/30 runtime files. Its extracted
+  application saved and reopened the exact graph offline with zero renderer
+  errors and zero network requests. Evidence: ignored
+  `artifacts/release-0.14.0-preparation.log` and `artifacts/release/v0.14.0/`.
+- [x] Browser checks now rebuild current source before testing. Actual 0.14.0
+  local/offline tests pass, including all ten shop weapon names and all door
+  choices; first-load body is 70,192 bytes and warm open needs no host requests.
+- [x] Postpackage refreshed the desktop shortcut. Explicit `-VerifyOnly` confirmed
+  the direct current packaged executable, empty arguments, repository working
+  directory and existing paths. Launched the actual `.lnk` through Windows Shell;
+  Computer Use observed the working packaged editor and its gameplay toolbar.
+- [-] Commit/push both main branches, create immutable v0.14.0 tag, verify and
+  publish its GitHub release, deploy and verify Vercel production.
+
+## Door snapping previews and explicit hinged doors — local unreleased continuation, 2026-10-22
+
+- [x] Show an aperture-aligned green DOOR SNAP highlight and translucent selected
+  door vector while hovering or dragging a gameplay door. Red OCCUPIED previews
+  prevent duplicate placement. Clear the preview on pointer leave/tool changes;
+  preview data never enters saved projects or architecture exports.
+- [x] Offer Automatic door type, Sliding door and Hinged door. Old `auto` records
+  remain valid; `sliding` and `hinged` persist through save/reopen and history.
+  Add a traced monochrome closed-leaf vector from the canonical RevolaDoorA
+  prefab; there are now **24** maintained gameplay vectors.
+- [x] Shared editor/runtime door planning respects explicit types while retaining
+  continuous sweep/pocket/passage certification. Failed explicit types leave an
+  open gap with reasons. When authored doors exist, only their openings enter
+  planning, so unselected openings cannot reserve competing invisible sweeps.
+- [x] `npm test`: **353/353** pass. Full source and packaged UI suites and browser
+  offline tests pass. The extended object workflow also verifies real preview
+  pixels, pointer-leave clearing, occupied rejection, type changes, dragging to a
+  ship opening, undo and unchanged architecture PNG IDAT bytes. Evidence: ignored
+  `artifacts/door-objects-*.log`, `artifacts/objects*/door-snap.png` and
+  `artifacts/objects*/door-drag-snap.png`.
+- [x] Unity 2022.3.62f3: **27/27** pass. Coverage includes explicit-kind selection
+  and no fallback, real editor prefab placement for both types, omission of
+  unselected overlapping openings, legacy auto parsing, existing door safety
+  regressions and runtime generation/saved-plan reopen with an explicit slide.
+  XML/logs: sibling game's ignored `Library/RevolaMapManager/DoorObjectsValidation`.
+- [x] Rebuild the Windows package and run `test:packaged`. Shortcut postpackage
+  refresh and explicit `-VerifyOnly` confirm the direct executable, no arguments,
+  repository working directory and existing paths. Launch the actual desktop
+  `.lnk`, observe all three door choices, and select Hinged door in the packaged
+  UI. Package verification checks the current runtime source bytes.
+- [x] Independent Windows x64 Mono build succeeded with **0 errors**. The player
+  imported the Drawer-saved fixture twice, generated exactly one requested
+  Sliding/Hinged door in each case, and reopened both saved plans unchanged.
+  It activated the final map with the real KamaraDoorScr hinged prefab enabled
+  and its certified maximum angle **180°**. Proof: sibling game's ignored
+  `DoorObjectsValidation/native-player-proof.json` reports `passed:true`,
+  `activated:true`, `editor:false`. This headless run verifies generation and
+  activation; it does not certify GPU output or a played doorway crossing.
+
+No version/tag change, commit, push, release or deployment was requested.
+
+## Shop weapon catalog synchronization — local unreleased continuation, 2026-10-22
+
+- [x] Replace the hand-maintained eight-weapon palette with the **10** sellable
+  weapons from the union of both canonical shop prefabs and new managed weapon
+  sale flags. Exclude owned-only rows and per-scene random availability. English
+  labels use the same localization keys as the shops, with definition fallback.
+- [x] Add **Ravager Assault Gun** and **LAF Laser Rifle** to ground spawns, crate
+  loot and NPC loadouts. Update all existing weapon names, including S7 Suppressed
+  Pistol, S44 Ricochet Shotgun, Storm Rocket Launcher, Uzi model C14, Dragonslayer
+  Railgun, Plainsteel Sword, Ashigaru Katana and S66 Ricochet Pistol.
+- [x] Add their traced monochrome vectors, bringing the maintained total to **23**.
+  Catalog/source hashes are recorded alongside SVG provenance. All new object
+  data still stays out of exported architecture pixels/SVG; old keys still load.
+- [x] Use one generated `src/weapon-catalog.js` for all Drawer choices; NPC choices
+  and default melee/ranged pools respect NPC eligibility. Unity imports canonical
+  prefab paths and resolves inventory item IDs through a trusted packaged catalog,
+  supporting new managed prefabs rather than a fixed eleven-prefab list.
+- [x] Normal Unity build preparation refreshes `RevolaMapDrawerWeapons.json` from
+  the shops. The maintained visual exporter/tracer synchronizes the offline Drawer
+  catalog, names and previews together. Future shop changes require this refresh
+  and rebuilding Drawer; no runtime game-folder or network dependency was added.
+- [x] `npm test`: **352/352** pass. Full `npm run test:ui`,
+  `npm run test:packaged` and `npm run test:web` pass. UI regressions compare all
+  three complete lists, save the two newer weapons in pickup/loot/NPC roles and
+  reopen them unchanged. PNG architecture IDAT bytes stay identical.
+- [x] Unity 2022.3.62f3: **13/13** pass. Native tests compare the packaged catalog
+  to current shops/English labels, resolve all ten weapons, equip both newer NPC
+  weapons in editor population, test implicit melee/ranged pools and generate/
+  reopen runtime plans containing the newer pickups and crate contents.
+- [x] Windows package rebuilt. Automatic shortcut refresh and explicit read-back
+  confirm the direct packaged executable target, empty arguments and repository
+  working directory; all paths exist. Launched the actual desktop `.lnk` and
+  observed its Weapon spawn dialog containing exactly the ten shop names above.
+  Runtime source bytes are checked by package verification. Evidence: ignored
+  `artifacts/shop-catalog-*.log`, `artifacts/objects*/shop-catalog.revola` and
+  `artifacts/objects*/editor.png`; Unity XML/logs under the sibling game's ignored
+  `Library/RevolaMapManager/ShopCatalogValidation/`.
+- [x] Independent Windows x64 Mono verification build: **Succeeded, 0 errors**.
+  The native player imported the actual Drawer-saved `shop-catalog.revola`,
+  generated and reopened three scenarios unchanged, then activated the real map.
+  It verified the Ravager Assault Gun ground pickup, an inactive LAF Laser Rifle
+  loot object wired to the crate's destruction activators, and a live NPC equipped
+  with LAF Laser Rifle (inventory **26**, item **10259**). Proof:
+  `ShopCatalogValidation/native-player-proof.json` records `passed:true`,
+  `activated:true`, `editor:false`. Headless validation covers generation,
+  activation and equip/loot wiring, not GPU output or a played combat encounter.
+
+No version change, commit, push, publication or web deployment was requested.
+Gunpowder pistol, Laser assault gun and Laser shotgun remain outside the current
+sellable catalog; their old saved pickup/loot keys remain compatible.
+
+## NPC loadouts and monochrome object vectors — local unreleased continuation, 2026-10-22
+
+- [x] Add an optional NPC weapon to Advanced setup. Unset selects a random
+  melee/ranged weapon; an explicit selection equips that weapon in editor and
+  runtime generation and persists in saved plans. Partial controller overrides
+  retain their existing default behavior.
+- [x] Rename Laser pistol to Suppressed pistol. Remove Gunpowder pistol and,
+  following the owner's clarification, Laser assault gun and Laser shotgun from
+  all new weapon, crate-content and NPC weapon choices. Eight selectable weapons
+  remain. Old saved pickup/loot placements still load; retired weapons use a
+  suppressed-pistol preview fallback.
+- [x] Trace **21** monochrome game visuals into pure SVG and matching Path2D
+  paths: eight weapons, eight devices, crate, barrel, door and two NPC bodies.
+  Source paths/hashes are recorded in `assets/object-vectors/provenance.json`.
+  Colored legacy pixels are rejected by the maintained tracer. No original game
+  raster is copied into the app. Artwork provenance is separately identified.
+- [x] NPC previews choose male/female with a 50/50 threshold on placement and
+  retain the choice through project/PNG reopen and history. The game independently
+  selects its variant. Old NPC records remain unchanged and display male.
+- [x] Advanced setup displays standard defaults in parentheses, read from the
+  actual RevolaGladiatorGob prefab, including private serialized sound fields.
+  General state lists the generator's random Standing / Random wander / Patrol.
+  The dialog notes that custom generation profiles may differ.
+- [x] `npm test`: **351/351** pass. Full `npm run test:ui`,
+  `npm run test:packaged` and `npm run test:web` pass. Source/package object
+  workflows verify explicit weapons, default labels, stable preview data,
+  save/reopen, partial overrides and identical architecture PNG IDAT bytes.
+  Browser repeat/offline loading passes with zero external/upload requests.
+- [x] Real Unity 2022.3.62f3 cohort: **10/10** pass. It covers all eight explicit
+  weapon mappings, rejected keys, editor-equipped explicit weapon, unset melee
+  and ranged loadouts, category overrides and runtime saved-plan reopen.
+  Root build preparation refreshed the trusted producer and current resources.
+- [x] `npm run package` refreshed the desktop shortcut. `-VerifyOnly` read back
+  the exact executable target, no arguments and repository working directory;
+  referenced paths exist. The actual `.lnk` was launched, and the saved six-object
+  project opened with six valid objects, new vector previews, Suppressed pistol
+  and prefab default labels in Advanced setup. Package checks verify current
+  runtime source bytes. Evidence: ignored `artifacts/npc-visual-*.log`,
+  `artifacts/objects*/{editor,npc-advanced}.png`; native desktop observation used
+  the shortcut's packaged executable after automated app tests finished.
+- [x] Independent Windows x64 Mono verification build succeeded with **0 errors**.
+  The player imported the Drawer-saved fixture, generated/reopened crate-only,
+  NPC-only and all-category cases, then activated the real runtime scene.
+  The live NPC equipped Suppressed pistol (inventory slot **16**, item **10252**)
+  and retained health 25 and its partial overrides. The proof records
+  `passed:true`, `activated:true`, `editor:false`. Evidence is under the sibling
+  game's ignored `Library/RevolaMapManager/DrawerVisuals/native-player-proof.json`.
+  The headless run verifies activation/equipping, not GPU rendering or combat.
+- [x] Final door vector correction aligns the sliding leaf with the opening
+  tangent. Repeated **351/351** unit checks and focused source/package object
+  workflows pass after this visual-only correction; the package was rebuilt.
+  Full source/package/browser suites passed before this final orientation fix.
+
+Limitations: vectors are editor previews, with a 24-screen-pixel minimum visible
+size when zoomed out, and are not collision footprints or game-gender predictions.
+The legacy colored assault/shotgun assets are excluded from the new palette.
+No release/version change, commit, push, web deployment or publication requested.
+
+## Optional gameplay objects — local unreleased milestone, 2026-10-22
+
+Implemented together with `C:\Users\samin\Desktop\Revola`. No new release version,
+tag, publication, deployment, commit or push was requested for this milestone.
+
+- [x] Add six tools below the architecture tools: NPC, door object, crate,
+  explosive barrel, weapon spawn and device spawn. All fit the 1024 × 700 test
+  window; the rail remains scrollable at smaller heights.
+- [x] Type lists for melee/ranged NPCs, 11 weapons, 8 devices and crate contents;
+  Empty is the first/default crate choice. Choose position then aim and click
+  facing; doors snap directly to stable opening IDs, including ship doors.
+- [x] Select individual objects, drag, aim rotation, Delete, undo/redo, and
+  reopen editable project/PNG data. Hovering an NPC opens Advanced setup.
+- [x] All 16 requested NPC fields are allowlisted and verified against actual
+  TopDownNPCController fields, including the two private serialized fields.
+  Missing fields inherit presets; explicit false/zero retain their meaning.
+  Standing, random wander and generator-owned patrol routes are supported.
+- [x] Shared editor/runtime category overrides: valid authored objects replace
+  only their own category. Empty/absent/invalid-only categories stay automatic.
+  Invalid floor/wall/ship-hole centers and centers less than 45 px apart are
+  excluded; close wall/neighbor placement remains allowed.
+- [x] Keep image artwork architecture-only. The actual PNG IDAT bytes are
+  identical before/after six object placements; editable metadata retains them.
+  SVG wall/floor output is also unchanged. Legacy project regressions pass.
+- [x] Update Unity's trusted bundled producer, editor population, runtime
+  generation/activation, persisted plans and separate authored prefab pool.
+  Native build preparation refreshes canonical resources without changing
+  automatic pickup pools. Reserve authored patrol targets before later props.
+
+Verification:
+
+- `npm test`: **348/348** pass, including five object schema/geometry/export
+  regressions and the existing geometry, persistence, package and browser checks.
+- Complete `npm run test:ui` passes; the new `npm run test:objects` also passes
+  after the final floor-summary refresh correction. It drives native Electron
+  controls, six placements, facing, door snapping, NPC hover/partial overrides,
+  deletion, undo, native save/reopen and exact PNG pixel preservation.
+  Extended focused source/package checks also verify dragging, changing a placed
+  object's facing, undoing both, and independent next-placement versus selected-
+  instance type choices. All of these checks pass on the final renderer.
+- `npm run package` rebuilt the final source; complete `npm run test:packaged`
+  passes, including the same object workflow and source-byte checks in app.asar.
+  Evidence: ignored `objects-unit-final.log`, `objects-ui-suite.log`,
+  `objects-package-final.log`, `objects-packaged-final.log`, `objects*/editor.png`.
+- Real Unity 2022.3.62f3: initial editor/backward-import cohort **8/8**;
+  current isolated editor + runtime cohort **7/7**, with crate-only, NPC-only and
+  all-category plans exactly preserved through saved-plan reopen. Final alias/
+  every-NPC-field cohort **5/5**. Runtime/editor private compilation also passed.
+- Native Windows x64 Mono verification build: **Succeeded, 0 errors**.
+  A player launched independently of Unity imported the actual Drawer-saved
+  fixture, generated and reopened three cases: **29 placements / 1 authored /
+  2 door plans** for crate-only, **13 / 1 / 2** for NPC-only, and **5 / 5 / 1**
+  for all categories authored. It activated the final gameplay scene, found
+  exactly one instance of each non-door category, confirmed NPC health **25**,
+  `canSidestep=false`, two generated patrol points and no loot for the empty
+  crate. The proof reports `editor:false`, `activated:true`, `passed:true`.
+  Evidence is ignored under the sibling game's
+  `Library/RevolaMapManager/AuthoredObjectsValidation/`; the native run used
+  headless rendering and does not certify game visuals/combat.
+- Desktop shortcut read-back verified its exact target
+  `<repository>\dist\RevolaMapDrawer-win32-x64\RevolaMapDrawer.exe`, empty
+  arguments and repository-root working directory; all paths exist. Launched
+  the actual `.lnk` after the final rebuild. Computer Use observed the packaged
+  `resources/app.asar/index.html`, all six tools and native Open of the saved
+  six-object fixture; it displayed **6 valid / 0 excluded**. The editor is left
+  open on this example. The machine-only shortcut remains outside Git.
+
+Exact limitations: individual object selection only; wall clipboard/marquee
+operations remain geometry-only. Editor symbols are abstract markers, not game
+prefab previews. Center filtering intentionally permits physical prefab overlap
+and tight wall placement; ordinary game collision/navigation handles those.
+A door without a certified sweep stays open, and a patrol without a suitable
+native route reports a generation error. Automatic categories can place zero
+objects when their density/capacity requires it. Full combat, destruction/drop
+animations for every catalog entry, rendered player visuals and non-Mono player
+backends were not separately tested. The published website/release is unchanged;
+this extension is available in the rebuilt local Windows test application.
+
 ## Attached-room overhang — version 0.13.1, 2026-10-22
 
 The owner requested that both room tools extend beyond a host room's wall limits

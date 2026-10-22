@@ -20,9 +20,25 @@ You may use and share maps exported by the application without adding a Revola M
 | `src/ship-vector.js` | Maintained simplified white ship/airlock geometry derived from the supplied reference, shared by the editor and PNG/SVG wall exports. Bundled as code without raster image embedding. |
 | `assets/ship-floor-contour.js` | Maintained runtime geometry derived from the bundled ship image for floor generation. |
 | `assets/editor-stars.png` | Supplied editor background artwork, bundled for offline use. It is an editor aid and is excluded from map exports. |
+| `assets/object-vectors/*.svg`, `src/object-vectors.js` | Maintained vector traces of the sibling Revola game's current monochrome sprites. `assets/object-vectors/provenance.json` records canonical prefabs, source texture paths/hashes and derived SVG hashes. These are separately identified **Revola game artwork**, not an additional MIT rights grant. Only the vector path module is bundled; raster originals stay in the game checkout. Editor-only visuals never enter exported map pixels/SVG. |
 | Source code, documentation and project assets | Project implementation and maintained materials under the MIT License, unless separately identified as third-party material. |
 
 Generated test captures, reference-analysis previews, caches, dependencies and release distributions are excluded from Git. The runtime assets above are maintained application inputs and remain in source control.
+
+To refresh the weapon catalog and object visuals, run Unity's
+`Revola.MapManager.MapDrawerVisualExport.Export`, then
+`python scripts/trace-object-sprites.py C:/path/to/Revola` in this checkout.
+The tracing script requires Pillow, numpy and opencv-python-headless, rejects
+colored source pixels and creates pure black/white evenodd vector paths without
+embedded images. NPC layers use the actual default animation frame and the
+prefab's female controller swaps. The same export reads the prefab's NPC tuning
+into `src/npc-defaults.js`; standard generation randomizes state among 0/1/8.
+It refreshes the game's trusted weapon catalog JSON and emits `src/weapon-catalog.js`
+from both canonical shops, new managed sale flags and English shop localization.
+The vector provenance records those shop, localization and definition hashes.
+Only NPC-eligible entries enter the NPC picker; every sellable weapon enters the
+ground-spawn and crate lists. Rebuild the offline application after this refresh.
+No game artwork licensing or publication decision is changed by this local work.
 
 ## Third-party runtime notices
 

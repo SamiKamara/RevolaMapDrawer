@@ -1,0 +1,380 @@
+{
+  "gameRepository": "https://github.com/SamiKamara/Revola",
+  "method": "384px alpha + luminance contours; evenodd paths; 0.45px simplification; no raster embedding; SVG hashes use canonical LF text",
+  "weaponCatalog": [
+    {
+      "key": "UniLaserPistolGob",
+      "label": "S7 Suppressed Pistol",
+      "prefabPath": "Assets/Resources/UniLaserPistolGob.prefab",
+      "itemId": 10252,
+      "npcCanUse": true,
+      "melee": false
+    },
+    {
+      "key": "UniPlasmaShotgunGob",
+      "label": "S44 Ricochet Shotgun",
+      "prefabPath": "Assets/Resources/UniPlasmaShotgunGob.prefab",
+      "itemId": 10255,
+      "npcCanUse": true,
+      "melee": false
+    },
+    {
+      "key": "UniLauncherGob",
+      "label": "Storm Rocket Launcher",
+      "prefabPath": "Assets/Resources/UniLauncherGob.prefab",
+      "itemId": 10256,
+      "npcCanUse": true,
+      "melee": false
+    },
+    {
+      "key": "UniGunpowderUziGob",
+      "label": "Uzi model C14",
+      "prefabPath": "Assets/Resources/UniGunpowderUziGob.prefab",
+      "itemId": 10257,
+      "npcCanUse": true,
+      "melee": false
+    },
+    {
+      "key": "UniRailgunGob",
+      "label": "Dragonslayer Railgun",
+      "prefabPath": "Assets/Resources/UniRailgunGob.prefab",
+      "itemId": 10261,
+      "npcCanUse": true,
+      "melee": false
+    },
+    {
+      "key": "UniSwordGob",
+      "label": "Plainsteel Sword",
+      "prefabPath": "Assets/Resources/UniSwordGob.prefab",
+      "itemId": 10262,
+      "npcCanUse": true,
+      "melee": true
+    },
+    {
+      "key": "UniKatanaGob",
+      "label": "Ashigaru Katana",
+      "prefabPath": "Assets/Resources/UniKatanaGob.prefab",
+      "itemId": 10263,
+      "npcCanUse": true,
+      "melee": true
+    },
+    {
+      "key": "AssaultRifleGob",
+      "label": "Ravager Assault Gun",
+      "prefabPath": "Assets/Resources/AssaultRifleGob.prefab",
+      "itemId": 10258,
+      "npcCanUse": true,
+      "melee": false
+    },
+    {
+      "key": "LaserRifleCopyGob",
+      "label": "LAF Laser Rifle",
+      "prefabPath": "Assets/Resources/LaserRifleCopyGob.prefab",
+      "itemId": 10259,
+      "npcCanUse": true,
+      "melee": false
+    },
+    {
+      "key": "UniRicochetPistolGob",
+      "label": "S66 Ricochet Pistol",
+      "prefabPath": "Assets/Resources/UniRicochetPistolGob.prefab",
+      "itemId": 10260,
+      "npcCanUse": true,
+      "melee": false
+    }
+  ],
+  "catalogSources": {
+    "Assets/Prefabs/Meta Tools/ShopOnActionButtonActivatorGob.prefab": "a7fcd9470f10054972eb7b897be6375048fb7dba4c37204568b0821b9b4ec4c1",
+    "Assets/Prefabs/Meta Tools/ShopOnDialogButtonActivatorGob.prefab": "9d9ae190a58f09b53219692102ab7426a4e2545b85aad80e0e37a159c9bc322d",
+    "Assets/StreamingAssets/Localization/revola_eng.tsv": "2d84cb17c03c351d5093c9ff8b3de5de3dad04b39156e5005bc9474bad492f45",
+    "Assets/Resources/WeaponDefinitions/UniGunpowderPistol.asset": "6273d631b90433671e49436352875185d3dcdb6c5584acaaf2a11ad1795d4b3d",
+    "Assets/Resources/WeaponDefinitions/UniLaserPistol.asset": "131bfd22f995f81a78a577930ef57a035aa3ea84298584ce56ceadda14453961",
+    "Assets/Resources/WeaponDefinitions/UniLaserShotgun.asset": "a8d10b7df5ba5849a616e47068b67fc8cc075e3cdbb0891cace88ac2cfac9e87",
+    "Assets/Resources/WeaponDefinitions/UniLaserAssaultgun.asset": "284baea1f0fbffe0f6014aedc7455bf4f38b56febfec5d014f7c3b8e3674bfeb",
+    "Assets/Resources/WeaponDefinitions/UniPlasmaShotgun.asset": "3a0a2d3694c4432daff4706f9ec305233be42c4071d7516731566c54c9327fa4",
+    "Assets/Resources/WeaponDefinitions/UniLauncher.asset": "80cd1ae125d5ebe07c1bfd61fa1d43614d5dd3ce926aedeff2466d00d348a7ae",
+    "Assets/Resources/WeaponDefinitions/UniGunpowderUzi.asset": "de9fdb3dfd5b4edef3a3e1c98eaf9944735d2fd200695c50416239cba94e9c3b",
+    "Assets/Resources/WeaponDefinitions/UniRailgun.asset": "c7c44c27760c6e304e71bc4946fce52af2cb7a8750925d555f08f0a08cc6427b",
+    "Assets/Resources/WeaponDefinitions/UniSword.asset": "b27bcbd08febd8734c3b2b74b38b65ab43cf358f6635ae2cabf8a479392011b6",
+    "Assets/Resources/WeaponDefinitions/UniKatana.asset": "2a8528a10a50c8c65985395b4d5c7201fb72de7c2fde3d963227afdbd4609420",
+    "Assets/Resources/WeaponDefinitions/AssaultRifle.asset": "bc50c6b99833a4b3586e3c3743cf0c139fa3f6f4df569f499c6cabdd202c2c5a",
+    "Assets/Resources/WeaponDefinitions/AssaultRifleCopy.asset": "4ddb5e897383084ab120bf03f69875ea891da17cf9af1cf9672da3bb11b58a2a",
+    "Assets/Resources/WeaponDefinitions/UniRicochetPistol.asset": "c336521232a90cce87688d15f7e7c0f970e700d805769e8e47423549ff3958a9"
+  },
+  "visuals": {
+    "UniLaserPistolGob": {
+      "prefab": "Assets/Resources/UniLaserPistolGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneUniLaserPistolTexA.png",
+          "sha256": "9697472342ce3a8f17a49d1451680403ffc8a9cf401cb2b21237510e2fab0698",
+          "sprite": "LoneUniLaserPistolTexA"
+        }
+      ],
+      "svgSha256": "6cec3907556f73bf06bc947ac71952d69b41a83944686c200a4de1b9ed41c359"
+    },
+    "UniPlasmaShotgunGob": {
+      "prefab": "Assets/Resources/UniPlasmaShotgunGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneUniPlasmaShotgunTexA.png",
+          "sha256": "9947379a4fef53e0f2d1220af73f421cbd64fcecb36fe06547d0ff9a973ebc55",
+          "sprite": "LoneUniPlasmaShotgunTexA"
+        }
+      ],
+      "svgSha256": "9792b1b800a96a10880beb7d7d89f3ba3fb767f1ea4c2527b4631331f6358305"
+    },
+    "UniLauncherGob": {
+      "prefab": "Assets/Resources/UniLauncherGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneUniLauncherTexA.png",
+          "sha256": "025eebc866791eac741121909bc051129d3b8043adc85fcd35cbefd5ba4acf51",
+          "sprite": "LoneUniLauncherTexA"
+        }
+      ],
+      "svgSha256": "738e884e4e692d50ca1238e2972de4009a984bb02337c0b1b881b4ea9f152a40"
+    },
+    "UniGunpowderUziGob": {
+      "prefab": "Assets/Resources/UniGunpowderUziGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/RevoDemoSource/LoneDemoUziTexA.png",
+          "sha256": "794e55d37618e2c015c3d516bff1e7060394d4bc9e3e4fa7c73499ff169e59e2",
+          "sprite": "LoneDemoUziTexA"
+        }
+      ],
+      "svgSha256": "cbe4600d3ef867d2bf6b74417a000f0e8c68d79d5f5f57db2a21046470cec182"
+    },
+    "UniRailgunGob": {
+      "prefab": "Assets/Resources/UniRailgunGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneBowTexA.png",
+          "sha256": "2857d7f27756dfa63118bc0e5ed93736e6ff76962feb2d7814ab7b03627db91c",
+          "sprite": "LoneBowTexA"
+        }
+      ],
+      "svgSha256": "a5193f57bee5d3081e6fb7bcf45f382a20cb62e9607c79da05544cf392f74f43"
+    },
+    "UniSwordGob": {
+      "prefab": "Assets/Resources/UniSwordGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneSwordTexA.png",
+          "sha256": "4e93ea25bbc6cd3ac17dc9a5f866dd135f4d3bc60ee8fb02ea3e4da6bfd73e30",
+          "sprite": "LoneSwordTexA"
+        }
+      ],
+      "svgSha256": "5775872f96d1bd464629ebe7cf8ccdc1ffbd193d722388c76014bcef4838ab2f"
+    },
+    "UniKatanaGob": {
+      "prefab": "Assets/Resources/UniKatanaGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneTwoHandedAxeTexA.png",
+          "sha256": "e89cd00c059e15315a537b7182541139a8feb6aacf840d5764b3495375833096",
+          "sprite": "LoneTwoHandedAxeTexA"
+        }
+      ],
+      "svgSha256": "82c0a1ad0c09a2dab64f85890578e8f046058e02fe64de774ba92f597e250372"
+    },
+    "AssaultRifleGob": {
+      "prefab": "Assets/Resources/AssaultRifleGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneAssaultRifleTexA.png",
+          "sha256": "8f0068553b1749cd247fc320a2d617302a41160390cad5d59e5fde6bb35d200f",
+          "sprite": "LoneAssaultRifleTexA"
+        }
+      ],
+      "svgSha256": "aad5d7de003b0c8f0f50efb54fbeb8c3802274240aad9eb07d8f560c1a1dc389"
+    },
+    "LaserRifleCopyGob": {
+      "prefab": "Assets/Resources/LaserRifleCopyGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneLaserRifleTexA.png",
+          "sha256": "18bb7a405cde332bca7d8e9c292e8f30993d932630aab065082ef08daf2b9164",
+          "sprite": "LoneLaserRifleTexA"
+        }
+      ],
+      "svgSha256": "272435c86947299a1512f2f82bd4f149bae383a5e8c6cb4cd9113fc87c728ed9"
+    },
+    "UniRicochetPistolGob": {
+      "prefab": "Assets/Resources/UniRicochetPistolGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneRicochetPistolTexA.png",
+          "sha256": "392c96a48ae52d1345d854792acf6381f8770f0cb9984fc3d9cb55fab5ef3e7d",
+          "sprite": "LoneRicochetPistolTexA"
+        }
+      ],
+      "svgSha256": "a517ee5fe37f9e63f7857175f85c846a5f4954cd39a39baa23b6e40b87d97c92"
+    },
+    "OnGroundAmmoLoaderGob": {
+      "prefab": "Assets/Prefabs/On Ground Secondary Things/OnGroundAmmoLoaderGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneAmmoLoaderThingTexA.png",
+          "sha256": "d9badbe77e22f7f1858f88b53f21400028c9341a249fb7edbc10b2798d3150e2",
+          "sprite": "LoneAmmoLoaderThingTexA"
+        }
+      ],
+      "svgSha256": "6d3c82595bd8d0e72f6a3b15010e94084d459bfcc0174d06b9428ed27b8f1136"
+    },
+    "OnGroundShieldGob": {
+      "prefab": "Assets/Prefabs/On Ground Secondary Things/OnGroundShieldGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneShieldThingTexA.png",
+          "sha256": "4abeec25407479750fada9b6e00230cbad7f3c2b67a3f8b71427c217f5a614fe",
+          "sprite": "LoneShieldThingTexA"
+        }
+      ],
+      "svgSha256": "3672144725ceb492eb4f1206c2d60c50a50ac63331b6957ef6aed464155aa44a"
+    },
+    "OnGroundAimbotGob": {
+      "prefab": "Assets/Prefabs/On Ground Secondary Things/OnGroundAimbotGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneAimbot.png",
+          "sha256": "7bc290af595eb0dbc197ce83987b1ac8eaf55785d38e49c96d2041f651bd0522",
+          "sprite": "LoneAimbot"
+        }
+      ],
+      "svgSha256": "5752e80bf76eb080517924d18e1154b790eccac1bfeb342cca68b72118f0eda9"
+    },
+    "OnGroundBombSpawnerGob": {
+      "prefab": "Assets/Prefabs/On Ground Secondary Things/OnGroundBombSpawnerGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneBombSpawnerTexA.png",
+          "sha256": "5d4a5ac1c792236b9af70f2b2b2d2eee96cfdff316696965ecdd81f0eff92bc5",
+          "sprite": "LoneBombSpawnerTexA"
+        }
+      ],
+      "svgSha256": "8b45ed8e6797b0d301e2a6d3972bfed0ac1d9d6230fbd05b34f7f6d9c8018db6"
+    },
+    "OnGroundInvisibilityGob": {
+      "prefab": "Assets/Prefabs/On Ground Secondary Things/OnGroundInvisibilityGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneInvisibilityThingTexA.png",
+          "sha256": "0391219a4c3d622c6427af9ce8ad8629b9c029b09f1c9af3a3e2eca07eb8b36e",
+          "sprite": "LoneInvisibilityThingTexA"
+        }
+      ],
+      "svgSha256": "bc779a64c0b2d1f0812d5e4e3b33026c9be0d6ec66676501e41c58c3e881e228"
+    },
+    "OnGroundRocketBootsGob": {
+      "prefab": "Assets/Prefabs/On Ground Secondary Things/OnGroundRocketBootsGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneRocketBootsThingTexA.png",
+          "sha256": "792e3a2994191373d06ff84d84cc751dbed0e0b168471d70d05178da4e3377df",
+          "sprite": "LoneRocketBootsThingTexA"
+        }
+      ],
+      "svgSha256": "c420f2e1ca77c77273b923d1c248fa5735d452ba0067331f9978cc0c485c98ca"
+    },
+    "OnGroundTeleporterGob": {
+      "prefab": "Assets/Prefabs/On Ground Secondary Things/OnGroundTeleporterGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneTeleporterThingTexA.png",
+          "sha256": "89944299b224e63c615f71fd1171c0e9df44943a842b4ceae426f8d4e43e92de",
+          "sprite": "LoneTeleporterThingTexA"
+        }
+      ],
+      "svgSha256": "81fd0cb93f46952a7be9afbcb792122986150fbc06f9bbbc316d18e271094e4e"
+    },
+    "OnGroundWarHornGob": {
+      "prefab": "Assets/Prefabs/On Ground Secondary Things/OnGroundWarHornGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Lone Weapons/LoneWarHornThingTexA.png",
+          "sha256": "5689f0d075d1e35b08ecf8e92e7eedbb2fc965dd86a9ac000feb751805af683a",
+          "sprite": "LoneWarHornThingTexA"
+        }
+      ],
+      "svgSha256": "aef6b60f2a41c7185addd27834248f91954a77f1caa234c2689c7cb173746fb3"
+    },
+    "crate": {
+      "prefab": "Assets/Prefabs/Constructs/BreakableWoodBoxMediumHGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Breakable Objects/BreakableWoodBoxMediumH/BreakableWoodBoxMediumHFullHPTex.png",
+          "sha256": "9e8108beee1a2a69e5c0997d92dcc2f0ab8978247c97266be58aa68ad5ce9227",
+          "sprite": "BreakableWoodBoxMediumHFullHPTex"
+        }
+      ],
+      "svgSha256": "0b84a3360ff1aaf95e79e1cd742854ffa9b4a4d0572a0d3a58d942557f89670f"
+    },
+    "barrel": {
+      "prefab": "Assets/Prefabs/Constructs/ExplosiveBarrelAGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Dynamic World Objects/ExplosiveBarrelA.png",
+          "sha256": "6ebed0e071e0d3d116757a70698889cde22cd6677a01d8e54adf49a3a692d4aa",
+          "sprite": "ExplosiveBarrelA"
+        }
+      ],
+      "svgSha256": "4f74124f4c6bde91d2d0dbb2f289d9963d9456955d8357eaea4418ffa39a3909"
+    },
+    "npc-male": {
+      "prefab": "Assets/Prefabs/NPCs/Enemies/RevolaGladiatorGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/RevoDemoSource/RevolaFemaleLegsAni/revola_female_legs_1.png",
+          "sha256": "c45b4c63cf878be5a9b42d9279551b349b4974478bf62089bdedb1ce72488c48",
+          "sprite": "revola_female_legs_1"
+        },
+        {
+          "texture": "Assets/RevoDemoSource/Demo EnemyCharAni/DemoEnemyCharTops/DemoEnemyCharHands/DemoEnemyHandsStand_1.png",
+          "sha256": "f73b85994d3b14fe957da34c46bfe30e84669e19b48ceec15da3a83781374952",
+          "sprite": "DemoEnemyHandsStand_1"
+        }
+      ],
+      "svgSha256": "5b2e54ed20bed450c2b2e23abb84ed2895c0624a1f60c1333033346befd05ebd"
+    },
+    "npc-female": {
+      "prefab": "Assets/Prefabs/NPCs/Enemies/RevolaGladiatorGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/RevoDemoSource/RevolaFemaleLegsAni/revola_female_legs_1.png",
+          "sha256": "c45b4c63cf878be5a9b42d9279551b349b4974478bf62089bdedb1ce72488c48",
+          "sprite": "revola_female_legs_1"
+        },
+        {
+          "texture": "Assets/Sprites/Character Animations/RefemAnimations/Weapons/Hands/RefemTopHands/RefemTopHands_0001_TexA.png",
+          "sha256": "c5450940d6bf2ce3862fd53a2b2abe976e757b0dd80d015f2a2a7fe323e54dd5",
+          "sprite": "RefemTopHands_0001_TexA"
+        }
+      ],
+      "svgSha256": "b3f250b456657055304ffb1b7e7d3df95707e5d5636255aa70df19b98da29644"
+    },
+    "door": {
+      "prefab": "Assets/Prefabs/Constructs/SlidingDoorGob.prefab",
+      "sources": [
+        {
+          "texture": "Assets/Sprites/Dynamic World Objects/TonikSlidingDoorA.png",
+          "sha256": "0c538264f89e9bdc1d71af5824eac479c2da91bc3aa2fce2ea9926abea5e7f1e",
+          "sprite": "TonikSlidingDoorA"
+        }
+      ],
+      "svgSha256": "53e404a94d06d31d968cf79d89fe79d7de7b2ee031467bdbc4b752fcb99f4789"
+    },
+    "door-hinged": {
+      "prefab": "Assets/RevoDemoSource/DemoDoorSource/RevolaDoorA.prefab",
+      "sources": [
+        {
+          "texture": "Assets/RevoDemoSource/DemoDoorSource/Demo_Door_A.png",
+          "sha256": "cc3ff0886f361f42bdf85efba7c3a7b3f2e03977853a9fb8ba63ae2772f487d1",
+          "sprite": "Demo_Door_A"
+        }
+      ],
+      "svgSha256": "e7ec0cbebf1d947412e981df39cc29d93dff9fd6e6cd6987986f1ab8e28eab4d"
+    }
+  }
+}

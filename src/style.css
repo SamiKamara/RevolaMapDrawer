@@ -15,6 +15,13 @@
 @media(max-height:700px){.toolrail{gap:4px;padding-top:8px}.toolrail button{height:39px}.rail-divider{margin:4px 0}.rail-bottom{margin-bottom:16px;gap:8px}}
 
 .selection-section .danger{margin-top:12px}
+.toolrail{overflow-y:auto;overflow-x:hidden;gap:3px;padding-bottom:12px;scrollbar-width:thin}.toolrail button{flex-shrink:0;height:36px}.toolrail .rail-divider,.toolrail .rail-caption{flex-shrink:0}.object-divider{margin-top:15px}
+#object-option select{max-width:195px}#npc-hover-setup{position:absolute;background:#344b3b;border:1px solid #789c83;font-size:11px;z-index:3}
+#object-selection>button{margin-top:7px}#object-selection-name{display:block;margin-bottom:8px;font-size:12px}#object-summary{font-size:10px;margin-bottom:8px}
+#npc-dialog{max-width:620px;width:calc(100% - 40px);max-height:85vh;overflow:auto}#npc-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px}#npc-fields label{font-size:11px;display:flex;flex-direction:column;gap:5px}#npc-fields input,#npc-fields select{width:100%;padding:7px;background:#131d17;border:1px solid #526d5b;border-radius:4px;color:#d8e7dd}
+#object-picker{width:340px;max-height:80vh;overflow:auto}#object-picker-list{display:grid;gap:4px;margin:12px 0}#object-picker-list button{text-align:left;border:1px solid #3c4d41}
+#npc-fields .npc-wide-field{grid-column:1/-1}#npc-fields input::placeholder{color:#9eafa4;opacity:1}
+@media(max-height:800px){.toolrail{gap:2px;padding-top:6px}.toolrail button{height:29px;padding:4px}.toolrail button svg{width:20px;height:20px}.rail-divider{margin:3px 0}.object-divider{margin-top:9px}.toolrail .rail-caption{font-size:7px}}
 .image-export-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}
 .image-export{font-size:12px;font-weight:550;line-height:16px;padding:8px 11px;border:1px solid var(--export-border);background:var(--export-background);color:var(--export-color)}
 .image-export:hover{background:var(--export-hover)}

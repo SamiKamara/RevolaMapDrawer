@@ -12,6 +12,8 @@ import { resolveRoomStart, attachedRoomSegments, addAttachedRoom } from './room-
 import { emptySelection, selectionVertices, pruneSelection, rectangleSelection, combineSelection, toggleSelection } from './selection.js';
 import { copySelection, pasteSelection } from './clipboard.js';
 import { SAVE_ALL_FORMATS, createExportZip } from './save-all.js';
+import { createObjectEditor } from './object-editor.js';
+import { OBJECT_CATEGORIES } from './object-schema.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('map-canvas');
@@ -43,7 +45,7 @@ function floorGeometryKey() {
 function floorControls() {
   const ready = floorKey === floorGeometryKey() && !floorPendingKey;
   const closed = ready && floor?.closed;
-  const blocked = busy || !!gesture || !!paste || !!wallStart;
+  const blocked = busy || !!gesture || !!paste || !!wallStart || objectEditor.active;
   for (const id of ['floor-png-button', 'floor-svg-button', 'save-all-button']) $(id).disabled = blocked || !closed;
   for (const id of ['export-button', 'svg-button', 'project-button']) $(id).disabled = blocked;
 }
@@ -58,6 +60,7 @@ function refreshFloor() {
       try { floor = generateFloor(doc); }
       catch (error) { floor = { closed: null, reason: `Floor check unavailable: ${error.message}` }; }
       floorKey = key; floorPendingKey = '';
+      objectEditor.refresh();
       if (floor?.closed) loadStars();
       floorControls(); renderSoon();
     }, 0);
@@ -65,6 +68,8 @@ function refreshFloor() {
   floorControls();
 }
 const camera = { x: 0, y: 0, scale: .1 };
+const objectEditor = createObjectEditor({ doc: () => doc, floor: () => floorKey === floorGeometryKey() && !floorPendingKey ? floor : null,
+  scale: () => camera.scale, commit, refresh: () => refresh(), render: renderSoon, status, focus: () => canvas.focus(), clearSelection: () => { selected = emptySelection(); } });
 const descriptions = {
   select: ['Select tool', 'Drag an area or Ctrl-click points/walls. Ctrl+C copies their walls and openings. Ctrl+V previews a copy; move the pointer and click to place, or Escape to cancel. Drag selected items to move them. A single room side still resizes.'],
   wall: ['Wall tool', 'Click to chain walls, or drag to draw. Nearby ends join automatically. Draw along a wall to extend it or fill an opening. Escape ends the chain.'],
@@ -74,6 +79,9 @@ const descriptions = {
   rectangle: ['Rectangle room tool', 'Drag a room with four square corners. Hold Shift to keep width and depth equal. Start at DOOR, END or CENTER for a centered door. Free rooms use Rotate 45° or Shift + R.'],
   corridor: ['Corridor tool', 'Drag a route to draw a 580 px corridor. CENTER or DOOR aligns the start; from END, continue outward before turning. The ship’s outer airlock door also aligns. Finish near a target to align the endpoint while keeping your start and turn directions. Use broad turns.'],
   hand: ['Hand tool', 'Drag to move around the map. Scroll to zoom at your cursor, or press F to fit the whole map.'],
+  ...Object.fromEntries(OBJECT_CATEGORIES.map(category => [category, [category === 'doors' ? 'Door object tool' : `${category[0].toUpperCase()}${category.slice(1)} tool`,
+    category === 'doors' ? 'Choose Automatic, Sliding door or Hinged door. Hover an opening for DOOR SNAP, then click to place. Red OCCUPIED means it already has a door. Other openings stay open when this category is authored.'
+      : 'Choose the type, click to set a position, aim the facing direction and click again. Select (V) to move or delete objects. Hover an NPC for advanced setup. Red objects are excluded from game generation.'] ])),
 };
 
 function status(message, error = false) {
@@ -104,7 +112,7 @@ function refresh() {
   $('paste-button').disabled = !clipboard || busy || !!gesture;
   const edge = selectionMode === 'single' && selection.edgeIds.length === 1 && !selection.vertexIds.length
     ? doc.edges.find(e => e.id === selection.edgeIds[0]) : null;
-  $('delete-button').disabled = busy || !pointCount || !!paste;
+  $('delete-button').disabled = busy || !(pointCount || objectEditor.hasSelection) || !!paste;
   const room = edge ? detectRoom(doc, edge.id) : null;
   $('selection-badge').textContent = room ? 'ROOM SIDE' : edge ? 'WALL' : pointCount ? selectionMode === 'single' && pointCount === 1 ? 'POINT' : 'GROUP' : '—';
   $('selection-info').dataset.wallCount = String(selection.edgeIds.length);
@@ -116,6 +124,7 @@ function refresh() {
   } else if (pointCount) $('selection-info').textContent = `${selection.edgeIds.length} wall${selection.edgeIds.length === 1 ? '' : 's'} · ${pointCount} point${pointCount === 1 ? '' : 's'}`;
   else $('selection-info').textContent = '';
   window.revolaDesktop?.setDirty(changed);
+  objectEditor.refresh();
   refreshFloor();
   renderSoon();
 }
@@ -141,7 +150,7 @@ function commit(operation, message) {
     return false;
   }
 }
-function cancelGesture() { gesture = null; wallStart = null; paste = null; refresh(); }
+function cancelGesture() { gesture = null; wallStart = null; paste = null; objectEditor.cancel(); refresh(); }
 function copySelected() {
   if (busy || gesture || paste || wallStart) return;
   try {
@@ -185,6 +194,7 @@ function placePaste(point) {
 function setTool(next) {
   if (busy) return;
   cancelGesture(); tool = next;
+  objectEditor.tool(next);
   for (const button of document.querySelectorAll('[data-tool]')) {
     const active = button.dataset.tool === next;
     button.classList.toggle('active', active);
@@ -432,6 +442,7 @@ function render() {
   }
   if (floorCurrent) drawFloor(ctx, floor);
   drawMap(ctx, viewDoc, { shipImage });
+  objectEditor.draw(ctx);
   ctx.restore();
   // Drawing previews may cross the current boundary; commit expands the map
   // without moving the camera, content or original center.
@@ -543,6 +554,7 @@ canvas.addEventListener('pointerdown', event => {
   }
   if (paste) { placePaste(point); return; }
   if (!drawable(point)) { status('The largest supported canvas is 16384 × 16384 around the original center.', true); return; }
+  if (objectEditor.down(point, tool === 'select')) { canvas.setPointerCapture(event.pointerId); return; }
   if (tool === 'wall') {
     const target = snap(point, wallStart);
     if (!wallStart) {
@@ -610,6 +622,7 @@ canvas.addEventListener('pointerdown', event => {
 canvas.addEventListener('pointermove', event => {
   const at = local(event); pointer = world(at);
   $('pointer-position').textContent = `X ${Math.round(pointer.x)}  Y ${Math.round(pointer.y)}`;
+  objectEditor.move(pointer, at);
   if (gesture?.type === 'pan') {
     camera.x = gesture.x + at.x - gesture.start.x; camera.y = gesture.y + at.y - gesture.start.y;
   } else if (gesture?.type === 'wall-draw') {
@@ -654,6 +667,8 @@ canvas.addEventListener('pointermove', event => {
   renderSoon();
 });
 function finishPointer(event) {
+  objectEditor.up();
+  if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   const current = gesture;
   if (!current) return;
   gesture = null;
@@ -682,8 +697,8 @@ function finishPointer(event) {
   refresh();
 }
 canvas.addEventListener('pointerup', finishPointer);
-canvas.addEventListener('pointercancel', () => { gesture = null; refresh(); });
-canvas.addEventListener('pointerleave', () => { if (!gesture) { pointer = null; renderSoon(); } });
+canvas.addEventListener('pointercancel', () => { gesture = null; objectEditor.cancel(); refresh(); });
+canvas.addEventListener('pointerleave', () => { if (!gesture) { pointer = null; objectEditor.leave(); renderSoon(); } });
 canvas.addEventListener('contextmenu', event => { event.preventDefault(); cancelGesture(); status('Gesture canceled.'); });
 canvas.addEventListener('wheel', event => { event.preventDefault(); zoom(Math.exp(-event.deltaY * .0015), local(event)); pointer = world(local(event)); if (paste) updatePaste(pointer); }, { passive: false });
 
@@ -694,6 +709,7 @@ async function confirmReplacement() {
   return new Promise(resolve => { dialog.addEventListener('close', () => resolve(dialog.returnValue === 'discard'), { once: true }); dialog.showModal(); });
 }
 function replaceDocument(next) {
+  objectEditor.clear();
   doc = next; savedState = JSON.stringify(doc); history = []; future = []; selected = emptySelection(); selectionMode = 'single';
   cancelGesture(); fit(); refresh();
 }
@@ -751,7 +767,7 @@ function saving(active) {
   refresh();
 }
 async function saveAll() {
-  if (busy || gesture || paste || wallStart || !floor?.closed || floorKey !== floorGeometryKey() || floorPendingKey) return;
+  if (busy || gesture || paste || wallStart || objectEditor.active || !floor?.closed || floorKey !== floorGeometryKey() || floorPendingKey) return;
   const snapshot = clone(doc), exportFloor = floor, name = safeName(snapshot.name);
   saving(true);
   try {
@@ -773,7 +789,7 @@ async function saveAll() {
   finally { saving(false); }
 }
 async function saveDocument(kind = 'png') {
-  if (busy || gesture || paste || wallStart) return;
+  if (busy || gesture || paste || wallStart || objectEditor.active) return;
   const floorExport = kind === 'floor-png' || kind === 'floor-svg';
   if (floorExport && (!floor?.closed || floorKey !== floorGeometryKey() || floorPendingKey)) return;
   const fileKind = floorExport ? kind.slice(6) : kind;
@@ -800,6 +816,7 @@ async function saveDocument(kind = 'png') {
 }
 function deleteSelected() {
   if (busy || gesture || paste) return;
+  if (objectEditor.remove()) { refresh(); return; }
   const explicitPoints = new Set(selected.vertexIds), walls = new Set(selected.edgeIds);
   for (const edge of doc.edges) if (explicitPoints.has(edge.a) || explicitPoints.has(edge.b)) walls.add(edge.id);
   if (walls.size) commit(() => {
@@ -847,14 +864,16 @@ $('zoom-value').addEventListener('click', () => zoom(1 / camera.scale));
 window.addEventListener('keydown', event => {
   const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
   if (event.key === 'Escape') {
+    if (document.querySelector('dialog[open]')) return;
     if (!$('confirm-dialog').open) {
-      const active = gesture !== null || wallStart !== null || paste !== null;
+      const active = gesture !== null || wallStart !== null || paste !== null || objectEditor.active;
+      objectEditor.clear();
       if (!active && tool === 'select' && !typing) selected = emptySelection();
       cancelGesture(); status(active ? 'Gesture canceled.' : 'Selection cleared.');
     }
     return;
   }
-  if ($('confirm-dialog').open) return;
+  if (document.querySelector('dialog[open]')) return;
   if (event.ctrlKey || event.metaKey) {
     const key = event.key.toLowerCase();
     if (key === 's') { event.preventDefault(); document.activeElement?.blur(); saveDocument(event.shiftKey ? 'project' : 'png'); }

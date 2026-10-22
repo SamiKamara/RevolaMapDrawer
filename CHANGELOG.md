@@ -5,6 +5,17 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-22
+
+Gameplay object authoring for **Revola: Post Hyper**, shared by the offline Windows application and browser version.
+
+- Preview gameplay-door snapping while hovering or dragging, indicate occupied openings, and support explicit sliding/monochrome hinged doors in Drawer and both Unity generation paths.
+- Add optional NPC, door, crate, explosive barrel, weapon and device placement below the architecture tools, with facing controls, selection, deletion and partial NPC overrides.
+- Preserve gameplay objects in editable project/PNG metadata while keeping all image artwork architecture-only; integrate category-specific overrides with the Revola editor and runtime generators.
+- Add explicit NPC weapons and visible standard generator defaults. Replace letter markers with traced monochrome game vectors and stable 50/50 male/female NPC previews.
+- Rename Laser pistol to Suppressed pistol; retire Gunpowder pistol, Laser assault gun and Laser shotgun from new placement/content/weapon lists while retaining old saved placements.
+- Synchronize all weapon choices with both game shops and their English names; add Ravager Assault Gun and LAF Laser Rifle, matching vector previews and trusted Unity prefab/loadout support.
+
 ## [0.13.1] - 2026-10-22
 
 Attached-room correction for the specialized **Revola: Post Hyper** editor,
