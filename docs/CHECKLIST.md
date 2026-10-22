@@ -11,10 +11,10 @@ Version **0.13.1** is selected for this correction.
 - [x] Allow clear overhangs past host corners with shared original junctions.
 - [x] Verify both child/host types in all eight directions, new/existing doors,
   Shift square sizing and atomic collision rejection in focused geometry checks.
-- [-] Verify complete geometry/persistence, source UI, browser and native delivery.
-- [ ] Inspect and launch the actual rebuilt desktop test shortcut.
-- [ ] Commit/push `main`, verify immutable v0.13.1 assets and update GitHub release.
-- [ ] Deploy and verify the same browser runtime in Vercel production.
+- [x] Verify complete geometry/persistence, source UI, browser and native delivery.
+- [x] Inspect and launch the actual rebuilt desktop test shortcut.
+- [x] Commit/push `main`, verify immutable v0.13.1 assets and update GitHub release.
+- [x] Deploy and verify the same browser runtime in Vercel production.
 
 Existing constraints remain: no unrelated boundary touches, wall intersections,
 enclosed geometry, competing openings or protected ship/pin changes. The original
@@ -39,6 +39,58 @@ Verified source/browser preparation:
   and rejected outboard obstructions while offline: **zero host requests/bytes**.
   No uploads, third-party requests or renderer errors. Evidence: ignored
   web-results.json and web-overhang-*-preview.png.
+
+Verified native release preparation and browser production:
+
+- `scripts/create-release.ps1 -Version 0.13.1 -Push` passes its complete guarded
+  build (`npm ci`, `npm test`, `npm run test:ui`, `npm run package`,
+  `npm run test:packaged`, archive verification and extracted `test:portable`).
+  All **23 runtime files** match current source; minimal manifest is 0.13.1.
+  Every one of **77 ZIP files** matches the verified package. Extracted native
+  offline save/reopen restores the exact **36-wall** fixture with zero network
+  requests or renderer errors. Local ZIP: **158,079,158 bytes**, SHA-256
+  `d6672db21795f1d8957280f8d6ed2fbf0b8e21b159cb28cbdfaf954f13f00143`.
+  The immutable tag is **v0.13.1** on **b0feba7**, pushed after fresh clean-main,
+  remote-main and packaged-byte checks. Evidence: ignored overhang-release.log.
+- `postpackage` refreshes the actual desktop shortcut automatically. Separate
+  `scripts/update-desktop-shortcut.ps1 -VerifyOnly` confirms its exact target
+  `<repository>/dist/RevolaMapDrawer-win32-x64/RevolaMapDrawer.exe`, empty arguments,
+  repository working directory and existing paths. Launched the actual `.lnk`
+  through Windows Shell; Computer Use selected that exact executable, verified
+  the visible offline editor/vector ship and selected Rectangular room. The
+  untouched packaged editor is left open. The shortcut remains outside Git.
+- Vercel deployment **dpl_BLBjGwFiPPtCn3hgBEgbnY4mrJ3v** is Production Ready,
+  aliased to [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app).
+  All **seven** fetched production files match build **4dc738ed052b027c** by
+  SHA-256, including application **91ff1feeaa2ec15b**. Real production browser
+  smoke passes all four child/host overhang combinations, green previews,
+  obstruction rejection, exact local save/reopen and undo/redo while offline.
+  Those actions use **zero host requests/bytes**. Existing exports, offline
+  floors, worker caching and no-upload checks pass without renderer errors.
+  Evidence: ignored overhang-vercel-deploy.log, overhang-production-parity.json
+  and web-production-results.json.
+- GitHub main CI [39706501177](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/39706501177)
+  succeeds at exact implementation commit **b0feba7**, including geometry,
+  native source UI, static browser/offline and packaged application checks.
+- Tagged release CI [39706896187](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/39706896187)
+  succeeds, including the complete Windows build, archive verification and
+  extracted portable save/reopen. Downloaded both actual draft assets and
+  verified the ZIP against `SHA256SUMS.txt` and GitHub's asset digest:
+  **162,699,922 bytes**, SHA-256
+  `9964b43f7ebc0fe465da497d85f8a5609e78e8acbd8f1e0af0cfab4e9fa33fcd`.
+  Release notes match the generated tagged source. Extracted the downloaded ZIP
+  and checked its **23 runtime files**, manifest, license and notices against
+  canonical `v0.13.1` Git bytes, independent of local Windows line endings.
+  The maintained portable verifier passes exact **36-wall** native save/reopen
+  with zero network requests/renderer errors. The maintained packaged room UI
+  verifier also passes on that downloaded executable, including all four
+  child/host overhang combinations, native reopen and one-step undo/redo.
+  Evidence: ignored overhang-hosted-assets-evidence.json, overhang-hosted-portable.log,
+  overhang-hosted-room-ui.log and release/v0.13.1/hosted-reviewed/.
+- Reviewed notes/assets, removed the draft-only note and published requested
+  [v0.13.1](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.13.1).
+  GitHub confirms `draft=false`, `prerelease=false` and latest tag **v0.13.1**.
+  Its immutable tag remains on **b0feba7**; repository visibility is unchanged.
 
 ## Rectangular rooms and vector ship — version 0.13.0, 2026-10-17
 

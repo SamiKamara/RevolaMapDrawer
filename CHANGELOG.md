@@ -14,6 +14,10 @@ shared by the offline Windows application and browser version.
 - Reuse the original corner junctions and centered doorway, preserving existing doors and saved geometry while rejecting obstructed placements.
 - Keep diagonal shared boundaries stable despite coordinate rounding.
 
+Published as the latest Windows x64 portable release with its SHA-256 checksum:
+[v0.13.1](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.13.1).
+The same correction is deployed at [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app).
+
 ## [0.13.0] - 2026-10-17
 
 Rectangular rooms and a compact vector ship for the specialized
