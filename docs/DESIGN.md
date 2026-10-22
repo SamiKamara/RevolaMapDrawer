@@ -38,7 +38,7 @@ An updated worker waits until every previous editor tab closes, preventing a run
 
 ### Version 0.14.0 optional gameplay objects
 
-Version 2 projects may include `objects:[{id,category,type,x,y,rotation,doorId?,npc?,npcWeapon?,visualVariant?}]`.
+Version 2 projects may include `objects:[{id,category,type,x,y,rotation,doorId?,npc?,npcWeapon?,visualVariant?,patrolPoints?}]`.
 Absence and an empty array retain automatic game generation. Categories are `npc`,
 `doors`, `crates`, `barrels`, `weapons`, `devices`; positions use the original world
 pixels and rotation is clockwise degrees from source +X. Catalog keys identify
@@ -46,13 +46,27 @@ canonical game prefabs through a fixed allowlist, never imported asset paths/cod
 At most 4096 objects are accepted. NPC `npc` contains only explicitly overridden
 allowlisted fields; false and zero remain meaningful overrides. Other fields use
 the game's existing generation preset. States are standing (0), random wander (1)
-and patrol (8); the game selects native reachable patrol destinations.
+and patrol (8). Patrol uses generated destinations unless optional `patrolPoints`
+provides 1–128 ordered `{x,y}` points in absolute source pixels; this field requires
+an explicit Patrol state. Expansion preserves these coordinates and the world center.
 
 Six object tools appear below the architecture tools. NPC, weapon, device and
 crate tools open type/content lists; crates default to Empty. Non-door placement
 uses a position click and a facing click. Select allows individual selection,
 dragging, rotation through Aim rotation, and Delete; history covers completed edits.
 Hovering an NPC exposes Advanced setup; every field can return to Generator default.
+General state also offers **Patrol points (manual)**. Selecting it opens a point-count
+dialog, then collects that many clicks on playable floor. Numbered markers appear
+only during this process. Completing the last point commits the entire route and
+draft NPC overrides as one undo step and hides all markers. Escape/tool changes
+discard the draft and keep the previous route. **Reconfigure route** repeats the
+count and placement steps; saving any other state removes the manual route.
+Unity transforms the exact ordered points, certifies their character footprint and
+native paths from spawn through each point and back to the first, and reserves
+destinations before placing automatic props. An invalid route reports the NPC/point;
+it is never silently replaced. Manual patrols target point 1 initially with zero
+waits; a one-point route is supported. Both generation paths and runtime plan reopen
+preserve this behavior. Architecture exports never draw routes or their markers.
 An optional `npcWeapon` selects one usable weapon; an absent key keeps the random
 melee/ranged pool. Explicit weapon selection can cross the random-pool type.
 Defaults in parentheses come from RevolaGladiatorGob, with the standard generator's

@@ -69,7 +69,7 @@ function refreshFloor() {
 }
 const camera = { x: 0, y: 0, scale: .1 };
 const objectEditor = createObjectEditor({ doc: () => doc, floor: () => floorKey === floorGeometryKey() && !floorPendingKey ? floor : null,
-  scale: () => camera.scale, commit, refresh: () => refresh(), render: renderSoon, status, focus: () => canvas.focus(), clearSelection: () => { selected = emptySelection(); } });
+  scale: () => camera.scale, commit, refresh: () => refresh(), render: renderSoon, status, focus: () => canvas.focus(), selectTool: () => setTool('select'), clearSelection: () => { selected = emptySelection(); } });
 const descriptions = {
   select: ['Select tool', 'Drag an area or Ctrl-click points/walls. Ctrl+C copies their walls and openings. Ctrl+V previews a copy; move the pointer and click to place, or Escape to cancel. Drag selected items to move them. A single room side still resizes.'],
   wall: ['Wall tool', 'Click to chain walls, or drag to draw. Nearby ends join automatically. Draw along a wall to extend it or fill an opening. Escape ends the chain.'],

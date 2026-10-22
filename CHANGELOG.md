@@ -5,6 +5,8 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+- Add manual NPC patrol routes: choose a point count in Advanced setup, click numbered points, reconfigure atomically, and preserve the route in project/PNG metadata for both Unity generation paths. Route markers appear only during configuration.
+
 ## [0.14.0] - 2026-10-22
 
 Gameplay object authoring for **Revola: Post Hyper**, shared by the offline Windows application and browser version.

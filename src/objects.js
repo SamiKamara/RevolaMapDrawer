@@ -24,6 +24,11 @@ export function objectPosition(doc, object) {
   const target = objectDoorTargets(doc).find(target => target.id === object.doorId);
   return target ? { ...object, ...target.point, rotation: Math.atan2(target.direction.y, target.direction.x) * 180 / Math.PI } : object;
 }
+export function gameplayPointIsPlayable(doc, floor, point) {
+  return !!floor?.closed && floorRegionContainsPoint(floor.polygons, point)
+    && !(floor.wallPolygons ?? []).some(polygon => floorContainsPoint(polygon, point))
+    && !SHIP_VECTOR_OUTLINES.some(ring => floorContainsPoint(ring.map(p => shipWorldPoint(doc.ship, p)), point));
+}
 /** Center-only rejection deliberately permits close-to-wall and close-to-object placements. */
 export function filterGameplayObjects(doc, floor) {
   const accepted = [], rejected = [];

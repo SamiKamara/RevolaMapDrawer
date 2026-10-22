@@ -2,6 +2,56 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Manual NPC patrol routes — local unreleased continuation, 2026-10-22
+
+- [x] Add **Patrol points (manual)** to NPC Advanced setup. Ask for 1–128 points,
+  then collect that many playable-floor clicks in order. Show numbered markers
+  only while configuring; hide them after completion or cancellation.
+- [x] **Reconfigure route** repeats both steps. Commit a complete route and the
+  draft advanced settings as one history operation. Escape/tool changes discard
+  the draft and retain the previous route/settings. Automatic/default states
+  remove the manual route when saved; old projects remain automatic.
+- [x] Preserve ordered absolute source-pixel `patrolPoints` in projects and PNG
+  metadata, through centered expansion and reopen. Bound and reconstruct the
+  data independently in Drawer and Unity. SVG output and architecture PNG IDAT
+  bytes remain unchanged, including during route use.
+- [x] `npm test`: **354/354** pass. Full `npm run test:ui` and
+  `npm run test:packaged` pass. Source/packaged object workflows cover count
+  validation, an invalid floor click, ordered placement, visible numbered markers,
+  immediate marker removal, single-step undo/redo, canceled/repeated configuration,
+  one-point routes, state changes, native save/reopen and unchanged PNG artwork.
+  Evidence: ignored `artifacts/manual-patrol-*.log` and
+  `artifacts/objects*/manual-patrol-placing.png` (visually inspected).
+- [x] `npm run test:web` rebuilds and passes the real browser offline workflow:
+  place an NPC, configure two ordered patrol points, download and reopen the
+  project exactly. No uploads or third-party requests. Evidence:
+  `artifacts/manual-patrol-web.log` and `artifacts/web-results.json`.
+- [x] Runtime/Editor compilation: **0/0 errors**. Unity 2022.3.62f3 has **31
+  distinct passing cases** using each case's latest result: parser bounds/order,
+  real editor prefab application for one/three points, unreachable-point rejection,
+  unchanged automatic categories/routes and a real runtime scene activation with
+  one/three-point plan save/reopen and first-target index 0. Initial cohort 29/31;
+  the invalid-route test expected a preview result instead of the existing thrown
+  exception, and the automatic-category regression hit a transient Windows
+  `File.Replace` failure. Corrected that test expectation; focused rerun **2/2,
+  exit 0**, including the unchanged category regression. Evidence: sibling game's
+  ignored `Library/RevolaMapManager/Validation/manual-npc-patrol*.xml/.log` and
+  exit/Steam-guard records. Clone-only Steam seam restored; real saves untouched.
+  Updated the bundled producer and runtime resources to the tested source.
+- [x] Rebuild the Windows package. Postpackage refresh and explicit `-VerifyOnly`
+  confirm the actual desktop shortcut's direct executable, empty arguments,
+  repository working directory and existing paths. Launch that exact `.lnk` and
+  observe the working packaged UI through Computer Use. Packaged tests compare
+  maintained runtime source bytes; the newest test build remains open.
+
+Routes are loops with zero waits and begin at point 1; a single-point route is
+supported. Unity validates character footprints and native static paths, including
+the return to point 1, and reserves targets before automatic props. Authored dynamic
+obstacles retain the game's ordinary avoidance behavior. Manual routes are not
+silently replaced if invalid. Physical movement through every user-authored route
+and a new standalone player build are outside this milestone's verification.
+No new version, commit, push, release or Vercel deployment was requested.
+
 ## Version 0.14.0 release preparation — 2026-10-22
 
 - [x] Owner requested commits/pushes for both repositories, a Drawer release and

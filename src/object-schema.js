@@ -3,6 +3,7 @@ import { WEAPON_CATALOG } from './weapon-catalog.js';
 export const OBJECT_CATEGORIES = ['npc', 'doors', 'crates', 'barrels', 'weapons', 'devices'];
 export const WEAPONS = WEAPON_CATALOG.map(weapon => [weapon.key, weapon.label]);
 export const NPC_WEAPONS = WEAPON_CATALOG.filter(weapon => weapon.npcCanUse).map(weapon => [weapon.key, weapon.label]);
+export const MAX_PATROL_POINTS = 128;
 const LEGACY_WEAPONS = ['UniGunpowderPistolGob', 'UniLaserAssaultgunGob', 'UniLaserShotgunGob'];
 export const DEVICES = [
   ['OnGroundAmmoLoaderGob', 'Ammo loader'], ['OnGroundShieldGob', 'Shield'], ['OnGroundAimbotGob', 'Aimbot'],
@@ -60,6 +61,14 @@ export function validateObjects(objects) {
         if (kind === 'bool' ? typeof value !== 'boolean' : kind === 'state' ? ![0, 1, 8].includes(value) : !Number.isFinite(value) || value < min || value > max) throw new Error(`Invalid NPC ${key}.`);
         result.npc[key] = value;
       }
+    }
+    if (object.patrolPoints !== undefined) {
+      if (object.category !== 'npc' || result.npc?.currentGeneralState !== 8 || !Array.isArray(object.patrolPoints)
+        || object.patrolPoints.length < 1 || object.patrolPoints.length > MAX_PATROL_POINTS) throw new Error(`Invalid manual patrol route (1–${MAX_PATROL_POINTS} points in Patrol state).`);
+      result.patrolPoints = object.patrolPoints.map(point => {
+        if (!point || ![point.x, point.y].every(Number.isFinite) || Math.abs(point.x) > 100000 || Math.abs(point.y) > 100000) throw new Error('Invalid manual patrol point.');
+        return { x: point.x, y: point.y };
+      });
     }
     return result;
   });

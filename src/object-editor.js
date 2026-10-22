@@ -1,5 +1,5 @@
-import { OBJECT_CATEGORIES, OBJECT_TYPES, NPC_FIELDS, NPC_WEAPONS, validateObjects } from './object-schema.js';
-import { filterGameplayObjects, objectDoorSnap, objectPosition } from './objects.js';
+import { OBJECT_CATEGORIES, OBJECT_TYPES, NPC_FIELDS, NPC_WEAPONS, MAX_PATROL_POINTS, validateObjects } from './object-schema.js';
+import { filterGameplayObjects, gameplayPointIsPlayable, objectDoorSnap, objectPosition } from './objects.js';
 import { chooseNpcVisual, drawObjectVisual } from './object-visuals.js';
 import { NPC_DEFAULTS } from './npc-defaults.js';
 
@@ -7,7 +7,7 @@ const labels = { npc: 'NPC', doors: 'Door object', crates: 'Crate', barrels: 'Ex
 const colors = { npc: '#efb46e', doors: '#89c5ff', crates: '#d8bf8a', barrels: '#ee8a8a', weapons: '#badb8d', devices: '#b6a5f0' };
 export function createObjectEditor(api) {
   const $ = id => document.getElementById(id);
-  let category = null, selectedId = null, hoveredId = null, pending = null, drag = null, hoverPoint = null;
+  let category = null, selectedId = null, hoveredId = null, pending = null, drag = null, hoverPoint = null, route = null;
   const types = Object.fromEntries(OBJECT_CATEGORIES.map(key => [key, OBJECT_TYPES[key][0][0]]));
   let reportDoc, reportFloor, report;
   function analysis() {
@@ -42,13 +42,14 @@ export function createObjectEditor(api) {
     $('object-selection').hidden = !object;
     $('object-selection-name').textContent = object ? labels[object.category] : '';
     $('object-advanced').hidden = object?.category !== 'npc';
+    for (const id of ['object-advanced', 'object-rotate', 'object-delete', 'object-type']) $(id).disabled = !!route;
     const result = analysis();
     $('object-summary').textContent = objects().length ? `${objects().length} objects · ${result.accepted.length} valid · ${result.rejected.length} excluded. Categories with valid objects replace automatic placement.` : 'Optional: categories without valid objects are generated automatically.';
     $('object-selection-note').textContent = result.rejected.find(entry => entry.object.id === selectedId)?.reason ?? 'Included in game generation. Drag to move; Delete removes it.';
   }
   function update() { refresh(); api.refresh(); }
   function leave() { hoverPoint = null; }
-  function cancel() { pending = null; drag = null; leave(); $('npc-hover-setup').hidden = true; }
+  function cancel() { pending = null; drag = null; route = null; leave(); $('npc-hover-setup').hidden = true; }
   const doorTarget = point => objectDoorSnap(api.doc(), point, Math.max(200, 14 / api.scale()), drag?.object.id);
   function tool(key) {
     cancel(); category = OBJECT_CATEGORIES.includes(key) ? key : null; selectedId = null;
@@ -63,7 +64,7 @@ export function createObjectEditor(api) {
     refresh();
   }
   function remove() {
-    if (!selectedId) return false;
+    if (!selectedId || route) return false;
     api.commit(() => { api.doc().objects = objects().filter(object => object.id !== selectedId); selectedId = null; }, 'Gameplay object removed.');
     refresh(); return true;
   }
@@ -84,24 +85,81 @@ export function createObjectEditor(api) {
       if (kind === 'number') { field.type = 'number'; field.min = min; field.max = max; field.step = 'any'; field.placeholder = defaultText; }
       else {
         field.add(new Option(defaultText, ''));
-        for (const [value, text] of kind === 'bool' ? [['true', 'Yes'], ['false', 'No']] : [['0', 'Standing'], ['1', 'Random wander'], ['8', 'Patrol (automatic points)']]) field.add(new Option(text, value));
+        for (const [value, text] of kind === 'bool' ? [['true', 'Yes'], ['false', 'No']] : [['0', 'Standing'], ['1', 'Random wander'], ['8', 'Patrol (automatic points)'], ['manual', 'Patrol points (manual)']]) field.add(new Option(text, value));
       }
       field.value = object.npc?.[key] === undefined ? '' : String(object.npc[key]); row.append(field); $('npc-fields').append(row);
+      if (kind === 'state') {
+        if (object.patrolPoints) field.value = 'manual';
+        field.dataset.previous = field.value;
+        field.addEventListener('change', () => {
+          if (field.value === 'manual') openRouteCount();
+          else field.dataset.previous = field.value;
+          routeControls();
+        });
+      }
     }
-    $('npc-dialog').showModal(); refresh();
+    routeControls(); $('npc-dialog').showModal(); refresh();
   }
-  $('npc-form').addEventListener('submit', event => {
-    event.preventDefault(); const object = selected(); if (!object) { $('npc-dialog').close(); return; }
+  const stateField = () => $('npc-form').elements.namedItem('currentGeneralState');
+  function routeControls() {
+    $('npc-route-controls').hidden = stateField()?.value !== 'manual';
+    $('npc-route-summary').textContent = `${selected()?.patrolPoints?.length ?? 0} manual patrol points configured. Points are shown only while configuring the route.`;
+  }
+  function npcDraft(includeRoute = true) {
+    const object = selected(); if (!object) throw new Error('Select an NPC first.');
     const npc = {};
     for (const [key, , kind] of NPC_FIELDS) {
       const value = $('npc-form').elements.namedItem(key).value;
-      if (value !== '') npc[key] = kind === 'bool' ? value === 'true' : Number(value);
+      if (value !== '') npc[key] = value === 'manual' ? 8 : kind === 'bool' ? value === 'true' : Number(value);
     }
-    const npcWeapon = $('npc-form').elements.namedItem('npcWeapon').value || undefined;
-    try { validateObjects([{ ...object, npc, npcWeapon }]); } catch (error) { api.status(error.message, true); return; }
-    api.commit(() => { object.npc = npc; if (npcWeapon) object.npcWeapon = npcWeapon; else delete object.npcWeapon; }, 'NPC overrides saved. Unset fields inherit generator defaults.'); $('npc-dialog').close(); refresh();
+    const draft = { ...object, npc };
+    delete draft.npcWeapon; delete draft.patrolPoints;
+    const weapon = $('npc-form').elements.namedItem('npcWeapon').value;
+    if (weapon) draft.npcWeapon = weapon;
+    if (includeRoute && stateField().value === 'manual' && object.patrolPoints) draft.patrolPoints = object.patrolPoints;
+    return validateObjects([draft])[0];
+  }
+  function saveNpc(draft, message) {
+    api.commit(() => {
+      const index = objects().findIndex(object => object.id === draft.id);
+      if (index < 0) throw new Error('The NPC no longer exists.');
+      objects()[index] = draft;
+    }, message);
+  }
+  function openRouteCount() {
+    $('npc-route-count').max = MAX_PATROL_POINTS;
+    $('npc-route-count').value = selected()?.patrolPoints?.length ?? 2;
+    $('npc-route-dialog').showModal();
+  }
+  function cancelRouteCount() {
+    stateField().value = stateField().dataset.previous;
+    routeControls();
+  }
+  $('npc-route-dialog').addEventListener('cancel', cancelRouteCount);
+  $('npc-route-cancel').addEventListener('click', () => { cancelRouteCount(); $('npc-route-dialog').close(); });
+  $('npc-route-reconfigure').addEventListener('click', openRouteCount);
+  $('npc-route-form').addEventListener('submit', event => {
+    event.preventDefault();
+    const count = Number($('npc-route-count').value);
+    if (!Number.isInteger(count) || count < 1 || count > MAX_PATROL_POINTS) return;
+    let draft;
+    try { draft = npcDraft(false); } catch (error) { api.status(error.message, true); return; }
+    draft.npc.currentGeneralState = 8;
+    api.selectTool(); selectedId = draft.id; api.clearSelection();
+    route = { draft, count, points: [] };
+    $('npc-route-dialog').close(); $('npc-dialog').close();
+    $('npc-hover-setup').hidden = true;
+    api.status(`Place patrol point 1 of ${count}. Click playable floor; Escape keeps the previous route.`);
+    update(); api.focus();
   });
-  $('npc-reset').addEventListener('click', () => { for (const field of $('npc-fields').querySelectorAll('input,select')) field.value = ''; });
+  $('npc-form').addEventListener('submit', event => {
+    event.preventDefault();
+    if (stateField().value === 'manual' && !selected()?.patrolPoints) { openRouteCount(); return; }
+    let draft;
+    try { draft = npcDraft(); } catch (error) { api.status(error.message, true); return; }
+    saveNpc(draft, 'NPC overrides saved. Unset fields inherit generator defaults.'); $('npc-dialog').close(); refresh();
+  });
+  $('npc-reset').addEventListener('click', () => { for (const field of $('npc-fields').querySelectorAll('input,select')) field.value = ''; stateField().dataset.previous = ''; routeControls(); });
   $('npc-cancel').addEventListener('click', () => $('npc-dialog').close());
   $('object-picker-close').addEventListener('click', () => $('object-picker').close());
   $('object-advanced').addEventListener('click', () => openAdvanced(selectedId));
@@ -116,6 +174,16 @@ export function createObjectEditor(api) {
     pending = null; update();
   });
   function down(point, selectTool) {
+    if (route) {
+      if (!gameplayPointIsPlayable(api.doc(), api.floor(), point)) { api.status('Place patrol points on playable floor, outside walls.', true); return true; }
+      route.points.push({ x: point.x, y: point.y });
+      if (route.points.length === route.count) {
+        const draft = validateObjects([{ ...route.draft, patrolPoints: route.points }])[0];
+        route = null;
+        saveNpc(draft, 'Manual patrol route saved. Route markers are hidden.'); update();
+      } else { api.status(`Place patrol point ${route.points.length + 1} of ${route.count}. Escape keeps the previous route.`); api.render(); }
+      return true;
+    }
     if (pending) {
       pending.rotation = Math.atan2(point.y - pending.y, point.x - pending.x) * 180 / Math.PI;
       const value = structuredClone(pending); pending = null;
@@ -147,7 +215,7 @@ export function createObjectEditor(api) {
     hoverPoint = point;
     if (pending) pending.rotation = Math.atan2(point.y - pending.y, point.x - pending.x) * 180 / Math.PI;
     if (drag) drag.point = point;
-    const object = !pending && !drag ? hit(point) : null;
+    const object = !pending && !drag && !route ? hit(point) : null;
     hoveredId = object?.category === 'npc' ? object.id : null;
     $('npc-hover-setup').hidden = !hoveredId;
     if (hoveredId) { $('npc-hover-setup').style.left = `${Math.max(0, at.x - 48)}px`; $('npc-hover-setup').style.top = `${Math.max(0, at.y - 42)}px`; }
@@ -200,6 +268,15 @@ export function createObjectEditor(api) {
       ctx.fillStyle = color; ctx.font = '10px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(snapping.occupied ? 'OCCUPIED' : 'DOOR SNAP', 0, -14); ctx.restore();
     }
+    if (route) {
+      const points = route.points.map((point, index) => ({ ...point, number: index + 1 }));
+      for (const point of points) {
+        ctx.save(); ctx.translate(point.x, point.y); ctx.scale(1 / api.scale(), 1 / api.scale());
+        ctx.fillStyle = '#63e6e2'; ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#102324'; ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(point.number), 0, 0);
+        ctx.restore();
+      }
+    }
   }
-  return { tool, down, move, up, draw, refresh, remove, cancel, leave, clear() { selectedId = null; cancel(); }, get active() { return !!pending || !!drag; }, get hasSelection() { return !!selected(); } };
+  return { tool, down, move, up, draw, refresh, remove, cancel, leave, clear() { selectedId = null; cancel(); }, get active() { return !!pending || !!drag || !!route; }, get hasSelection() { return !!selected(); } };
 }

@@ -53,6 +53,30 @@ function closedFilenameFixture() {
   return document;
 }
 
+async function verifyManualPatrol(page, snapshot, open, prefix = '') {
+  const fixture = closedFilenameFixture(), file = destination(`${prefix}manual-patrol-fixture.revola`);
+  await fs.writeFile(file, JSON.stringify(fixture)); await open(file, fixture.name); await page.locator('#fit-button').click();
+  await expect(page.locator('#floor-svg-button')).toBeEnabled();
+  const click = async point => {
+    const p = await page.locator('#map-canvas').evaluate((element, point) => {
+      const r=element.getBoundingClientRect(), t=element.getContext('2d').getTransform();
+      return {x:r.x+(point.x*t.a+t.e)/(element.width/r.width), y:r.y+(point.y*t.d+t.f)/(element.height/r.height)};
+    }, point);
+    await page.mouse.click(p.x,p.y);
+  };
+  await page.locator('[data-tool="npc"]').click(); await page.locator('#object-picker-list').getByRole('button',{name:'Melee NPC',exact:true}).click();
+  await click({x:3000,y:2000}); await click({x:3200,y:2000});
+  await page.locator('[data-tool="select"]').click(); await click({x:3000,y:2000}); await page.locator('#object-advanced').click();
+  await page.locator('[name="currentGeneralState"]').selectOption('manual'); await page.locator('#npc-route-count').fill('2');
+  await page.locator('#npc-route-form button[type="submit"]').click(); await expect(page.locator('#project-button')).toBeDisabled();
+  const points=[{x:3500,y:2000},{x:4000,y:2500}]; for(const point of points) await click(point);
+  const saved=await snapshot('manual-patrol'); assert.equal(saved.objects[0].npc.currentGeneralState,8);
+  saved.objects[0].patrolPoints.forEach((point,index)=>assert.ok(Math.hypot(point.x-points[index].x,point.y-points[index].y)<1));
+  await open(destination(`${prefix}manual-patrol.revola`), fixture.name);
+  assert.deepEqual(await snapshot('manual-patrol-reopened'),saved);
+  return {offline:true, pointCount:2, exactOrder:true, reopen:true};
+}
+
 // Exercise the current browser bundle through real mouse/keyboard events and
 // downloaded projects. This shared check also runs against the published site
 // while offline, so release behavior adds no resource requests or map uploads.
@@ -279,6 +303,7 @@ if (process.argv.length > 2) {
     assert.deepEqual(await snapshot('after-floor-exports'), closed, 'Both floor downloads leave exact project geometry unchanged');
     const drawingStart = finished.length;
     result.drawingModifiers = await verifyDrawingModifiers(page, snapshot, open, 'production-'); await settle();
+    result.manualPatrol = await verifyManualPatrol(page, snapshot, open, 'production-');
     result.drawingActions = finished.slice(drawingStart);
     assert.ok(result.drawingActions.filter(item => !item.fromServiceWorker).every(item => new URL(item.url).pathname === '/sw.js'), 'Production Shift and short corridor drawing use no host resources while offline');
     assert.ok(requests.every(item => ['GET', 'HEAD'].includes(item.method) && (!/^https?:/.test(item.url) || new URL(item.url).origin === deployed.origin)), 'Production editor sends no uploads and contacts no other domain');
@@ -507,6 +532,7 @@ try {
 
   const drawingStart = hostRequests.length;
   evidence.drawingModifiers = await verifyDrawingModifiers(page, snapshot, open);
+  evidence.manualPatrol = await verifyManualPatrol(page, snapshot, open);
   const drawingRequests = hostRequests.slice(drawingStart);
   assert.ok(drawingRequests.every(item => item.path === '/sw.js' && item.bodyBytes === 0), 'Shift square and short corridor drawing operate offline with no host resource traffic');
   evidence.transfers.drawingModifiers = summarize(drawingRequests);

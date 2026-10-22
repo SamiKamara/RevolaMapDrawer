@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { generateFloor, renderFloorSvg } from '../src/floors.js';
 import { renderMapSvg } from '../src/svg.js';
-import { filterGameplayObjects, objectPosition, objectDoorSnap, objectDoorTargets } from '../src/objects.js';
+import { filterGameplayObjects, gameplayPointIsPlayable, objectPosition, objectDoorSnap, objectDoorTargets } from '../src/objects.js';
 
 function fixture() {
   const doc = createDocument();
@@ -19,6 +19,27 @@ function fixture() {
   return doc;
 }
 const object = (id, category, type, x = 2000, y = 2000) => ({ id, category, type, x, y, rotation: 45 });
+
+test('manual patrol routes preserve ordered absolute source points through projects, expansion and metadata without changing exports', () => {
+  const doc = fixture(), walls = renderMapSvg(doc), floorSvg = renderFloorSvg(doc);
+  const npc = { ...object('patroller', 'npc', 'ranged'), npc: { currentGeneralState: 8, canSmell: false }, patrolPoints: [{ x: 2500, y: 2300 }, { x: 1700, y: 1600 }, { x: 2100, y: 2400 }] };
+  doc.objects = [npc];
+  assert.deepEqual(validateDocument(JSON.parse(JSON.stringify(doc))).objects, [npc]);
+  assert.equal(renderMapSvg(doc), walls); assert.equal(renderFloorSvg(doc), floorSvg);
+  const points = structuredClone(npc.patrolPoints); ensureCanvasContains(doc, [{ x: -200, y: 1000 }]);
+  assert.deepEqual(validateDocument(doc).objects[0].patrolPoints, points);
+  for (const patrolPoints of [[points[0]], Array.from({ length: 128 }, () => points[0])])
+    assert.deepEqual(validateObjects([{ ...npc, patrolPoints }])[0].patrolPoints, patrolPoints);
+  for (const patrolPoints of [null, [], Array(129).fill(points[0]), [{ x: NaN, y: 3 }], [{ x: 100001, y: 1 }], [null]])
+    assert.throws(() => validateObjects([{ ...npc, patrolPoints }]), /patrol/i);
+  assert.throws(() => validateObjects([{ ...npc, npc: { currentGeneralState: 0 } }]), /patrol/i);
+  assert.throws(() => validateObjects([{ ...object('crate', 'crates', ''), patrolPoints: points }]), /patrol/i);
+  const floor = generateFloor(doc);
+  assert.ok(gameplayPointIsPlayable(doc, floor, points[0]));
+  assert.equal(gameplayPointIsPlayable(doc, floor, { x: 500, y: 2000 }), false);
+  assert.equal(gameplayPointIsPlayable(doc, floor, { x: 100, y: 2000 }), false);
+  assert.equal(gameplayPointIsPlayable(doc, null, points[0]), false);
+});
 test('legacy projects stay byte-for-byte structurally identical; optional objects retain partial false/zero overrides', () => {
   const doc = fixture(); assert.deepEqual(validateDocument(doc), doc);
   doc.objects = [object('npc1', 'npc', 'ranged')]; doc.objects[0].npc = { canSidestep: false, chanceToSidestepOutOfHundred: 0, currentGeneralState: 8 };

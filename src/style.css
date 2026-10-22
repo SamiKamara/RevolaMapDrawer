@@ -21,6 +21,7 @@
 #npc-dialog{max-width:620px;width:calc(100% - 40px);max-height:85vh;overflow:auto}#npc-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px}#npc-fields label{font-size:11px;display:flex;flex-direction:column;gap:5px}#npc-fields input,#npc-fields select{width:100%;padding:7px;background:#131d17;border:1px solid #526d5b;border-radius:4px;color:#d8e7dd}
 #object-picker{width:340px;max-height:80vh;overflow:auto}#object-picker-list{display:grid;gap:4px;margin:12px 0}#object-picker-list button{text-align:left;border:1px solid #3c4d41}
 #npc-fields .npc-wide-field{grid-column:1/-1}#npc-fields input::placeholder{color:#9eafa4;opacity:1}
+#npc-route-dialog{max-width:440px}#npc-route-count{width:80px;padding:7px;margin-left:10px}#npc-route-controls{margin-top:14px}#npc-route-controls p{font-size:12px}
 @media(max-height:800px){.toolrail{gap:2px;padding-top:6px}.toolrail button{height:29px;padding:4px}.toolrail button svg{width:20px;height:20px}.rail-divider{margin:3px 0}.object-divider{margin-top:9px}.toolrail .rail-caption{font-size:7px}}
 .image-export-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}
 .image-export{font-size:12px;font-weight:550;line-height:16px;padding:8px 11px;border:1px solid var(--export-border);background:var(--export-background);color:var(--export-color)}
