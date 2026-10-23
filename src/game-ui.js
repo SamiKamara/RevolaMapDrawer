@@ -83,7 +83,7 @@ export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, 
   button('game-folder', 'Show in explorer', () => bridge.request('folder').catch(error => status(error.message, true)));
   const back = button('game-back', 'Back to Test maps', close);
   const hint = document.createElement('div'); hint.className = 'gamepad-help'; hint.hidden = true;
-  hint.textContent = 'Right stick: cursor · Action / Attack: click or hold to drag · D-pad: pan · Left stick: scroll / zoom · RB: pan with cursor · Utility: back';
+  hint.textContent = 'Right stick: cursor · Action / Attack: click or hold to drag · Left stick: pan · D-pad: scroll / zoom · RB: pan with cursor · Utility: back';
   document.querySelector('.topbar').after(hint);
   bridge.onInputMode(value => { hint.hidden = !value; setGamepadMode(value); });
   function update() {
