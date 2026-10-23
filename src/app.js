@@ -741,6 +741,7 @@ async function confirmReplacement(message = 'Replace the current map?') {
 function replaceDocument(next) {
   objectEditor.clear();
   doc = next; savedState = JSON.stringify(doc); history = []; future = []; selected = emptySelection(); selectionMode = 'single';
+  objectGeneration?.reset();
   cancelGesture(); fit(); refresh();
 }
 async function newDocument() {

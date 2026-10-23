@@ -2,6 +2,113 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Release 0.16.0 — 2026-10-24
+
+- [x] Select version 0.16.0 for the accepted population/regeneration changes;
+  package, lockfile and dated changelog agree. User authorized both main pushes,
+  production Vercel deployment and a new GitHub release.
+- [x] Full local release build passes: 373 unit cases, source/packaged UI suites,
+  ZIP byte/checksum validation and extracted offline native save/reopen with an
+  exact graph round trip, no renderer errors and no network requests.
+- [x] Inspect the actual refreshed desktop shortcut: canonical 0.16.0 executable,
+  empty arguments, repository working directory and all paths exist. Shell launch
+  starts the packaged app; its four owned hidden processes were closed afterward.
+  The extracted application's UI is verified by the portable test above.
+- [-] Refresh the companion snapshot and prepared game resources.
+- [ ] Verify the production web deployment and GitHub release assets.
+
+## Global NPC density and expanded-map regeneration — 2026-10-23
+
+- [x] Reproduce the user's saved map independently of placement history:
+  previous room policy placed one NPC, original generator nine. The largest
+  5.39-world-square-unit room incorrectly qualified for a small-room empty roll.
+- [x] Restore the global area target with a 10% increase. Spread preferred 2–6
+  room quotas first, then use safe overflow capacity in active rooms. Preserve
+  intentionally empty rooms and explicit fixed-count tuning.
+- [x] Actual user source in the packaged desktop now generates ten NPCs, with
+  unchanged architecture, working confirmation/cancellation and exact Undo/Redo.
+  Original source bytes untouched; personal fixture/proofs remain ignored.
+- [x] Include the population policy revision in the generation signature so an
+  older generated result can be replaced through Generate without changing walls.
+  Track unstamped legacy geometry across editing previews; expansion then
+  Generate replaces all categories after confirmation. New/Open resets the
+  session baseline. Initial hand-placed categories remain preserved.
+- [x] 373 unit tests passed. Full source/packaged UI, web/offline and both game
+  host smoke suites passed, including real expanded-area confirmation,
+  cancellation, regeneration, Undo/Redo and source save/reopen.
+- [x] 96 distinct companion Unity cases have passed across the recorded cohorts,
+  including both reserves (NPC counts 6 → 9 and 8 → 11), runtime persistence,
+  automatic stale-plan rebuild and zero-target/no-capacity guards. The final
+  enlarged in-memory overflow fixture passes with room counts 2,14,4,0,0,3,14,5;
+  every NPC retains a certified entry-safe motion cell. Early runs exposed stale
+  copied defaults and insufficient/float-rounded test geometry; these were
+  corrected without weakening production safety.
+- [x] Final vendored source/provenance, Jint exporter and embedded renderer
+  rebuilt. Windows x64 build succeeds (0 errors, 2 warnings), with final resource
+  preparation through UserMapBuildSupport.Prepare in the isolated build hook.
+- [x] Final desktop package matches source; user's map still yields ten NPCs.
+  Actual shortcut target, empty arguments, working directory and paths verified;
+  shortcut launched hidden and only its four hidden test processes closed.
+- [ ] A new standalone Windows-player create/edit/save/launch/reopen run was
+  blocked by automatic approval review (`blocked by policy`). The earlier
+  initial-policy player proof must not be presented as this revision's result.
+  User also stopped native Windows automation with Escape; no later visible
+  native shortcut observation was made. Packaged renderer/UI and both game-host
+  flows were verified with the automated suites above.
+
+Limits: room preferences can be exceeded to preserve whole-map density;
+geometry and safety can still reduce actual counts. A completely unstamped
+legacy source saved/reopened after expansion but before its first generation
+does not contain enough history to recover the earlier geometry. Existing
+stamped generation history survives save/reopen. Changes remain local; no web
+deployment or Git release.
+
+## Balanced automatic population — 2026-10-23 (initial policy)
+
+The NPC target rule below is superseded by the density correction above.
+
+- [x] Align desktop/web/embedded editable generation with Unity editor/runtime
+  fallback: room NPC quotas, occasional empty small rooms, independent NPC
+  behavior variations, randomized prop/pickup facing and 20% more clustered props.
+- [x] 368 unit tests pass. The three-room fixture has 2/4/6 NPCs; forced empty
+  small rooms are never refilled. Statistics check 15% independent flags/empty
+  rooms and expected 4.8/2.4 saturated prop counts. Fixed tuning and manual
+  category overrides retain their behavior. Mixed piles preserve full clearance.
+  No eligible safe room retains the original positive target/shortfall feedback;
+  intentionally empty eligible rooms retain a zero target.
+- [x] Full source/packaged UI suites and web/offline suite pass, plus final
+  source/web population smoke and source/packaged game-host smoke (zero separate
+  visible windows). Generation, save/reopen, geometry-change confirmation,
+  cancellation and Undo/Redo pass; architecture exports remain unchanged.
+- [x] Companion Unity core cohort: 64/64 passed, including real scene application,
+  generated/imported NPC settings and rotations, native door comparisons, authored
+  categories, original automatic fallback and exact saved-plan reopen.
+- [x] Final Unity no-capacity guards and two reserve maps: 4/4 passed. Total
+  companion cohort is 68/68; actual NPC flags and rounded loadouts match the plan.
+- [x] Windows x64 build succeeds (0 errors, 2 warnings). Companion
+  `Builds/PopulationValidation/proof/result.json` reports `passed: true` for the
+  complete embedded create/save/launch/edit/relaunch/return flow, fixture-derived
+  rotations/settings, no-placement fallback and exact saved-plan reopen. The
+  fallback plan has four NPCs and true stay-far variations; all room caps pass.
+  First probe stopped at an obsolete keyboard click coordinate; updating the
+  ignored probe to the observed current name-field location fixed the retry.
+  Source/packaged keyboard suites already passed. No production UI code changed.
+- [x] Original Unity checkout prepared through UserMapBuildSupport.Prepare;
+  canonical defaults exported/synced, complete vendored snapshot and provenance
+  refreshed, Jint exporter rebuilt and embedded renderer repackaged.
+- [x] Desktop package rebuilt with canonical defaults; actual shortcut paths,
+  arguments and working directory verified, Shell launch and visible clean
+  editor observed after the final rebuild (PID 34776). Left the clean packaged
+  editor open. Actual target, executable icon and all paths exist; arguments are
+  empty and the working directory is the companion repository root.
+
+Limits: portable vector/native generation shares policy, not exact coordinates;
+geometry, clearances and the profile global cap can reduce realized counts.
+The Windows probe's background mouse produced existing SACharacterMoverScr
+out-of-frustum logs/development-console text; assertions and normal exit passed.
+Original/clone Steam source bytes match after cleanup and temporary probes were
+removed. Changes remain local; production web/Git release was not published.
+
 ## Release 0.15.0 and automatic door artwork — 2026-10-23
 
 - [x] Automatic doors no longer always use the sliding sprite. A cached derived

@@ -443,6 +443,33 @@ canonical audited footprints and loadout/loot pools. The companion build verifie
 the snapshot numerically, including JSON integer/float spelling differences.
 It does not substitute a new runtime generator: output is ordinary optional
 `objects`, so empty categories still follow existing Map Manager generation.
+The exported `populationPolicy` also keeps these editions aligned with Unity's
+editor and runtime automatic population for sources without authored categories.
+
+NPC density retains the global area target with a 10% increase before rounding:
+`round(clamp(reachableArea * npcDensity, minimum, maximum) * npcCountMultiplier * 1.1)`.
+The existing NPC multiplier remains 0.85 by default. Door-separated reachable
+rooms first receive a preferred quota of `round(1.2 * roomArea * npcDensity)`,
+bounded to 2–6 NPCs and the profile's maximum. A preferred quota below six has a
+separate 15% chance to be empty. The first pass shares turns fairly across room
+preferences. If the global target remains unmet, a second pass may use additional
+safe capacity in active rooms, so six is a preference rather than a hard room cap.
+Rooms deliberately rolled empty remain empty in both passes; if every eligible
+room rolls empty, the target stays zero. Both passes retain all placement safety
+checks. Explicit fixed-count and zero-density NPC profiles retain their existing
+global count behavior. Each generated NPC independently has a 15% chance to override
+`IgnoreIncomingSound`, `stayFarAndFire` and
+`stayFarEvenWhenPlayerUnreachable` to true; absent overrides retain the preset.
+NPCs, crates, barrels, weapons and devices receive random facing directions.
+
+Automatic crate and barrel counts gain 20% in expectation after the original
+clamped, rounded density count. Seeded stochastic rounding permits fractional
+increases at small counts: a two-barrel baseline becomes three on 40% of rolls.
+Disabled categories and explicit fixed counts remain unchanged. Props have a
+35% cluster preference for compact neighbors, including mixed crate/barrel piles,
+when the complete footprints,
+wall/door clearances, entry protection and NPC movement reservations allow it;
+a pile never relaxes those checks to reach its requested count.
 
 The producer measures a bounded vector reachability grid, reserves spawn/entry,
 existing bodies/patrol points and conservative door travel, finds hidden NPC
@@ -453,14 +480,22 @@ spawn/destination cells and use canonical radii/entry distances; crates use the
 door-mechanism/physics certification remain the final game/import responsibility;
 portable authoring does not promise bit-identical random coordinates to Unity.
 Capacity shortfalls are reported instead of weakening geometry clearances.
+No eligible NPC room retains the legacy requested count so the UI reports the
+shortfall; eligible rooms that deliberately all roll empty retain a zero target.
 
 Work yields between bounded batches, runs behind a progress/cancel modal, and
 commits only a completed result as one Undo operation. No worker/server/Unity
 installation is needed. Initial generation skips categories with accepted manual
-objects. Optional version-1 `objectGeneration` stores a SHA-256 geometry signature
-in the version-2 project; it affects neither exported architecture nor runtime
-category decisions. A geometry change makes the next click ask to replace all
-objects (explicitly including hand placements). Cancel leaves the source intact;
+objects. Optional version-1 `objectGeneration` stores a SHA-256 signature of the
+geometry and population-policy revision in the version-2 project; it affects
+neither exported architecture nor runtime category decisions. A geometry change
+or an older generated stamp makes the next Generate click ask to replace all
+objects (explicitly including hand placements), even when only the policy changed.
+For older projects with objects but no stamp, retain the first observed geometry
+as a session baseline. Expansion or other geometry edits during that session then
+use the same replacement confirmation. Opening a source alone never replaces its
+objects. The policy revision changes the hash input without changing either the
+project schema version or the generation-history version. Cancel leaves the source intact;
 confirmation regenerates from an empty object array. Source/PNG reopen preserves
 the signature; undo/redo preserves both objects and signature together.
 The explicit NPC weapon key `unarmed` maps to Unity's existing fists slot 4;

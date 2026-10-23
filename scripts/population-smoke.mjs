@@ -61,6 +61,12 @@ try {
   const cancelled = await save('cancelled.revola'); assert.deepEqual(cancelled.objects, doc.objects); assert.equal(cancelled.objectGeneration, undefined);
   await generate(); const first = await save('first.revola');
   assert.ok(first.objects.some(o => o.category === 'npc')); assert.ok(first.objects.some(o => o.npcWeapon === 'unarmed'));
+  for (const group of ['weapons', 'devices', 'barrels']) {
+    const objects = first.objects.filter(o => o.category === group);
+    assert.ok(objects.length > 0 && objects.every(o => o.rotation >= 0 && o.rotation < 360));
+    assert.ok(objects.some(o => o.rotation !== 0), `${group} facing is randomized`);
+  }
+  assert.ok(first.objects.some(o => ['IgnoreIncomingSound', 'stayFarAndFire', 'stayFarEvenWhenPlayerUnreachable'].some(key => o.npc?.[key] === true)), 'Generated NPC behavior variations survive saving');
   assert.deepEqual(first.objects.filter(o => o.category === 'crates'), doc.objects);
   assert.ok(first.objectGeneration.geometry); assert.equal(renderMapSvg(first), renderMapSvg(doc)); assert.equal(renderFloorSvg(first), renderFloorSvg(doc));
   const types = doorPreviewTypes(first, generateFloor(first));

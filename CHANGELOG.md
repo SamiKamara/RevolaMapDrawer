@@ -5,6 +5,16 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-24
+
+Balanced automatic gameplay objects and expanded-map regeneration for **Revola: Post Hyper**, shared by the desktop, web and integrated game editions and the game's editor/runtime import fallback.
+
+- Preserve whole-map NPC density and increase its default target by 10%. Give rooms preferred quotas of 2–6 NPCs first, then use additional safe space in active rooms when needed; six is a preference rather than a hard cap.
+- Keep a 15% chance for smaller rooms to remain empty. Independently give each generated NPC a 15% chance to ignore incoming sounds, stay far and fire, and stay far even when the player is unreachable.
+- Randomize crate, barrel, weapon and device facing. Increase automatic crate and barrel targets by 20% in expectation, including small saturated counts, and sometimes form compact mixed piles without relaxing collision, doorway, entry or NPC movement checks.
+- Let Generate replace older population results after confirmation, even when geometry is unchanged. Track legacy unstamped objects while editing so expanding a map in the same session also offers complete replacement; preserve initial hand-placed categories, cancellation and a single Undo/Redo operation.
+- Keep explicit fixed-count tuning and intentionally empty rooms, distinguish insufficient safe space from empty-room rolls, and preserve architecture-only image exports and editable source history.
+
 ## [0.15.0] - 2026-10-23
 
 Editable default object generation and the integrated game editor for **Revola: Post Hyper**.

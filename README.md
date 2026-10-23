@@ -272,7 +272,7 @@ The ordinary mouse and keyboard remain usable and switch input mode automaticall
 **Generate objects**, separated below the OBJECTS tools, creates editable gameplay
 placements using the Map Manager's exported default densities, audited prefab
 footprints, entry distances, 70/20/10 NPC loadouts, pickup pools and 30% empty-crate
-chance. Close the map first. Valid existing placements protect their entire
+chance. Close the map first. On initial generation, valid existing placements protect their entire
 category; generating NPCs does not replace your crates, for example. Categories
 without placements still use normal automatic generation when imported into the game.
 The same tool is available in the desktop, web and integrated game editions.
@@ -281,6 +281,10 @@ After changing walls or other geometry since generation, pressing Generate asks
 before replacing **all** objects, including hand-placed ones. Cancel preserves them;
 the replacement is one Undo step. Generation history is saved in the project and
 editable PNG metadata, so the confirmation also works after reopening a map.
+An older population-policy result also offers replacement after an update, even
+when its geometry is unchanged. For older maps with objects but no generation
+history, expanding or editing the geometry during the current session triggers
+the same confirmation. Opening a map alone never replaces its objects.
 Generation has a progress display and Cancel; insufficient safe space can produce
 fewer objects than the default target. Image exports remain architecture-only.
 

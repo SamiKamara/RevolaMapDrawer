@@ -5,6 +5,16 @@ export const PLACEMENT_DEFAULTS = {
   "npcCountMultiplier": 0.85,
   "characterRadius": 0.156978086,
   "navMeshRadius": 0.08,
+  "populationPolicy": {
+    "npcTotalMultiplier": 1.1,
+    "npcRoomScale": 1.2,
+    "minimumRoomNpcs": 2,
+    "maximumRoomNpcs": 6,
+    "emptySmallRoomChance": 0.15,
+    "npcVariationChance": 0.15,
+    "propCountMultiplier": 1.2,
+    "propClusterChance": 0.35
+  },
   "safety": {
     "npcEntryDistanceInOpeningWidths": 3,
     "wallMarginInOpeningWidths": 0.10000000149011612,

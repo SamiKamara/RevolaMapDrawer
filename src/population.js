@@ -10,7 +10,9 @@ const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 const categories = ['npc', 'doors', 'weapons', 'devices', 'crates', 'barrels'];
 const geometryInput = doc => [doc.width, doc.height, doc.originX, doc.originY, doc.ship, doc.seed, doc.style, doc.vertices, doc.edges];
 export async function objectGenerationGeometry(doc) {
-  const bytes = new TextEncoder().encode(JSON.stringify(geometryInput(doc)));
+  // A new population policy also makes an earlier generated result replaceable
+  // through the ordinary confirmation/undo flow, including unchanged geometry.
+  const bytes = new TextEncoder().encode(JSON.stringify([2, geometryInput(doc)]));
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(n => n.toString(16).padStart(2, '0')).join('');
 }
 function randomFor(doc) {
@@ -66,10 +68,24 @@ export function placementGeometry(doc, floor) {
   }
   return { contains, fits, line };
 }
-export function defaultPopulationCount(area, category, defaults = PLACEMENT_DEFAULTS) {
+export function defaultPopulationCount(area, category, defaults = PLACEMENT_DEFAULTS, roundingRoll = .5) {
   const rule = defaults.density[category];
-  const count = clamp(area * rule.perWorldSquareUnit, rule.minimum, rule.maximum) * (category === 'npc' ? defaults.npcCountMultiplier : 1);
-  return Math.max(category === 'npc' ? 1 : 0, Math.floor(count + .5));
+  if (category === 'npc' && (rule.maximum <= 0 || defaults.npcCountMultiplier <= 0 || area <= 0)) return 0;
+  const totalMultiplier = category === 'npc' && rule.perWorldSquareUnit > 0 && rule.minimum !== rule.maximum ? defaults.populationPolicy.npcTotalMultiplier : 1;
+  const count = clamp(area * rule.perWorldSquareUnit, rule.minimum, rule.maximum) * (category === 'npc' ? defaults.npcCountMultiplier * totalMultiplier : 1);
+  const base = Math.max(0, Math.floor(count + .5));
+  if (!['crates', 'barrels'].includes(category) || rule.maximum <= 0 || rule.minimum === rule.maximum) return base;
+  // Stochastic rounding preserves the 20% increase even for a two-barrel cap.
+  const increased = base * defaults.populationPolicy.propCountMultiplier, whole = Math.floor(increased);
+  return whole + (roundingRoll < increased - whole ? 1 : 0);
+}
+export function defaultRoomNpcCount(area, defaults = PLACEMENT_DEFAULTS, emptyRoll = 1) {
+  const rule = defaults.density.npc, multiplier = defaults.npcCountMultiplier;
+  if (rule.maximum <= 0 || multiplier <= 0 || area <= 0) return 0;
+  if (rule.perWorldSquareUnit <= 0 || rule.minimum === rule.maximum) return defaultPopulationCount(area, 'npc', defaults);
+  const policy = defaults.populationPolicy;
+  const count = Math.min(rule.maximum, clamp(Math.floor(policy.npcRoomScale * Math.max(0, area * rule.perWorldSquareUnit) + .5), policy.minimumRoomNpcs, policy.maximumRoomNpcs));
+  return count < policy.maximumRoomNpcs && emptyRoll < policy.emptySmallRoomChance ? 0 : count;
 }
 /** Author editable objects only. Absent categories still use Map Manager's normal generation. */
 export async function generateDefaultObjects(input, { floor = generateFloor(input), defaults = PLACEMENT_DEFAULTS, onProgress = () => {},
@@ -77,11 +93,12 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
   const doc = validateDocument(input);
   if (!floor?.closed) throw new Error('Close the map before generating gameplay objects.');
   const accepted = filterGameplayObjects(doc, floor).accepted;
-  const skipped = new Set(accepted.map(o => o.category)), generated = [], counts = {}, targets = {};
-  const result = () => ({ objects: generated, counts, targets, skipped: [...skipped], area });
+  const skipped = new Set(accepted.map(o => o.category)), generated = [], counts = {}, targets = {}, rooms = [];
+  const result = () => ({ objects: generated, counts, targets, skipped: [...skipped], area, rooms });
   let area = 0;
   if (categories.every(c => skipped.has(c))) return result();
   const random = randomFor(doc), query = placementGeometry(doc, floor), unit = defaults.unitsPerPixel;
+  const roomNpcPopulation = defaults.density.npc.perWorldSquareUnit > 0 && defaults.density.npc.minimum !== defaults.density.npc.maximum;
   const radius = item => item.radius / unit;
   const pool = group => defaults.prefabs.filter(item => item.group === group);
   const npcRadius = radius(pool('npc')[0]), characterRadius = defaults.characterRadius / unit;
@@ -153,8 +170,35 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
     if (read % 256 === 0) await tick('Checking room connections', .33);
   }
   area = reachable.length * (step * unit) ** 2;
-  for (const category of categories.filter(c => c !== 'doors' && !skipped.has(c))) targets[category] = defaultPopulationCount(area, category, defaults);
+  for (const category of categories.filter(c => c !== 'doors' && !skipped.has(c))) targets[category] = defaultPopulationCount(area, category, defaults, random.float());
   const cell = p => Math.floor((p.y - top) / step) * width + Math.floor((p.x - left) / step);
+  // Cap every authored architectural doorway, regardless of its gameplay-door
+  // choice. This separates rooms without changing actual floor reachability.
+  const roomSeals = objectDoorTargets(doc).map(target => {
+    const length = Math.hypot(target.direction.x, target.direction.y), half = d / 2 + doc.style.wallWidth;
+    const dx = target.direction.x / length * half, dy = target.direction.y / length * half;
+    return { a: { x: target.point.x - dx, y: target.point.y - dy }, b: { x: target.point.x + dx, y: target.point.y + dy } };
+  });
+  const roomByCell = new Int32Array(grid.length).fill(-1);
+  if (!skipped.has('npc') && !roomNpcPopulation) {
+    rooms.push({ area, target: targets.npc, count: 0 });
+    for (const index of reachable) roomByCell[index] = 0;
+  }
+  if (!skipped.has('npc') && roomNpcPopulation) for (const first of reachable) {
+    if (roomByCell[first] !== -1) continue;
+    const id = rooms.length, queue = [first]; roomByCell[first] = id;
+    for (let read = 0; read < queue.length; read++) {
+      const index = queue[read], p = at(index), x = index % width, y = Math.floor(index / width);
+      for (const next of [x > 0 ? index - 1 : -1, x + 1 < width ? index + 1 : -1, y > 0 ? index - width : -1, y + 1 < height ? index + width : -1]) {
+        if (next < 0 || grid[next] !== 2 || roomByCell[next] !== -1) continue;
+        const q = at(next);
+        if (!query.line(p, q) || roomSeals.some(seal => crosses(p, q, seal.a, seal.b))) continue;
+        roomByCell[next] = id; queue.push(next);
+      }
+      if (read % 256 === 0) await tick('Measuring room populations', .34);
+    }
+    rooms.push({ area: queue.length * (step * unit) ** 2, target: 0, count: 0 });
+  }
   // Seal only the finite airlock, then identify the spawn-side component.
   // Station rooms behind the ship's plane are still valid patrol destinations.
   const airlock = shipWorldPoint(doc.ship, { x: 14.5, y: -40 });
@@ -186,9 +230,25 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
     if (clear(p, npcRadius + step * .71 + npcStep * .71, margin.npcEntryDistanceInOpeningWidths * d) && safeCell(cell(p)) && unseen(p)) candidates.push(p);
     if (++scanned % 128 === 0) await tick('Finding safe enemy positions', .36 + Math.min(1, scanned / 25000) * .3);
   }
-  shuffle(candidates, random);
-  for (const p of candidates) {
+  const roomCandidates = rooms.map(() => []);
+  for (const p of shuffle(candidates, random)) roomCandidates[roomByCell[cell(p)]]?.push(p);
+  if (roomNpcPopulation) {
+    for (let i = 0; i < rooms.length; i++) if (roomCandidates[i].length) rooms[i].target = defaultRoomNpcCount(rooms[i].area, defaults, random.float());
+    // No eligible room is a capacity shortfall, distinct from eligible rooms
+    // deliberately rolling empty. Keep the legacy target visible in that case.
+    if (!skipped.has('npc') && roomCandidates.some(points => points.length) && rooms.every(room => room.target === 0)) targets.npc = 0;
+  }
+  // Give each room one turn per pass so large rooms cannot consume the global
+  // budget before the smaller rooms get their own candidates.
+  const npcCandidates = [], roomOrder = shuffle(rooms.map((_, i) => i), random);
+  for (let pass = 0; roomOrder.some(i => roomCandidates[i].length > pass); pass++)
+    for (const i of roomOrder) if (roomCandidates[i][pass]) npcCandidates.push({ p: roomCandidates[i][pass], room: rooms[i] });
+  // First spread the population across rooms, then recover any unfilled area
+  // budget in occupied rooms. Six is a preferred room limit: safety or an empty
+  // room roll must not silently reduce a whole large map to one or two NPCs.
+  for (const overflow of roomNpcPopulation ? [false, true] : [false]) for (const { p, room } of npcCandidates) {
     if ((counts.npc ?? 0) >= targets.npc) break;
+    if (room.target === 0 || !overflow && room.count >= room.target) continue;
     if (!clear(p, npcRadius + step * .71 + npcStep * .71, margin.npcEntryDistanceInOpeningWidths * d)) continue;
     let state = (counts.npc ?? 0) % 3 === 0 ? 0 : (counts.npc ?? 0) % 3 === 1 ? 1 : 8;
     let route;
@@ -199,7 +259,10 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
       else state = 0;
     }
     else if (state === 8) state = 0;
-    const item = add('npc', p, 'ranged', { rotation: random.float() * 360, npc: { currentGeneralState: state }, visualVariant: random.int(2) ? 'male' : 'female' });
+    const npc = { currentGeneralState: state };
+    for (const key of ['IgnoreIncomingSound', 'stayFarAndFire', 'stayFarEvenWhenPlayerUnreachable']) if (random.float() < defaults.populationPolicy.npcVariationChance) npc[key] = true;
+    const item = add('npc', p, 'ranged', { rotation: random.float() * 360, npc, visualVariant: random.int(2) ? 'male' : 'female' });
+    room.count++;
     if (route) item.patrolPoints = route;
     reserved.push({ ...p, radius: npcRadius + d * margin.npcSpacingInOpeningWidths * .5 }); protectedCells.push(at(cell(p)));
   }
@@ -214,18 +277,45 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
     npcs[i].type = loadouts[i] === 0 ? 'ranged' : 'melee';
   }
   await tick('Placing pickups and props', .72);
-  const drops = pool('drops');
+  const drops = pool('drops'), propAnchors = [];
   for (const group of ['weapons', 'devices', 'crates', 'barrels']) {
     if (skipped.has(group)) continue;
     const prefabs = pool(group); if (!prefabs.length) continue;
     let attempts = 0;
-    for (const index of shuffle([...reachable], random)) {
+    const clustered = ['crates', 'barrels'].includes(group), clusterCandidates = [];
+    function queueCluster(anchor, anchorRadius, members) {
+      const angle = random.float() * Math.PI * 2;
+      for (let member = 0; member < members; member++) {
+        const neighbor = prefabs[random.int(prefabs.length)], separation = anchorRadius + radius(neighbor) + 50 + 1, state = { placed: false };
+        for (let turn = 0; turn < 8; turn++) {
+          const direction = angle + (turn + member * 3) * Math.PI / 4;
+          clusterCandidates.push({ point: { x: anchor.x + Math.cos(direction) * separation, y: anchor.y + Math.sin(direction) * separation }, prefab: neighbor, member: state });
+        }
+      }
+    }
+    const placementCandidates = shuffle([...reachable], random).map(at);
+    // Barrels may join an existing crate pile. These candidates pass the same
+    // full checks below before any scattered position is accepted.
+    if (group === 'barrels' && propAnchors.length && random.float() < defaults.populationPolicy.propClusterChance)
+      for (const anchor of propAnchors.slice(0, 3)) queueCluster(anchor.point, anchor.radius, 1);
+    for (let read = 0; read < placementCandidates.length || clusterCandidates.length; read++) {
       if ((counts[group] ?? 0) >= targets[group]) break;
-      const p = at(index), prefab = prefabs[random.int(prefabs.length)], r = radius(prefab);
+      const fromCluster = clusterCandidates.length > 0, candidate = fromCluster ? clusterCandidates.shift() : placementCandidates[read];
+      if (fromCluster) read--;
+      if (candidate.member?.placed) continue;
+      const p = candidate.point ?? candidate, prefab = candidate.prefab ?? prefabs[random.int(prefabs.length)], r = radius(prefab);
       if (clear(p, r, d * (group === 'barrels' ? margin.barrelEntryDistanceInOpeningWidths : margin.propEntryDistanceInOpeningWidths))
         && (!prefab.blocksNavigation || query.fits(p, r + characterRadius * 2) && protectedCells.every(cell => distance(p, cell) > r + npcRadius + step))) {
         const type = group === 'crates' ? random.float() < defaults.emptyCrateChance ? '' : drops[random.int(drops.length)].key : prefab.key;
-        add(group, p, type); reserved.push({ ...p, radius: r });
+        add(group, p, type, { rotation: random.float() * 360 }); reserved.push({ ...p, radius: r });
+        if (clustered) propAnchors.push({ point: p, radius: r });
+        if (candidate.member) candidate.member.placed = true;
+        if (clustered && !fromCluster && random.float() < defaults.populationPolicy.propClusterChance) {
+          // Keep the same complete footprint and safety checks for neighbors.
+          // Try several directions for each of two members, then resume the
+          // distributed candidates if walls, doors or movement prevent a pile.
+          queueCluster(p, r, 2);
+        }
       }
       if (++attempts % 128 === 0) await tick('Placing pickups and props', .75 + ['weapons', 'devices', 'crates', 'barrels'].indexOf(group) * .05);
     }
