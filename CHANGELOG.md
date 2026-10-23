@@ -5,6 +5,16 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-10-24
+
+Correct automatic placement capacity and make browser updates visible for **Revola: Post Hyper**.
+
+- Allow NPCs beside doors and one another, retaining their physical footprints, static walls and entry visibility checks without door-travel or extra NPC spacing buffers.
+- Keep automatically generated NPCs, weapons, devices, crates and barrels out of the ship in desktop, web, integrated game and Unity editor/runtime generation. Existing authored placements remain intact.
+- Reserve audited continuous sliding travel and both possible hinge positions for static objects instead of a large circular door exclusion that could cover entire small rooms.
+- Show the running browser version/build and a safe update notice. Save and close every Drawer tab before reopening to switch versions; updates never reload an unsaved map automatically.
+- Make earlier generated results eligible for confirmed replacement under the corrected placement policy, with cancellation and Undo/Redo preserved.
+
 ## [0.16.0] - 2026-10-24
 
 Balanced automatic gameplay objects and expanded-map regeneration for **Revola: Post Hyper**, shared by the desktop, web and integrated game editions and the game's editor/runtime import fallback.

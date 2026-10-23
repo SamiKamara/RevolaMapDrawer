@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDocument, addWall, addDoor, validateDocument } from '../src/model.js';
-import { generateFloor, renderFloorSvg } from '../src/floors.js';
+import { generateFloor, renderFloorSvg, floorContainsPoint } from '../src/floors.js';
 import { renderMapSvg } from '../src/svg.js';
 import { filterGameplayObjects } from '../src/objects.js';
 import { generateDefaultObjects, defaultPopulationCount, defaultRoomNpcCount, objectGenerationGeometry, placementGeometry } from '../src/population.js';
@@ -59,12 +59,45 @@ test('generation history round-trips, detects geometry changes, and ignores name
   for (const stamp of [null, {}, { version: 2, geometry: signature }, { version: 1, geometry: 'bad' }])
     assert.throws(() => validateDocument({ ...doc, objectGeneration: stamp }), /generation history/i);
 });
-test('new doors do not replace or sweep through an existing manual actor near an opening', async () => {
+test('a movable manual NPC near an opening does not suppress its generated door', async () => {
   const doc = populationFixture();
   doc.objects = [{ id: 'my-actor', category: 'npc', type: 'melee', x: 4096, y: 4340, rotation: 0 }];
   const result = await generateDefaultObjects(doc, options);
-  assert.ok(result.skipped.includes('npc')); assert.ok(!result.objects.some(o => o.doorId === 'ship-outer-door'));
+  assert.ok(result.skipped.includes('npc')); assert.ok(result.objects.some(o => o.doorId === 'ship-outer-door'));
   assert.deepEqual(doc.objects.map(o => o.id), ['my-actor']);
+});
+
+test('dense automatic NPCs need only their physical bodies between one another', async () => {
+  const doc = populationFixture(), defaults = structuredClone(PLACEMENT_DEFAULTS);
+  defaults.density.npc.minimum = defaults.density.npc.maximum = 100;
+  const result = await generateDefaultObjects(doc, { ...options, defaults });
+  const npcs = result.objects.filter(o => o.category === 'npc'), body = defaults.prefabs.find(p => p.group === 'npc').radius / defaults.unitsPerPixel;
+  assert.equal(npcs.length, 85);
+  let closest = Infinity;
+  for (let i = 0; i < npcs.length; i++) for (let j = i + 1; j < npcs.length; j++) {
+    const distance = Math.hypot(npcs[i].x - npcs[j].x, npcs[i].y - npcs[j].y);
+    assert.ok(distance >= body * 2, 'Physical NPC bodies never overlap');
+    closest = Math.min(closest, distance);
+  }
+  assert.ok(closest < body * 2 + 50, 'Adjacent bodies fit without the old door-width spacing buffer');
+});
+
+test('every automatic non-door category stays outside the ship in both facings', async () => {
+  for (const mirrored of [false, true]) {
+    const doc = populationFixture(); doc.ship.mirrored = mirrored;
+    const before = JSON.stringify(doc), floor = generateFloor(doc), result = await generateDefaultObjects(doc, options);
+    for (const group of ['npc', 'weapons', 'devices', 'crates', 'barrels']) {
+      const objects = result.objects.filter(o => o.category === group);
+      assert.ok(objects.length > 0, `${group} still generates on the station`);
+      assert.ok(objects.every(o => floor.shipPolygons.every(ring => !floorContainsPoint(ring, o))), `${group} never generates inside the ship`);
+    }
+    assert.equal(JSON.stringify(doc), before);
+  }
+  const doc = populationFixture();
+  doc.objects = [{ id: 'manual-ship-device', category: 'devices', type: 'OnGroundAimbotGob', x: doc.ship.x, y: doc.ship.y + 1060, rotation: 42 }];
+  const result = await generateDefaultObjects(doc, options);
+  assert.ok(result.skipped.includes('devices'));
+  assert.deepEqual(doc.objects.map(o => [o.id, o.rotation]), [['manual-ship-device', 42]], 'The exclusion is automatic; existing authored objects remain intact');
 });
 test('generation does not add a category switch to old projects and cancelled runs do not mutate sources', async () => {
   const doc = populationFixture(), before = JSON.stringify(doc), signal = new AbortController();

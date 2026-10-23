@@ -83,6 +83,9 @@ test('web build contains only hashed browser runtime, notices and a bounded offl
   }
   assert.ok((await fs.readFile(path.join(outputDirectory, 'LICENSE-RevolaMapDrawer.txt'))).equals(await fs.readFile(path.join(root, 'LICENSE'))));
   const html = await fs.readFile(path.join(outputDirectory, 'index.html'), 'utf8');
+  assert.ok(html.includes(`<meta name="revola-app-version" content="${manifest.version}">`));
+  assert.ok(html.includes(`<meta name="revola-build-id" content="${manifest.buildId}">`));
+  assert.ok(!html.includes('__WEB_BUILD_ID__'));
   const app = await fs.readFile(path.join(outputDirectory, manifest.assets.find(item => item.path.startsWith('assets/app.')).path), 'utf8');
   assert.match(html, /lang="en"/); assert.ok(!html.includes('src/app.js') && !html.includes('src/style.css'));
   for (const reference of html.matchAll(/(?:src|href)="(\/assets\/[^\"]+)"/g)) assert.ok(manifest.shell.includes(reference[1]), `HTML reference ${reference[1]} is installed offline`);

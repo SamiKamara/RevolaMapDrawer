@@ -1,6 +1,6 @@
 {
   "name": "revola-map-drawer",
-  "version": "0.16.0",
+  "version": "0.16.1",
   "private": true,
   "description": "A specialized offline Windows map editor for Revola: Post Hyper",
   "license": "MIT",

@@ -275,6 +275,11 @@ footprints, entry distances, 70/20/10 NPC loadouts, pickup pools and 30% empty-c
 chance. Close the map first. On initial generation, valid existing placements protect their entire
 category; generating NPCs does not replace your crates, for example. Categories
 without placements still use normal automatic generation when imported into the game.
+
+Automatic NPCs, weapons, devices, crates and barrels stay outside the ship. NPCs
+can stand beside doors and one another without an extra spacing buffer; their
+physical bodies, walls and entry visibility remain checked. Static props retain
+door-travel and passage clearance.
 The same tool is available in the desktop, web and integrated game editions.
 
 After changing walls or other geometry since generation, pressing Generate asks

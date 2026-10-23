@@ -99,7 +99,7 @@ export async function buildWeb({ root = repositoryRoot, outputDirectory = path.j
   html = html.replace('href="src/style.css"', `href="/${cssFile}"`)
     .replace('src="src/app.js"', `src="/${appFile}"`)
     .replace(/(<meta http-equiv="Content-Security-Policy" content=")[^"]*(">)/, `$1${webContentSecurityPolicy}$2`)
-    .replace('</head>', '<link rel="icon" href="data:,"></head>')
+    .replace('</head>', `<meta name="revola-app-version" content="${packageManifest.version}"><meta name="revola-build-id" content="__WEB_BUILD_ID__"><link rel="icon" href="data:,"></head>`)
     .replace('</body>', `<script type="module" src="/${registerFile}"></script></body>`)
     .replace(/>\s+</g, '><').trim() + '\n';
   addFile('index.html', html, 'index.html (web entry)');
@@ -110,6 +110,9 @@ export async function buildWeb({ root = repositoryRoot, outputDirectory = path.j
   const lazyAssets = [`/${[...outputFiles.keys()].find(file => sourceNames.get(file) === 'assets/editor-stars.png')}`];
   const serviceWorkerTemplate = await fs.readFile(path.join(root, 'web', 'service-worker.js'), 'utf8');
   const buildId = digest([...outputFiles].sort(([a], [b]) => a.localeCompare(b, 'en')).map(([file, bytes]) => `${file}:${digest(bytes)}`).join('\n') + `\nworker:${digest(serviceWorkerTemplate)}\nesbuild:${esbuild.version}`).slice(0, 16);
+  // Hash the normalized build-id placeholder, then embed the resulting identity.
+  // The worker verifies the final HTML bytes, avoiding a self-referential hash.
+  addFile('index.html', html.replace('__WEB_BUILD_ID__', buildId), 'index.html (web entry)');
   const serviceWorkerSource = serviceWorkerTemplate
     .replace('__BUILD_ID__', buildId)
     .replace('__SHELL_URLS__', JSON.stringify(shell))

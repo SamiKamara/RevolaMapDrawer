@@ -18,6 +18,14 @@ import { WEAPONS, OBJECT_TYPES } from '../src/object-schema.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, 'web-dist'), artifacts = path.join(root, 'artifacts');
 const destination = name => path.join(artifacts, `web-${name}`);
+const expectedVersion = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8')).version;
+async function verifyRunningVersion(page) {
+  await expect(page.locator('#web-running-version')).toBeVisible();
+  await expect(page.locator('#web-running-version')).toContainText(`Version ${expectedVersion}`);
+  const build = await page.locator('meta[name="revola-build-id"]').getAttribute('content');
+  assert.match(build, /^[a-f0-9]{16}$/);
+  await expect(page.locator('#web-running-version')).toHaveAttribute('title', `Version ${expectedVersion} · build ${build}`);
+}
 
 async function verifyGameplayPalettes(page) {
   for (const category of ['weapons', 'crates', 'doors']) {
@@ -252,6 +260,7 @@ if (process.argv.length > 2) {
   };
   try {
     const initial = await page.goto(deployed.href, { waitUntil: 'networkidle' });
+    await verifyRunningVersion(page);
     assert.equal(initial.status(), 200); assert.match(initial.headers()['content-security-policy'], /connect-src 'self'/);
     await expect(page.locator('#map-canvas')).toBeVisible();
     await expect(page.locator('#status-message')).not.toHaveText('Preparing workspace…');
@@ -401,6 +410,7 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   page.on('dialog', dialog => dialog.accept());
   await page.goto(origin, { waitUntil: 'networkidle' });
+  await verifyRunningVersion(page);
   await expect(page.locator('#status-message')).not.toHaveText('Preparing workspace…');
   await expect(page.locator('#map-canvas')).toBeVisible();
   await verifyGameplayPalettes(page);

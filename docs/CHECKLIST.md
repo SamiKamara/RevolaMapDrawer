@@ -2,6 +2,29 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Door-neighbor NPCs, ship exclusion and browser updates — 2026-10-24
+
+- [x] Reproduce the supplied source with the 0.15 generator: its complete 15-object
+  result and generation stamp match exactly. Production was 0.16.0; all saved
+  pickup rotations being zero came from the old generator. The source is read-only.
+- [x] Isolate the separate capacity issue: the old 752.98-pixel door circles
+  rejected all 1,419 otherwise clear NPC candidates and every crate candidate.
+- [x] Apply the owner's clarified automatic rules: NPCs can stand beside doors
+  and one another, with physical nonoverlap; all automatic non-door categories
+  stay outside the ship. Static props retain door travel and passage clearance.
+- [x] 387 unit cases, full source/packaged UI, web/offline and both game-host
+  suites pass. Extracted 0.16.1 portable ZIP saves/reopens its exact graph offline
+  with zero network requests and renderer errors. All ZIP bytes are verified.
+- [x] Exact source/packaged/web UI probes generate 10 NPCs, 2 weapons, 1 device
+  and 2 barrels outside the ship with randomized facing; old-policy replacement,
+  cancellation, Undo/Redo and reopen are exact and architecture SVG is unchanged.
+  The original personal source remains byte-identical and stays out of Git.
+- [x] Browser footer shows Version 0.16.1 and its build. Waiting-update unit
+  tests and the real worker lifecycle preserve unsaved edits, activate only
+  after the last old tab closes and retain offline use on the next visit.
+- [-] Verify matching Unity editor/runtime generation and final game resources.
+- [ ] Record final delivery and publication evidence for 0.16.1.
+
 ## Release 0.16.0 — 2026-10-24
 
 - [x] Select version 0.16.0 for the accepted population/regeneration changes;

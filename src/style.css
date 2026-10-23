@@ -43,3 +43,5 @@
 
 .game-select-list{display:flex;flex-direction:column;max-height:55vh;overflow:auto;margin-bottom:12px}.game-select-list button{text-align:left;padding:12px 16px}
 .toolrail .generation-divider{margin:13px 0 8px;background:#64836d}.toolrail .generate-objects{flex-direction:column;width:54px;height:58px;min-height:48px;gap:4px;padding:5px;border:1px solid #536e5b;background:#293b2e;color:#d0e8d8}.generate-objects span{font-size:9px}.toolrail .generate-objects:hover{background:#3d5544}#object-regenerate-dialog{max-width:500px}#object-generation-progress{width:420px;max-width:90vw}#object-generation-progress progress{width:100%;height:18px;accent-color:var(--accent)}
+
+#web-build-status{margin-left:auto;font-size:10px;max-width:45%;white-space:normal}#web-update-status{margin-left:10px;color:var(--accent)}.statusbar:has(#web-build-status){height:auto;min-height:29px;flex-wrap:wrap;padding-top:5px;padding-bottom:5px}.statusbar:has(#web-update-status:not([hidden])){min-height:32px;gap:6px;padding-top:6px;padding-bottom:6px}

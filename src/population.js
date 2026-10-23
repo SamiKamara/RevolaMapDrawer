@@ -4,6 +4,7 @@ import { filterGameplayObjects, objectDoorTargets } from './objects.js';
 import { shipWorldPoint } from './ship.js';
 import { SHIP_VECTOR_OUTLINES } from './ship-vector.js';
 import { PLACEMENT_DEFAULTS } from './placement-defaults.js';
+import { createDoorClearance } from './door-clearance.js';
 
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -12,7 +13,7 @@ const geometryInput = doc => [doc.width, doc.height, doc.originX, doc.originY, d
 export async function objectGenerationGeometry(doc) {
   // A new population policy also makes an earlier generated result replaceable
   // through the ordinary confirmation/undo flow, including unchanged geometry.
-  const bytes = new TextEncoder().encode(JSON.stringify([2, geometryInput(doc)]));
+  const bytes = new TextEncoder().encode(JSON.stringify([3, geometryInput(doc)]));
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(n => n.toString(16).padStart(2, '0')).join('');
 }
 function randomFor(doc) {
@@ -103,9 +104,7 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
   const pool = group => defaults.prefabs.filter(item => item.group === group);
   const npcRadius = radius(pool('npc')[0]), characterRadius = defaults.characterRadius / unit;
   const d = doc.style.doorWidth, margin = defaults.safety;
-  // Cover both the closed leaf and its possible hinge/slide travel. The game
-  // still certifies the exact mechanism and sweep before instantiation.
-  const doorRadius = Math.max(d, ...pool('doors').map(prefab => radius(prefab) * 2)) + d * margin.doorSweepMarginInOpeningWidths;
+  const doorClearance = createDoorClearance(doc, defaults);
   const attachment = { x: doc.ship.x + (doc.ship.mirrored ? 29 : 0), y: doc.ship.y };
   const spawn = { x: attachment.x, y: attachment.y + 1060 }, entry = { ...attachment };
   // Same preferred current-ship anchors as MapShipAnchorSearch; a map that
@@ -115,7 +114,7 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
     { x: attachment.x + (doc.ship.mirrored ? -820 : 820), y: spawn.y }].map(p => ({ ...p, radius: characterRadius }));
   const doorZones = [];
   for (const object of accepted) {
-    if (object.category === 'doors') { doorZones.push({ ...object, radius: doorRadius }); continue; }
+    if (object.category === 'doors') { doorZones.push(doorClearance(object)); continue; }
     const prefab = pool(object.category).find(p => p.key === object.type) || pool(object.category)[0];
     reserved.push({ ...object, radius: prefab ? radius(prefab) : npcRadius });
     for (const point of object.patrolPoints ?? []) reserved.push({ ...point, radius: npcRadius });
@@ -128,9 +127,10 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
     if (id.length > 64) throw new Error('Cannot allocate a generated object ID.'); ids.add(id);
     const object = { id, category, type, x: point.x, y: point.y, rotation: 0, ...extra }; generated.push(object); counts[category] = (counts[category] ?? 0) + 1; return object;
   }
-  function clear(p, r, entryDistance) {
+  function clear(p, r, entryDistance, npc = false) {
     return query.fits(p, r + 10) && distance(p, spawn) >= entryDistance && distance(p, entry) >= entryDistance
-      && reserved.every(other => distance(p, other) > r + other.radius + 50) && doorZones.every(door => distance(p, door) > r + door.radius);
+      && reserved.every(other => distance(p, other) > (npc && other.category === 'npc' ? npcRadius + other.radius : r + other.radius + 50))
+      && (npc || doorZones.every(door => !door.overlaps(p, r)));
   }
   async function tick(stage, progress) {
     if (signal?.aborted) throw new Error('Object generation cancelled.');
@@ -138,10 +138,11 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
   }
   await tick('Measuring reachable floor', .02);
   if (!skipped.has('doors')) for (const target of objectDoorTargets(doc)) {
-    if (manualReservations.some(other => distance(other, target.point) <= other.radius + doorRadius)) continue;
+    const zone = doorClearance({ ...target, type: 'auto' });
+    if (manualReservations.some(other => other.category !== 'npc' && zone.overlaps(other, other.radius))) continue;
     const object = { id: `candidate-${generated.length}`, category: 'doors', type: 'auto', ...target.point, rotation: 0, doorId: target.id };
     if (filterGameplayObjects({ ...doc, objects: [...accepted, ...generated, object] }, floor).accepted.some(o => o.id === object.id)) {
-      add('doors', target.point, 'auto', { doorId: target.id }); doorZones.push({ ...target.point, radius: doorRadius });
+      add('doors', target.point, 'auto', { doorId: target.id }); doorZones.push(zone);
     }
   }
   const points = floor.polygons.flat(), left = Math.min(...points.map(p => p.x)), top = Math.min(...points.map(p => p.y));
@@ -218,7 +219,7 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
   const safeCells = new Map();
   const unseen = p => sight.every(target => !query.line(target, p));
   function safeCell(index) {
-    if (!safeCells.has(index)) { const p = at(index); safeCells.set(index, grid[index] === 2 && query.fits(p, npcRadius + step * .71) && unseen(p) && doorZones.every(door => distance(p, door) > npcRadius + step + door.radius)); }
+    if (!safeCells.has(index)) { const p = at(index); safeCells.set(index, grid[index] === 2 && patrolAllowed(p) && query.fits(p, npcRadius + step * .71) && unseen(p)); }
     return safeCells.get(index);
   }
   const candidates = [];
@@ -227,7 +228,7 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
   let scanned = 0;
   if (!skipped.has('npc')) for (let x = left + npcStep / 2; x < right; x += npcStep) for (let y = top + npcStep / 2; y < bottom; y += npcStep) {
     const p = { x, y };
-    if (clear(p, npcRadius + step * .71 + npcStep * .71, margin.npcEntryDistanceInOpeningWidths * d) && safeCell(cell(p)) && unseen(p)) candidates.push(p);
+    if (patrolAllowed(p) && clear(p, npcRadius + step * .71 + npcStep * .71, margin.npcEntryDistanceInOpeningWidths * d, true) && safeCell(cell(p)) && unseen(p)) candidates.push(p);
     if (++scanned % 128 === 0) await tick('Finding safe enemy positions', .36 + Math.min(1, scanned / 25000) * .3);
   }
   const roomCandidates = rooms.map(() => []);
@@ -249,13 +250,13 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
   for (const overflow of roomNpcPopulation ? [false, true] : [false]) for (const { p, room } of npcCandidates) {
     if ((counts.npc ?? 0) >= targets.npc) break;
     if (room.target === 0 || !overflow && room.count >= room.target) continue;
-    if (!clear(p, npcRadius + step * .71 + npcStep * .71, margin.npcEntryDistanceInOpeningWidths * d)) continue;
+    if (!clear(p, npcRadius + step * .71 + npcStep * .71, margin.npcEntryDistanceInOpeningWidths * d, true)) continue;
     let state = (counts.npc ?? 0) % 3 === 0 ? 0 : (counts.npc ?? 0) % 3 === 1 ? 1 : 8;
     let route;
     if (state === 8 && patrolAllowed(p)) {
       const destination = reachable.map(at).filter(q => patrolAllowed(q) && distance(p, q) >= d * 4 && safeCell(cell(q))
-        && clear(q, npcRadius, 0)).sort((a, b) => distance(p, b) - distance(p, a))[0];
-      if (destination) { route = [{ ...p }, destination]; reserved.push({ ...destination, radius: npcRadius }); protectedCells.push(at(cell(destination))); }
+        && clear(q, npcRadius, 0, true)).sort((a, b) => distance(p, b) - distance(p, a))[0];
+      if (destination) { route = [{ ...p }, destination]; reserved.push({ ...destination, radius: npcRadius, category: 'npc' }); protectedCells.push(at(cell(destination))); }
       else state = 0;
     }
     else if (state === 8) state = 0;
@@ -264,7 +265,7 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
     const item = add('npc', p, 'ranged', { rotation: random.float() * 360, npc, visualVariant: random.int(2) ? 'male' : 'female' });
     room.count++;
     if (route) item.patrolPoints = route;
-    reserved.push({ ...p, radius: npcRadius + d * margin.npcSpacingInOpeningWidths * .5 }); protectedCells.push(at(cell(p)));
+    reserved.push({ ...p, radius: npcRadius, category: 'npc' }); protectedCells.push(at(cell(p)));
   }
   const npcs = generated.filter(o => o.category === 'npc'), proportions = defaults.loadoutPercentages;
   const totals = proportions.map(percent => Math.floor(npcs.length * percent / 100));
@@ -304,7 +305,7 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
       if (fromCluster) read--;
       if (candidate.member?.placed) continue;
       const p = candidate.point ?? candidate, prefab = candidate.prefab ?? prefabs[random.int(prefabs.length)], r = radius(prefab);
-      if (clear(p, r, d * (group === 'barrels' ? margin.barrelEntryDistanceInOpeningWidths : margin.propEntryDistanceInOpeningWidths))
+      if (patrolAllowed(p) && clear(p, r, d * (group === 'barrels' ? margin.barrelEntryDistanceInOpeningWidths : margin.propEntryDistanceInOpeningWidths))
         && (!prefab.blocksNavigation || query.fits(p, r + characterRadius * 2) && protectedCells.every(cell => distance(p, cell) > r + npcRadius + step))) {
         const type = group === 'crates' ? random.float() < defaults.emptyCrateChance ? '' : drops[random.int(drops.length)].key : prefab.key;
         add(group, p, type, { rotation: random.float() * 360 }); reserved.push({ ...p, radius: r });

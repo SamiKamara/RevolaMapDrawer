@@ -31,6 +31,11 @@ A service worker installed over HTTPS or localhost stores the editor shell, incl
 
 The worker caches only known application resources. It waits for old editor tabs to close before switching versions, preserving the running editor's source. Reopen online to discover updates. The browser may periodically revalidate the small worker script; this is the remaining update-check traffic. A first visit and a new application version still require downloading their application files. Files with unchanged content keep their asset URLs across builds.
 
+The footer displays the running version and build identity. When an installed
+update is waiting, it asks you to save the map, close **all** Drawer tabs and
+reopen the application. Refreshing while another old tab remains open can keep
+the old version active. The notification never forces a reload or discards edits.
+
 ## Transfer budget
 
 Minified JavaScript/CSS and the byte-preserved optional background PNG use content-hashed filenames with `Cache-Control: public, max-age=31536000, immutable`. HTML and the worker revalidate for updates. The service worker serves repeat/offline navigation locally. There are no large reference maps or Electron binaries in the browser build. No external fonts, analytics or hosted export/download endpoints are used.

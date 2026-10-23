@@ -462,6 +462,15 @@ global count behavior. Each generated NPC independently has a 15% chance to over
 `stayFarEvenWhenPlayerUnreachable` to true; absent overrides retain the preset.
 NPCs, crates, barrels, weapons and devices receive random facing directions.
 
+Since the corrected placement policy, NPCs do not reserve a static door sweep
+or a door-width gap around one another. Their physical radii still cannot
+overlap, and wall/entry/movement checks remain. Automatically generated NPCs,
+weapons, devices, crates and barrels use only the station-side component beyond
+the finite ship airlock; authored placements are preserved. Door objects retain
+their architectural opening behavior. Static prop clearance uses audited swept
+sliding rectangles and both hinge-side bounds, with the old conservative circle
+only when an audited mechanism is unavailable.
+
 Automatic crate and barrel counts gain 20% in expectation after the original
 clamped, rounded density count. Seeded stochastic rounding permits fractional
 increases at small counts: a two-barrel baseline becomes three on 40% of rolls.
