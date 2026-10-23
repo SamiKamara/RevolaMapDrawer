@@ -46,6 +46,8 @@
       <button data-tool="barrels" title="Explosive barrel" aria-label="Barrel tool"><svg viewBox="0 0 24 24"><path d="M6 4h12l2 4v8l-2 4H6l-2-4V8zM4 8h16M4 16h16M13 9l-3 4h3l-2 3"/></svg></button>
       <button data-tool="weapons" title="Weapon spawn" aria-label="Weapon spawn tool"><svg viewBox="0 0 24 24"><path d="M3 7h18v5h-9l-2 8H5l2-8H3zM15 7V4m-2 8v3h4v-3"/></svg></button>
       <button data-tool="devices" title="Device spawn" aria-label="Device spawn tool"><svg viewBox="0 0 24 24"><path d="M6 6h12v12H6zM9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4M9 9h6v6H9z"/></svg></button>
+      <span class="rail-divider generation-divider"></span>
+      <button id="generate-objects" class="generate-objects" title="Generate gameplay objects with Map Manager defaults. Categories with valid placements are kept." aria-label="Generate objects" disabled><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 8h.01M16 8h.01M12 12h.01M8 16h.01M16 16h.01"/></svg><span>Generate</span></button>
     </aside>
     <section class="canvas-panel" aria-label="Map workspace">
       <div class="canvas-heading"><span><span class="tiny-dot"></span> <span id="canvas-title">Untitled map</span></span><span id="canvas-dimensions">8192 × 8192 px</span></div>
@@ -66,6 +68,8 @@
   <dialog id="object-picker"><h2 id="object-picker-title">Object type</h2><div id="object-picker-list"></div><button id="object-picker-close">Cancel</button></dialog>
   <dialog id="npc-dialog"><form id="npc-form"><h2>NPC advanced setup</h2><p>Unset fields use generator defaults. Values in parentheses describe the standard Map Manager defaults; custom generation profiles may differ. Choose Patrol points (manual) to place a route on the map.</p><div id="npc-fields"></div><div id="npc-route-controls" hidden><p id="npc-route-summary"></p><button type="button" id="npc-route-reconfigure">Reconfigure route</button></div><div class="dialog-actions"><button type="button" id="npc-reset">Reset all</button><button type="button" id="npc-cancel">Cancel</button><button type="submit" class="primary">Save overrides</button></div></form></dialog>
   <dialog id="npc-route-dialog"><form id="npc-route-form"><h2>Manual patrol route</h2><p>Choose how many points to place, then click them on the map in order. Numbered points are visible only while configuring the route. Escape cancels and keeps the previous route.</p><label>Patrol point count <input id="npc-route-count" type="number" min="1" max="128" step="1" value="2" required></label><div class="dialog-actions"><button type="button" id="npc-route-cancel">Cancel</button><button type="submit" class="primary">Place points</button></div></form></dialog>
+  <dialog id="object-regenerate-dialog"><form method="dialog"><h2>Regenerate gameplay objects?</h2><p>The walls or map geometry have changed since the previous object generation. All existing gameplay objects, including hand-placed objects, will be removed and new objects created with Map Manager defaults.</p><p>You can undo the replacement after generation.</p><div class="dialog-actions"><button value="cancel">Keep existing objects</button><button value="regenerate" class="primary">Regenerate objects</button></div></form></dialog>
+  <dialog id="object-generation-progress"><h2>Generating gameplay objects</h2><p role="status">Preparing objects…</p><progress max="1" value="0" aria-label="Object generation progress"></progress><div class="dialog-actions"><button type="button">Cancel</button></div></dialog>
   <script type="module" src="src/app.js"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@ import { OBJECT_CATEGORIES, OBJECT_TYPES, NPC_FIELDS, NPC_WEAPONS, MAX_PATROL_PO
 import { filterGameplayObjects, gameplayPointIsPlayable, objectDoorSnap, objectPosition } from './objects.js';
 import { chooseNpcVisual, drawObjectVisual } from './object-visuals.js';
 import { NPC_DEFAULTS } from './npc-defaults.js';
+import { doorPreviewTypes } from './door-preview.js';
 
 const labels = { npc: 'NPC', doors: 'Door object', crates: 'Crate', barrels: 'Explosive barrel', weapons: 'Weapon spawn', devices: 'Device spawn' };
 const colors = { npc: '#efb46e', doors: '#89c5ff', crates: '#d8bf8a', barrels: '#ee8a8a', weapons: '#badb8d', devices: '#b6a5f0' };
@@ -13,7 +14,7 @@ export function createObjectEditor(api) {
   function analysis() {
     const doc = api.doc(), floor = api.floor();
     if (doc !== reportDoc || floor !== reportFloor || report?.key !== JSON.stringify(doc.objects)) {
-      reportDoc = doc; reportFloor = floor; report = { ...filterGameplayObjects(doc, floor), key: JSON.stringify(doc.objects) };
+      reportDoc = doc; reportFloor = floor; report = { ...filterGameplayObjects(doc, floor), key: JSON.stringify(doc.objects), doors: doorPreviewTypes(doc, floor) };
     }
     return report;
   }
@@ -245,7 +246,7 @@ export function createObjectEditor(api) {
       if (drag?.object.id === object.id && object.category !== 'doors') object = { ...object, x: object.x + drag.point.x - drag.start.x, y: object.y + drag.point.y - drag.start.y };
       const color = excluded.has(object.id) ? '#ff7777' : colors[object.category];
       ctx.save(); ctx.translate(object.x, object.y); ctx.rotate(object.rotation * Math.PI / 180);
-      const radius = drawObjectVisual(ctx, object, 24 / api.scale());
+      const radius = drawObjectVisual(ctx, object.category === 'doors' ? { ...object, previewDoorType: analysis().doors.get(object.doorId) } : object, 24 / api.scale());
       ctx.strokeStyle = object.id === selectedId ? '#fff' : color; ctx.lineWidth = 1.5 / api.scale();
       if (object.id === selectedId || excluded.has(object.id) || object.id === pending?.id) {
         ctx.beginPath(); ctx.arc(0, 0, radius + 3 / api.scale(), 0, Math.PI * 2); ctx.stroke();
@@ -260,7 +261,7 @@ export function createObjectEditor(api) {
       ctx.fillStyle = color + '33'; ctx.fillRect(-doc.style.doorWidth / 2, -doc.style.wallWidth, doc.style.doorWidth, doc.style.wallWidth * 2);
       ctx.strokeStyle = color; ctx.lineWidth = 1 / api.scale();
       ctx.strokeRect(-doc.style.doorWidth / 2, -doc.style.wallWidth, doc.style.doorWidth, doc.style.wallWidth * 2);
-      if (!snapping.occupied) { ctx.globalAlpha = .65; drawObjectVisual(ctx, { category: 'doors', type: snapType }, 24 / api.scale()); ctx.globalAlpha = 1; }
+      if (!snapping.occupied) { ctx.globalAlpha = .65; drawObjectVisual(ctx, { category: 'doors', type: snapType, previewDoorType: analysis().doors.get(snapping.id) }, 24 / api.scale()); ctx.globalAlpha = 1; }
       ctx.restore();
       const extentY = Math.abs(Math.sin(angle)) * doc.style.doorWidth / 2 + Math.abs(Math.cos(angle)) * doc.style.wallWidth;
       ctx.save(); ctx.translate(snapping.point.x, snapping.point.y - extentY); ctx.scale(1 / api.scale(), 1 / api.scale());

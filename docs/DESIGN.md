@@ -403,9 +403,9 @@ restores the original value. Focus restoration cannot immediately reopen it.
 The preview also accepts physical keyboard input during an input-mode handoff.
 The right stick moves Unity's cursor; Action/Attack selects the virtual keys.
 Explicit pan commands translate the camera like a middle-button drag. Unity
-inverts physical D-pad axes so the view moves toward the pressed direction and
-map content moves opposite, without moving the cursor or changing zoom. Rewired ZoomIn/ZoomOut are ignored
-by this edition. Mouse wheel and left-stick input still travel as wheel input,
+inverts left-stick pan axes so the view moves toward the pressed direction and
+map content moves opposite, without moving the cursor or changing zoom. Rewired ZoomIn/ZoomOut actions are ignored
+by this edition. Mouse wheel and physical D-pad input travel as wheel input,
 preserving sidebar scrolling and zoom anchoring. Pan pauses for modal dialogs.
 Unity owns the centered Save and launch progress overlay, so it can stay visible
 through converter work, generation, fade and scene activation after the renderer
@@ -423,3 +423,45 @@ passes and uses 60 fps for cursor/input while retaining the host's 30 fps.
 It keeps Camera.main available and restores original camera/frame-pacing settings
 before returning to gameplay or loading another scene. Frame pixels are read
 directly into one payload buffer instead of copying a second full image.
+
+## Editable default population
+
+Automatic (`type: auto`) door artwork is derived from the current opening and
+the exported sliding-door footprint. Check continuous wall support, the full
+required pocket and the inflated sliding track against vector floor/walls,
+preferring sliding only when that geometry fits; otherwise preview hinged.
+The geometry arrangement check includes tiny erased gaps, not fixed-step probes.
+Cache the preview with object/floor analysis; camera movement does not recompute
+it. Apply the same result to generated objects, reopened projects and hover/drag
+previews. Explicit types retain their selected image. Preview data is transient:
+never replace `auto` or serialize a guessed type, since Unity remains responsible
+for final native sweep/scene certification and mechanism selection.
+
+`src/population.js` is the offline producer for desktop, web and the embedded
+renderer. `placement-defaults.js` is exported from Unity's prepared runtime profile,
+canonical audited footprints and loadout/loot pools. The companion build verifies
+the snapshot numerically, including JSON integer/float spelling differences.
+It does not substitute a new runtime generator: output is ordinary optional
+`objects`, so empty categories still follow existing Map Manager generation.
+
+The producer measures a bounded vector reachability grid, reserves spawn/entry,
+existing bodies/patrol points and conservative door travel, finds hidden NPC
+spawns, distributes 70/20/10 loadouts and cyclic weapon pools, and creates patrol
+endpoints outside the finite sealed airlock's spawn component. Props protect NPC
+spawn/destination cells and use canonical radii/entry distances; crates use the
+30% empty probability and uniform combined loot pool. Exact Unity NavMesh and
+door-mechanism/physics certification remain the final game/import responsibility;
+portable authoring does not promise bit-identical random coordinates to Unity.
+Capacity shortfalls are reported instead of weakening geometry clearances.
+
+Work yields between bounded batches, runs behind a progress/cancel modal, and
+commits only a completed result as one Undo operation. No worker/server/Unity
+installation is needed. Initial generation skips categories with accepted manual
+objects. Optional version-1 `objectGeneration` stores a SHA-256 geometry signature
+in the version-2 project; it affects neither exported architecture nor runtime
+category decisions. A geometry change makes the next click ask to replace all
+objects (explicitly including hand placements). Cancel leaves the source intact;
+confirmation regenerates from an empty object array. Source/PNG reopen preserves
+the signature; undo/redo preserves both objects and signature together.
+The explicit NPC weapon key `unarmed` maps to Unity's existing fists slot 4;
+old keys and projects retain their current behavior.

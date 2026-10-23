@@ -258,9 +258,9 @@ cached source and saved as an owned `.revola` copy; their original exports are
 never overwritten. The game remains paused throughout editing.
 
 Controller support: right stick moves an on-screen cursor; Action or Attack clicks
-and holds to drag; D-pad moves the view in the pressed direction (map content moves opposite); left stick scrolls/zooms;
-RB pans with the cursor; Utility returns/cancels. Rewired ZoomIn/ZoomOut bindings
-do not zoom in this edition. The mouse wheel still zooms. The game accepts both Unity mouse input APIs without
+and holds to drag; left stick moves the view in the pressed direction (map content moves opposite); D-pad scrolls/zooms;
+RB pans with the cursor; Utility returns/cancels. Rewired ZoomIn/ZoomOut actions
+are not read in addition to the physical D-pad. The mouse wheel still zooms. The game accepts both Unity mouse input APIs without
 counting the same wheel notch twice, including after a controller-mode switch.
 Text and number inputs offer an on-screen keyboard when a controller is active.
 Select its keys with the right-stick cursor and Action/Attack. It includes Shift,
@@ -268,6 +268,25 @@ Space, insertion-point arrows, backspace, Clear, Cancel and Done; text is insert
 at the caret instead of always appended. The map name and keyboard preview have
 a blinking insertion marker, including in the game's offscreen renderer.
 The ordinary mouse and keyboard remain usable and switch input mode automatically.
+
+**Generate objects**, separated below the OBJECTS tools, creates editable gameplay
+placements using the Map Manager's exported default densities, audited prefab
+footprints, entry distances, 70/20/10 NPC loadouts, pickup pools and 30% empty-crate
+chance. Close the map first. Valid existing placements protect their entire
+category; generating NPCs does not replace your crates, for example. Categories
+without placements still use normal automatic generation when imported into the game.
+The same tool is available in the desktop, web and integrated game editions.
+
+After changing walls or other geometry since generation, pressing Generate asks
+before replacing **all** objects, including hand-placed ones. Cancel preserves them;
+the replacement is one Undo step. Generation history is saved in the project and
+editable PNG metadata, so the confirmation also works after reopening a map.
+Generation has a progress display and Cancel; insufficient safe space can produce
+fewer objects than the default target. Image exports remain architecture-only.
+
+Maintainers: refresh Unity's `MapDrawerPlacementDefaultsExport`, then run
+`node scripts/sync-placement-defaults.mjs` here and sync/rebuild the companion's
+vendored source. Game build preparation rejects stale placement defaults.
 The renderer has no general filesystem/network bridge and never opens a separate
 visible editor window. The bundled Electron runtime is an implementation dependency,
 so players need no installed browser, Node.js or development server.

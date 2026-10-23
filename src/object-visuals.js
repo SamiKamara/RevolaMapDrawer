@@ -3,7 +3,7 @@ import { OBJECT_VECTORS } from './object-vectors.js';
 export const chooseNpcVisual = (random = Math.random) => random() < 0.5 ? 'female' : 'male';
 export function objectVisualKey(object) {
   if (object.category === 'npc') return `npc-${object.visualVariant ?? 'male'}`;
-  if (object.category === 'doors') return object.type === 'hinged' ? 'door-hinged' : 'door';
+  if (object.category === 'doors') return (object.type === 'auto' ? object.previewDoorType : object.type) === 'hinged' ? 'door-hinged' : 'door';
   if (object.category === 'crates') return 'crate';
   if (object.category === 'barrels') return 'barrel';
   // Retired weapon placements from older saves retain a monochrome weapon visual.

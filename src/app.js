@@ -15,6 +15,7 @@ import { SAVE_ALL_FORMATS, createExportZip } from './save-all.js';
 import { createObjectEditor } from './object-editor.js';
 import { OBJECT_CATEGORIES } from './object-schema.js';
 import { setupGameEditor } from './game-ui.js';
+import { setupObjectGeneration } from './population-ui.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('map-canvas');
@@ -32,6 +33,7 @@ let spaceHeld = false, busy = false, scheduled = false;
 let clipboard = null, paste = null;
 let floor = null, floorKey = '', floorPendingKey = '', starsPattern, starsRequested = false;
 let gameEditor;
+let objectGeneration;
 let gameBackground;
 function loadStars() {
   if (starsRequested || starsPattern) return;
@@ -52,6 +54,7 @@ function floorControls() {
   for (const id of ['floor-png-button', 'floor-svg-button', 'save-all-button']) $(id).disabled = blocked || !closed;
   for (const id of ['export-button', 'svg-button', 'project-button']) $(id).disabled = blocked;
   gameEditor?.update();
+  objectGeneration?.update();
 }
 function refreshFloor() {
   const key = floorGeometryKey();
@@ -74,6 +77,8 @@ function refreshFloor() {
 const camera = { x: 0, y: 0, scale: .1 };
 const objectEditor = createObjectEditor({ doc: () => doc, floor: () => floorKey === floorGeometryKey() && !floorPendingKey ? floor : null,
   scale: () => camera.scale, commit, refresh: () => refresh(), render: renderSoon, status, focus: () => canvas.focus(), selectTool: () => setTool('select'), clearSelection: () => { selected = emptySelection(); } });
+objectGeneration = setupObjectGeneration({ doc: () => doc, floor: () => floorKey === floorGeometryKey() && !floorPendingKey ? floor : null,
+  blocked: () => busy || !!gesture || !!paste || !!wallStart || objectEditor.active, setBusy: saving, commit, status, clearSelection: () => objectEditor.clear() });
 const descriptions = {
   select: ['Select tool', 'Drag an area or Ctrl-click points/walls. Ctrl+C copies their walls and openings. Ctrl+V previews a copy; move the pointer and click to place, or Escape to cancel. Drag selected items to move them. A single room side still resizes.'],
   wall: ['Wall tool', 'Click to chain walls, or drag to draw. Nearby ends join automatically. Draw along a wall to extend it or fill an opening. Escape ends the chain.'],

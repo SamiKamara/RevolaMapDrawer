@@ -134,6 +134,11 @@ export function validateDocument(input) {
   trimErasedEnds(out);
   validateTopology(out, new Map(out.vertices.map(vertex => [vertex.id, vertex])));
   if (input.objects !== undefined) out.objects = validateObjects(input.objects);
+  if (input.objectGeneration !== undefined) {
+    const stamp = input.objectGeneration;
+    if (!stamp || stamp.version !== 1 || typeof stamp.geometry !== 'string' || !/^[a-f0-9]{64}$/.test(stamp.geometry)) fail('Invalid object generation history.');
+    out.objectGeneration = { version: 1, geometry: stamp.geometry };
+  }
   return out;
 }
 

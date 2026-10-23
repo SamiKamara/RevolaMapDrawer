@@ -126,7 +126,7 @@ test('all shop weapons use the same English names across pickups, crate loot and
     ['LaserRifleCopyGob','LAF Laser Rifle'], ['UniRicochetPistolGob','S66 Ricochet Pistol'],
   ];
   assert.deepEqual(WEAPONS, expected);
-  assert.deepEqual(NPC_WEAPONS, expected);
+  assert.deepEqual(NPC_WEAPONS, [...expected, ['unarmed', 'Unarmed']]);
   assert.deepEqual(OBJECT_TYPES.crates.slice(1, 1 + expected.length), expected);
   const doc = fixture(); doc.objects = expected.flatMap(([key], i) => [object('pickup'+i,'weapons',key), object('loot'+i,'crates',key), { ...object('npc'+i,'npc','ranged'), npcWeapon:key }]);
   assert.deepEqual(validateDocument(JSON.parse(JSON.stringify(doc))), doc);

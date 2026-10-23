@@ -82,6 +82,11 @@ try {
     const x = Math.round(box.x + box.width / 2), y = Math.round(box.y + box.height / 2);
     for (const type of ['mouseMove', 'mouseDown', 'mouseUp']) send({ type: 'input', event: { type, x, y, ...(type === 'mouseMove' ? {} : { button: 'left', clickCount: 1 }) } });
   }
+  await click('#generate-objects');
+  await expect(page.locator('#object-generation-progress')).toBeHidden({ timeout: 30000 });
+  await expect(page.locator('#object-summary')).toContainText('objects');
+  await click('#undo-button');
+  await expect(page.locator('#object-summary')).toContainText('Optional:');
   send({ type: 'input', event: { type: 'mouseMove', x: 10, y: 20 } });
   const canvasHash = () => page.evaluate(async () => {
     const canvas = document.getElementById('map-canvas');

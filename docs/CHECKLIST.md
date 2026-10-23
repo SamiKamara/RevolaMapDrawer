@@ -2,6 +2,77 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Release 0.15.0 and automatic door artwork — 2026-10-23
+
+- [x] Automatic doors no longer always use the sliding sprite. A cached derived
+  preview uses the exported audited sliding footprint, continuous wall support,
+  complete pockets and inflated track geometry. Generated and reopened `auto`
+  objects and hover/drag previews use hinged/sliding artwork appropriately.
+  Explicit choices retain their artwork. Source types and Unity's native
+  mechanism/sweep certification remain unchanged.
+- [x] 362 unit tests pass, including subpixel pocket interruptions and transient
+  preview data. Source, rebuilt desktop and web population smoke compares actual
+  automatic-door canvas pixels to explicit resolved types, and covers save/reopen,
+  regeneration confirmation, cancellation and Undo/Redo. Both game smoke modes
+  pass with zero separate visible windows. Full web/offline checks pass.
+- [x] The canonical ten-door source matches all ten mechanisms in the prior
+  Windows player's plan. Unity's new editor regression also compares derived
+  preview kinds with certified native door plans before actual scene application.
+- [-] Final runtime retry (initial Windows atomic replacement file lock), current
+  Windows game renderer probe, release packaging/tag/publication and Vercel check.
+- Version metadata/changelog select 0.15.0. Preserve immutable older releases;
+  release/deployment outcomes are recorded after publication, not inferred from
+  prepared metadata.
+
+## Editable default objects and controller pan swap — 2026-10-23
+
+- [x] Previous checkpoint committed/pushed to both `main` branches: Drawer
+  `8f48f46`, Revola `8c2d2bc8`. The following feature work remains local.
+- [x] Embedded controls now use right stick cursor, left stick pan with the
+  owner's existing direction preference, and physical D-pad scroll/zoom.
+  ZoomIn/ZoomOut actions have no separate path; gameplay bindings are unchanged.
+- [x] A separate Generate button below OBJECTS works in desktop, web and game.
+  Shared offline implementation uses the prepared Unity defaults, audited
+  footprints, current weapon/device pools, 70/20/10 NPC loadouts and crate loot.
+  Initial generation skips each category containing valid hand placements.
+  Absent categories still use the game's existing automatic generation.
+- [x] Changed geometry after generation prompts before removing all old objects,
+  explicitly including hand placements. Cancel preserves the complete source;
+  confirmation replaces objects and the generation signature in one Undo step.
+  Source reopen, Undo/Redo, progress cancellation and double clicks are covered.
+- [x] 360/360 unit tests pass. Full UI/packaged suites and web offline suite pass;
+  final population smoke passes in source, rebuilt desktop package and web build.
+  Final source/packaged game smoke also exercises Generate/Undo, file operations,
+  controller keyboard and pixels with zero separate visible windows.
+- [x] Companion Unity verifies all 14 targeted cases across the parser cohort,
+  workflow retry and final 2/2 placement integration run. The actual generated
+  objects pass editor scene application, preserve unarmed loadouts, reopen their
+  runtime plan identically and leave untouched sources automatic. An initial
+  integer/float snapshot comparison and a real door-sweep collision were fixed;
+  the final generator reserves conservative door travel. This is portable vector
+  placement with Unity's defaults, not identical random coordinates or a browser
+  implementation of Unity's native NavMesh/door physics.
+- [x] Rebuilt desktop package; inspected the actual desktop `.lnk` target,
+  empty arguments and repository working directory. All paths exist. Shell
+  launch opened `Untitled map — Revola Map Drawer` (fresh PID 17780), then only
+  that fresh process was closed. Generated/confirmation screenshots inspected.
+- [x] Native Windows x64 game build finishes with zero errors. Its visible player
+  probe passes create/save/launch, direct Esc editing, save/relaunch, generated
+  NPC/loadout/patrol import and return to the hub, plus right-stick cursor,
+  left-stick pan, four inverse pan deltas and ignored ZoomIn/ZoomOut actions.
+  `Builds/DrawerPlacementValidation/proof/result.json` in the companion checkout
+  reports `passed: true`; editor/pan screenshots were inspected. Input was
+  synthetic; physical-controller feel is not independently certified.
+- [x] Full 39-file vendored snapshot/provenance, Jint exporter, packaged game
+  renderer and prepared resources are current. Game renderer fingerprint:
+  `3539d4f182829bab29afdd8b876b94fe8e8fdb572d1a48d678d9ab85c7ddd5e1`.
+  Test-only Unity sources were removed and the isolated Steam source restored
+  byte-for-byte; the main checkout's Steam source was never changed.
+- The Electron module-not-found screenshot came from the new smoke harness's
+  trailing directory separator escaping its closing Windows argument quote.
+  Resolving the root path fixes it; all final source launches pass. The normal
+  packaged shortcut and desktop/web file buttons retain their existing behavior.
+
 ## Integrated controller text and menu navigation — 2026-10-23
 
 - [x] Swap the game's sticks: right stick cursor, left stick scroll/zoom. Retain

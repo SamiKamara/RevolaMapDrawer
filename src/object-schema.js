@@ -2,7 +2,7 @@
 import { WEAPON_CATALOG } from './weapon-catalog.js';
 export const OBJECT_CATEGORIES = ['npc', 'doors', 'crates', 'barrels', 'weapons', 'devices'];
 export const WEAPONS = WEAPON_CATALOG.map(weapon => [weapon.key, weapon.label]);
-export const NPC_WEAPONS = WEAPON_CATALOG.filter(weapon => weapon.npcCanUse).map(weapon => [weapon.key, weapon.label]);
+export const NPC_WEAPONS = [...WEAPON_CATALOG.filter(weapon => weapon.npcCanUse).map(weapon => [weapon.key, weapon.label]), ['unarmed', 'Unarmed']];
 export const MAX_PATROL_POINTS = 128;
 const LEGACY_WEAPONS = ['UniGunpowderPistolGob', 'UniLaserAssaultgunGob', 'UniLaserShotgunGob'];
 export const DEVICES = [

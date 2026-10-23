@@ -5,6 +5,15 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-10-23
+
+Editable default object generation and the integrated game editor for **Revola: Post Hyper**.
+
+- Add Generate below the object tools in desktop, web and game editions, using the Map Manager's current default densities, audited footprints, NPC loadouts and loot pools. Keep existing authored categories and preserve normal game generation when placements are absent.
+- Confirm replacement of old objects after geometry edits, retain generation history across save/reopen and support cancellation and a single Undo/Redo operation.
+- Preview automatic doors with the correct hinged or sliding artwork based on the opening and continuous wall-pocket geometry; preserve Unity's final door certification and automatic type selection.
+- Improve the embedded editor's ultrawide scaling, rendering cost, wheel zoom, launch feedback, controller cursor, on-screen keyboard and Test maps navigation. Right stick controls the cursor, left stick pans and D-pad scrolls/zooms.
+
 - Add an offline Revola build edition rendered in the game's own window, with Save, Save as, Save and launch, Show in explorer, controller cursor/text entry and maintained companion-release synchronization. Desktop and web exports retain their existing workflows.
 
 - Add manual NPC patrol routes: choose a point count in Advanced setup, click numbered points, reconfigure atomically, and preserve the route in project/PNG metadata for both Unity generation paths. Route markers appear only during configuration.

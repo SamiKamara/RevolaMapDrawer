@@ -17,7 +17,8 @@ npm run test:web
 The local web smoke check serves only the generated directory with production-equivalent headers and measures host response bodies in a fresh Chrome profile. To repeat the focused check against the published application:
 
 ```powershell
-npm run test:web -- --url https://revolamapdrawer.vercel.app
+node scripts/web-smoke.mjs --url https://revolamapdrawer.vercel.app
+node scripts/population-smoke.mjs --web --url https://revolamapdrawer.vercel.app
 ```
 
 The generated `web-dist/` directory contains only the browser runtime and project license. It excludes Electron, development dependencies, agent instructions, original reference PNGs, the Finnish brief, personal maps and test evidence. Build metadata and screenshots remain in ignored `artifacts/`. `vercel.json` selects the static Other framework, the maintained build command and this output directory; Electron's runtime download is skipped during the hosted dependency installation.
@@ -36,7 +37,7 @@ Minified JavaScript/CSS and the byte-preserved optional background PNG use conte
 
 This extends the [SSEBPRC reference](https://github.com/SamiKamara/SSEBPRC)'s local file processing approach. Its calculation code/data load after valid file selection; this editor needs its geometry at startup, so its small complete runtime is bundled for immediate editing and offline exports. Only the optional background is deferred. Vercel CDN hits still count as user-facing transfer; browser caching is what prevents repeated payload delivery. See [Vercel's CDN usage documentation](https://vercel.com/docs/manage-cdn-usage) and [Cache-Control documentation](https://vercel.com/docs/caching/cache-control-headers).
 
-The verified 0.14.0 build's conservative first-visit body estimate is **70,192 bytes** with Brotli text, or **96,633 bytes** with gzip text. The ship and gameplay-object vectors are bundled in the application module; there is no separate sprite/image transfer for them. This includes the offline installation's extra HTML request. The local measured Brotli transfer agrees: **70,192 bytes**, followed by **zero host resource requests** on a controlled reload. All gameplay weapon/crate/door palettes are checked against the current source catalog before the offline drawing/export workflow. The optional star image adds **69,321 bytes** once. Tiny browser worker update checks can still occur independently of drawing. `npm run test:web` rebuilds the static inputs before testing so a stale `web-dist` cannot certify newer source.
+The verified 0.15.0 build's conservative first-visit body estimate is **80,887 bytes** with Brotli text, or **109,268 bytes** with gzip text. The ship and gameplay-object vectors are bundled in the application module; there is no separate sprite/image transfer for them. This includes the offline installation's extra HTML request. The local measured Brotli transfer agrees: **80,887 bytes**, followed by **zero host resource requests** on a controlled reload. All gameplay weapon/crate/door palettes are checked against the current source catalog before the offline drawing/export workflow. The optional star image adds **69,321 bytes** once. Tiny browser worker update checks can still occur independently of drawing. `npm run test:web` rebuilds the static inputs before testing so a stale `web-dist` cannot certify newer source.
 
 Further build sizes, real network accounting and deployment evidence are recorded in [CHECKLIST.md](CHECKLIST.md). These are response-body figures, not an account quota guarantee; negotiated compression, HTTP headers, service-worker checks and browser cache behavior affect actual usage.
 
