@@ -18,11 +18,35 @@ Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pen
 - [x] The canonical ten-door source matches all ten mechanisms in the prior
   Windows player's plan. Unity's new editor regression also compares derived
   preview kinds with certified native door plans before actual scene application.
-- [-] Final runtime retry (initial Windows atomic replacement file lock), current
-  Windows game renderer probe, release packaging/tag/publication and Vercel check.
-- Version metadata/changelog select 0.15.0. Preserve immutable older releases;
-  release/deployment outcomes are recorded after publication, not inferred from
-  prepared metadata.
+- [x] Final Unity runtime retry passes 1/1 after the initial Windows atomic-file
+  lock. A fresh Windows x64 game build has zero errors; its complete visible
+  create/save/launch/pause/edit/relaunch/return probe passes, including all ten
+  preview kinds compared to actual native doors. Companion proof:
+  `Builds/DrawerDoorPreviewValidation/proof/result.json`. Editor screenshot
+  inspected; isolated probes removed and Steam source restored byte-for-byte.
+- [x] Full local release builder passes 362 tests, complete source/packaged UI
+  suites, ZIP checks and the extracted portable app. GitHub main verification
+  [39970047756](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/39970047756)
+  and release build
+  [39970726093](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/39970726093)
+  both succeed. Immutable `v0.15.0` tags release commit `cd20a52`.
+- [x] Downloaded GitHub's exact ZIP/checksum, verified all 77 delivered files and
+  ran the extracted offline save/reopen test (zero network/renderer errors).
+  Initial comparison exposed only CRLF/LF differences in five local files: CI
+  bytes matched the tag, and aligning local bytes with canonical LF plus a local
+  rebuild made every file identical. Release code/assets were not replaced.
+  Published ZIP SHA-256:
+  `ac4f6caab46419d64984752c596127fea85eb741926f0da632a58aa1ff41e880`.
+- [x] Published [v0.15.0](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.15.0)
+  as latest, with the ZIP and checksum. Older tags/assets remain unchanged.
+- [x] Production Vercel deployment `dpl_E3usKqRmTnp3PVEjeqxnN1AXvk5o` is READY
+  at [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app). Direct
+  production/offline/export and generation/door-pixel tests pass; zero uploads
+  or third-party requests. Prior cached tabs keep their editor until closed.
+- [x] Companion `main` includes the complete clean 40-file 0.15.0 snapshot from
+  release commit `cd20a52`, matching renderer/producer/resources. Its code commit
+  is `b2628fb6`. Desktop shortcut target/arguments/working directory were checked
+  and the actual shortcut launched after the final package rebuild.
 
 ## Editable default objects and controller pan swap — 2026-10-23
 

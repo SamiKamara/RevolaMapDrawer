@@ -18,6 +18,10 @@ Editable default object generation and the integrated game editor for **Revola: 
 
 - Add manual NPC patrol routes: choose a point count in Advanced setup, click numbered points, reconfigure atomically, and preserve the route in project/PNG metadata for both Unity generation paths. Route markers appear only during configuration.
 
+Published as the latest Windows x64 portable release with its SHA-256 checksum:
+[v0.15.0](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.15.0).
+The same feature set is deployed at [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app).
+
 ## [0.14.0] - 2026-10-22
 
 Gameplay object authoring for **Revola: Post Hyper**, shared by the offline Windows application and browser version.
