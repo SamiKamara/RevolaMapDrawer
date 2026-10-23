@@ -15,6 +15,10 @@ Balanced automatic gameplay objects and expanded-map regeneration for **Revola: 
 - Let Generate replace older population results after confirmation, even when geometry is unchanged. Track legacy unstamped objects while editing so expanding a map in the same session also offers complete replacement; preserve initial hand-placed categories, cancellation and a single Undo/Redo operation.
 - Keep explicit fixed-count tuning and intentionally empty rooms, distinguish insufficient safe space from empty-room rolls, and preserve architecture-only image exports and editable source history.
 
+Published as the latest Windows x64 portable release with its SHA-256 checksum:
+[v0.16.0](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.16.0).
+The same changes are deployed at [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app).
+
 ## [0.15.0] - 2026-10-23
 
 Editable default object generation and the integrated game editor for **Revola: Post Hyper**.

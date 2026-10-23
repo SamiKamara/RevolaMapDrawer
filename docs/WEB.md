@@ -41,6 +41,13 @@ Historical measurements for the verified 0.15.0 build: the conservative first-vi
 
 Further build sizes, real network accounting and deployment evidence are recorded in [CHECKLIST.md](CHECKLIST.md). These are response-body figures, not an account quota guarantee; negotiated compression, HTTP headers, service-worker checks and browser cache behavior affect actual usage.
 
+The verified 0.16.0 production build is `097f799c360a1104`. Its conservative
+first-visit estimate is **82,073 bytes** with Brotli text or **110,629 bytes**
+with gzip text, including offline installation's extra HTML request. All seven
+production files match their local SHA-256 hashes. Production checks pass for
+offline reload/export, object generation and expanded legacy-map replacement,
+including cancellation and Undo/Redo; local map actions send no requests.
+
 ## Deploy
 
 The local Vercel link is stored in ignored `.vercel/`, outside the deployed runtime. With the owner's authenticated Vercel CLI:

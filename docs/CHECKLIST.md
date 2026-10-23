@@ -13,9 +13,38 @@ Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pen
 - [x] Inspect the actual refreshed desktop shortcut: canonical 0.16.0 executable,
   empty arguments, repository working directory and all paths exist. Shell launch
   starts the packaged app; its four owned hidden processes were closed afterward.
-  The extracted application's UI is verified by the portable test above.
-- [-] Refresh the companion snapshot and prepared game resources.
-- [ ] Verify the production web deployment and GitHub release assets.
+  After publication the same actual shortcut was launched normally and its clean
+  Untitled map editor was observed through native window capture, then closed.
+  The extracted application's UI is also verified by the portable test above.
+- [x] Push Drawer preparation `dc311cb` and matching Revola integration
+  `d04e2852` to their main branches. Synchronize 40 runtime files from the clean
+  tagged Drawer source, rebuild the Jint producer and offline renderer, and run
+  UserMapBuildSupport.Prepare. Audit/copy the game resource with only its revision
+  changed; all other serialized fields and its meta remain identical.
+- [x] Windows x64 release validation: build succeeds (0 errors, 2 warnings),
+  then a fresh isolated player completes create/save/launch/edit/relaunch/return,
+  controller checks, fixture-derived rotations/flags and no-placement fallback
+  with exact saved-plan reopen. Native fallback counts are 4 and 16 NPCs for the
+  maintained and user-supplied fixtures. Original user source remains unchanged.
+  Proof: companion Builds/PopulationRelease0160Retry/proof/result.json.
+  The first attempt's whole-frame control comparison included changing UI;
+  the successful retry compares the map crop. No production code was changed.
+  This fresh result supersedes the earlier blocked standalone check below.
+- [x] Production Vercel deployment is ready at
+  https://revolamapdrawer.vercel.app, build `097f799c360a1104`. All seven files
+  match local SHA-256 hashes. Production web/offline and population smoke pass;
+  expanded legacy-map confirmation/cancel/replacement/Undo/Redo also pass using
+  an ignored adapter of the maintained history smoke. No local map-action traffic.
+- [x] GitHub Verify application run 40027254795 and Build release run 40028043276
+  pass. Downloaded draft assets match their SHA-256 checksums and all 77 portable
+  ZIP files match the verified local package byte-for-byte. Published
+  [v0.16.0](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.16.0)
+  as the latest stable release at the owner's request; original assets retained.
+  Published ZIP SHA-256:
+  `899ff332c8994601d5107c72c0f4f9f5c46827b120be59c737d879fe5f697c90`.
+
+The following implementation sections retain their historical pre-publication
+state. Release 0.16.0 and the production web update are now published.
 
 ## Global NPC density and expanded-map regeneration — 2026-10-23
 
