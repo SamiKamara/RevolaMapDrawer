@@ -241,3 +241,34 @@ replace publisher signing or the owner's source/artwork review.
 GitHub CLI's relevant documented behavior is in
 [release create](https://cli.github.com/manual/gh_release_create) and
 [release edit](https://cli.github.com/manual/gh_release_edit).
+
+## This computer: keep the Revola game edition current
+
+The Drawer also ships inside Revola's **own game window** on Windows x64. Release
+maintenance on this computer must update the companion checkout at
+`C:\Users\samin\Desktop\Revola`, not just the web/portable releases. These are
+local developer instructions; the shipped game never accesses either checkout.
+
+In that Revola checkout, run:
+
+```powershell
+node Tools/UserMaps/sync-drawer.cjs C:\Users\samin\Desktop\RevolaMapDrawer
+npm ci --prefix Tools/UserMaps
+npm run build --prefix Tools/UserMaps
+npm run build:drawer --prefix Tools/UserMaps
+```
+
+Then run Unity's `Revola.MapManager.UserMapBuildSupport.Prepare` (also run by the
+normal build hook). Verify editor generation and a Windows x64 player's
+Create maps / Edit current map / Save / Save as / Save and launch / reopen flow,
+including the controller cursor and text entry. The snapshot uses canonical LF
+text hashes; its producer and offline rendering package must agree. Packages are
+cached by fingerprint to avoid Windows locks from older editor instances.
+
+When the release update is authorized, commit and push the matching companion
+changes to **Revola/main** along with this project's release preparation. Do not
+leave its local checkout or remote snapshot stale after a Drawer release.
+Generated editor packages, dependencies, personal maps and test screenshots stay
+outside Git. Keep the game edition in the release/checklist evidence even when
+no shared geometry/schema changes were needed. See both repositories' `AGENTS.md`
+and the game's `Documentation/USER_MAPS.md` for the integration contract.

@@ -2,6 +2,75 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Integrated editor follow-up — 2026-10-23
+
+- [x] Companion Unity accepts raw mouse scroll from either input API, normalizes
+  legacy notches to Electron units and avoids duplicate delivery. A wheel is
+  processed on the first frame after controller navigation. Rewired ZoomIn and
+  ZoomOut address canvas zoom, with unscaled held-button repeat.
+- [x] Esc > Edit current map opens the source directly. Save and launch reuses
+  the emphasized Save all button style; Unity displays a centered progress bar
+  before conversion and retains it through generation and scene startup.
+- [x] `npm test`: 354/354; full `test:ui`, `test:packaged` and source/packaged
+  `test:game` pass. Game smoke checks both wheel directions, input-mode changes,
+  explicit zoom commands and the emphasized launch button.
+- [x] Companion Unity: 20/20 cases pass, including both mouse API paths,
+  duplicate-notch suppression, direct Esc edit and progress lifetime. XML/log:
+  `Library/RevolaMapManager/DrawerFollowupValidation` in the companion checkout.
+- [x] Final Windows x64 build: zero errors. Visible player probe passes direct
+  edit, launch feedback, failed-save recovery, Rewired zoom, revised-map launch
+  and return hub. Screenshots verify the centered progress bar, emphasized launch
+  button and zoom changing from 8% to 9%. Companion proof:
+  `Builds/DrawerFollowupFinal/proof/result.json` (`passed: true`). An initial probe
+  checked overlay disposal before Unity's next Update; the final probe waits for
+  disposal after Ready. Production behavior did not require an additional change.
+- [x] Rebuilt desktop package and game snapshot/provenance/exporter. Verified
+  the actual desktop shortcut's target, empty arguments and working directory,
+  launched it to `Untitled map — Revola Map Drawer`, and closed that fresh instance.
+- Physical controller feel remains unverified; binding and cursor checks use
+  automated input. No format, geometry, object schema, version or release change.
+
+
+## Integrated Revola game edition — 2026-10-23
+
+- [x] Add a game-specific, offline offscreen host. Its hidden renderer supplies
+  BGRA frames and receives input from the game's Canvas; no separate visible
+  Drawer window, browser installation or development server is required.
+- [x] Preserve desktop/web file exports. Game mode offers Save, Save as,
+  Save and launch and Show in explorer, plus source selection and dirty-close
+  confirmation. Startup disables editing until the selected source has loaded.
+- [x] Controller cursor: radial dead zone, unscaled movement, Action/Attack held
+  click/drag, right-stick scroll/zoom, RB pan, Utility back, DOM dropdowns and
+  on-screen text/number entry. Mouse/keyboard can take over normally.
+- [x] Game sources, draft saves, immutable cached revisions, generated results,
+  ZIP/PNG-source editing and return hubs use the companion's existing user-map
+  system. Preserve old source formats and geometry/object/patrol behavior.
+- [x] Companion synchronization vendors 35 runtime files, canonical LF hashes,
+  source commit/dirty provenance and pinned Electron version. Rebuild both the
+  Jint producer and fingerprinted offline package; refresh Unity build resources.
+- [x] Add machine-local release instructions: update the sibling Revola checkout,
+  verify its Windows edition and commit/push matching main changes during an
+  authorized release update. No version bump, commit, tag or push in this task.
+- [x] `npm test`: 354/354 pass. `npm run test:ui`, full `test:packaged`, native
+  desktop save/reopen smoke and web build/offline smoke pass. Game smoke passes
+  from source and the current packaged executable, including actual forwarded
+  mouse/key events, save failure/dirty preservation, Save as, launch, source
+  picker, DOM dropdowns, controller text entry and zero visible editor windows.
+- [x] Unity: 19/19 targeted native cases pass in the isolated validation checkout,
+  including create → launch → pause → edit current → controller hold/movement
+  → launch revised source, legacy import/store behavior, menu regressions and
+  build-resource preparation. Runtime-generation code/schema remain compatible.
+- [x] Final Windows x64 Mono player build succeeded with zero errors. Its visible
+  self-running probe completed create/save/launch/pause/edit/relaunch/return;
+  screenshots show the empty ship canvas, the reopened 56-wall/9-door source and
+  the Test maps menu inside the game window. Proof: companion
+  `Builds/EmbeddedDrawerVerified/proof/result.json` (`passed: true`).
+- [x] Rebuilt the current desktop package, verified the exact shortcut target,
+  empty arguments, repository working directory and referenced paths. Launched
+  the actual `.lnk` to `Untitled map — Revola Map Drawer`, then closed only that
+  fresh test instance. Final source/packaged game smoke and 354 unit cases pass.
+- Physical controller feel, non-Windows players and touch input are not
+  certified by synthetic input/Windows x64 tests.
 ## Commit checkpoint — 2026-10-22
 
 - [x] Owner authorized committing and pushing the manual patrol feature and

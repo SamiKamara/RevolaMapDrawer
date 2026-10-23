@@ -14,6 +14,7 @@ import { copySelection, pasteSelection } from './clipboard.js';
 import { SAVE_ALL_FORMATS, createExportZip } from './save-all.js';
 import { createObjectEditor } from './object-editor.js';
 import { OBJECT_CATEGORIES } from './object-schema.js';
+import { setupGameEditor } from './game-ui.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('map-canvas');
@@ -30,6 +31,7 @@ let spaceHeld = false, busy = false, scheduled = false;
 // Map fragments stay local to this editor session, including across New/Open.
 let clipboard = null, paste = null;
 let floor = null, floorKey = '', floorPendingKey = '', starsPattern, starsRequested = false;
+let gameEditor;
 function loadStars() {
   if (starsRequested || starsPattern) return;
   starsRequested = true;
@@ -48,6 +50,7 @@ function floorControls() {
   const blocked = busy || !!gesture || !!paste || !!wallStart || objectEditor.active;
   for (const id of ['floor-png-button', 'floor-svg-button', 'save-all-button']) $(id).disabled = blocked || !closed;
   for (const id of ['export-button', 'svg-button', 'project-button']) $(id).disabled = blocked;
+  gameEditor?.update();
 }
 function refreshFloor() {
   const key = floorGeometryKey();
@@ -123,7 +126,7 @@ function refresh() {
     $('selection-info').textContent = `${Math.round(distance(a, b))} px · ${edge.doors.length} door${edge.doors.length === 1 ? '' : 's'}`;
   } else if (pointCount) $('selection-info').textContent = `${selection.edgeIds.length} wall${selection.edgeIds.length === 1 ? '' : 's'} · ${pointCount} point${pointCount === 1 ? '' : 's'}`;
   else $('selection-info').textContent = '';
-  window.revolaDesktop?.setDirty(changed);
+  (window.revolaGame || window.revolaDesktop)?.setDirty(changed);
   objectEditor.refresh();
   refreshFloor();
   renderSoon();
@@ -702,10 +705,11 @@ canvas.addEventListener('pointerleave', () => { if (!gesture) { pointer = null; 
 canvas.addEventListener('contextmenu', event => { event.preventDefault(); cancelGesture(); status('Gesture canceled.'); });
 canvas.addEventListener('wheel', event => { event.preventDefault(); zoom(Math.exp(-event.deltaY * .0015), local(event)); pointer = world(local(event)); if (paste) updatePaste(pointer); }, { passive: false });
 
-async function confirmReplacement() {
+async function confirmReplacement(message = 'Replace the current map?') {
   if (!dirty()) return true;
   const dialog = $('confirm-dialog');
   if (dialog.open) return false;
+  dialog.querySelector('h2').textContent = message;
   return new Promise(resolve => { dialog.addEventListener('close', () => resolve(dialog.returnValue === 'discard'), { once: true }); dialog.showModal(); });
 }
 function replaceDocument(next) {
@@ -715,6 +719,7 @@ function replaceDocument(next) {
 }
 async function newDocument() {
   if (busy || !(await confirmReplacement())) return;
+  if (window.revolaGame) await window.revolaGame.request('new');
   replaceDocument(model.createDocument()); status('New map ready. Start drawing above the airlock.');
 }
 async function importBytes(name, bytes) {
@@ -729,6 +734,7 @@ async function importBytes(name, bytes) {
 }
 async function openDocument() {
   if (busy) return;
+  if (gameEditor) { await gameEditor.open(); return; }
   if (window.revolaDesktop) {
     try { const file = await window.revolaDesktop.openFile(); if (file) await importBytes(file.name, new Uint8Array(file.bytes)); }
     catch (error) { status(`Could not open: ${error.message}`, true); }
@@ -870,13 +876,14 @@ window.addEventListener('keydown', event => {
       objectEditor.clear();
       if (!active && tool === 'select' && !typing) selected = emptySelection();
       cancelGesture(); status(active ? 'Gesture canceled.' : 'Selection cleared.');
+      if (gameEditor && !active && !typing) gameEditor.close();
     }
     return;
   }
   if (document.querySelector('dialog[open]')) return;
   if (event.ctrlKey || event.metaKey) {
     const key = event.key.toLowerCase();
-    if (key === 's') { event.preventDefault(); document.activeElement?.blur(); saveDocument(event.shiftKey ? 'project' : 'png'); }
+    if (key === 's') { event.preventDefault(); document.activeElement?.blur(); if (gameEditor) gameEditor.save(event.shiftKey); else saveDocument(event.shiftKey ? 'project' : 'png'); }
     else if (key === 'o') { event.preventDefault(); openDocument(); }
     else if (!typing && key === 'z') { event.preventDefault(); event.shiftKey ? redo() : undo(); }
     else if (!typing && key === 'y') { event.preventDefault(); redo(); }
@@ -905,10 +912,32 @@ window.addEventListener('keyup', event => {
   if (event.code === 'Space') { spaceHeld = false; canvas.style.cursor = tool === 'hand' ? 'grab' : tool === 'select' ? 'default' : 'crosshair'; }
 });
 window.addEventListener('blur', () => { spaceHeld = false; gesture = null; refresh(); });
-window.addEventListener('beforeunload', event => { if (!window.revolaDesktop && dirty()) { event.preventDefault(); event.returnValue = ''; } });
+window.addEventListener('beforeunload', event => { if (!window.revolaDesktop && !window.revolaGame && dirty()) { event.preventDefault(); event.returnValue = ''; } });
 new ResizeObserver(renderSoon).observe(container);
 try { shipImage = await loadShip(); status('Ready.'); }
 catch (error) { status(error.message, true); }
+if (window.revolaGame) {
+  window.revolaGame.onZoom(factor => {
+    if (busy || document.querySelector('dialog[open]')) return;
+    const at = pointer && { x: pointer.x * camera.scale + camera.x, y: pointer.y * camera.scale + camera.y };
+    zoom(factor, at || undefined);
+    // Keep an active placement preview attached to its screen position.
+    if (at) { pointer = world(at); if (paste) updatePaste(pointer); }
+  });
+  gameEditor = setupGameEditor({ snapshot: () => model.validateDocument(clone(doc)),
+    replace: project => replaceDocument(model.validateDocument(project)), confirmReplacement,
+    saved: project => { savedState = JSON.stringify(project); refresh(); },
+    blocked: () => busy || !!gesture || !!paste || !!wallStart || objectEditor.active,
+    closed: () => floor?.closed && floorKey === floorGeometryKey() && !floorPendingKey, status, setBusy: saving });
+  saving(true);
+  try {
+    const file = await window.revolaGame.request('initial');
+    if (file?.project) replaceDocument(model.validateDocument(JSON.parse(file.project)));
+    status('Revola map editor ready. Save maps here, then Save and launch to test.');
+  } catch (error) { status(`Could not open map: ${error.message}`, true); }
+  finally { saving(false); }
+  gameEditor.update();
+}
 window.addEventListener('online', () => {
   if (!starsPattern && floor?.closed) { starsRequested = false; loadStars(); }
 });

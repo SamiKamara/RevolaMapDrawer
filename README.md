@@ -238,3 +238,39 @@ Python and Pillow are only needed for this development utility, not to run or pa
 Revola Map Drawer is available under the [MIT License](LICENSE), copyright **2026 SamiKamara**. You may use, modify and redistribute the project, including commercially, while retaining its copyright and license notice in copies or substantial portions of the software. The license covers the project's original code, documentation and assets unless a component is separately identified as third-party material. [The standard MIT terms](https://opensource.org/license/mit) describe the notice requirement and warranty disclaimer.
 
 You can use and share exported maps without adding a Revola Map Drawer credit. The software's notice requirement does not require a credit printed on every map. Bundled Electron/Chromium and other third-party components retain their own licenses. The reference notes record how supplied materials were used without asserting ownership of the Revola game or third-party materials. See [distribution and asset provenance](docs/DISTRIBUTION.md) for the project license, bundled notices and material provenance.
+
+## Integrated Revola edition
+
+Windows x64 builds of Revola also ship the offline Drawer inside the game window.
+**Test maps → Create maps** opens it; **Add maps** provides separate **Web Map
+Drawer** and **Create maps** buttons. Installed user-map rows have **Edit** between
+Regenerate and Return to reserve. While playing a user map, **Esc → Edit current
+map** opens its editable source directly. Test maps also has **Edit current map**.
+Six Action presses can also reopen Test maps during user/built-in test maps.
+
+This edition replaces image/export saving with **Save**, **Save as**, **Save and
+launch** and **Show in explorer**. Sources go into **Revola User Maps** beside the
+game. Save supports unfinished drafts; closed maps also enter the game's reserve
+and generation system. Save and launch generates and plays the saved revision,
+keeping the original return hub. Its highlighted button starts a centered game
+progress bar, visible through saving, generation and scene startup. Imported ZIP/PNG projects are edited from the
+cached source and saved as an owned `.revola` copy; their original exports are
+never overwritten. The game remains paused throughout editing.
+
+Controller support: left stick moves an on-screen cursor; Action or Attack clicks
+and holds to drag; right stick scrolls/zooms; RB pans; Utility returns/cancels.
+The mouse wheel and Rewired ZoomIn/ZoomOut bindings also zoom, including held
+bindings while paused. The game accepts both Unity mouse input APIs without
+counting the same wheel notch twice, including after a controller-mode switch.
+Text and number inputs offer an on-screen keyboard when a controller is active.
+The ordinary mouse and keyboard remain usable and switch input mode automatically.
+The renderer has no general filesystem/network bridge and never opens a separate
+visible editor window. The bundled Electron runtime is an implementation dependency,
+so players need no installed browser, Node.js or development server.
+
+Development and release synchronization on this computer is described in
+[AGENTS.md](AGENTS.md#this-computer-maintain-the-revola-build-edition-with-releases).
+The game vendors the full offline runtime source, records per-file hashes, rebuilds
+both its producer and packaged renderer, refreshes Unity resources, and includes
+the runtime in Windows x64 builds. Other player platforms retain web import but do
+not yet support the integrated editor.

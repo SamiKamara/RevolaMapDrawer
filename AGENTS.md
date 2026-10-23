@@ -9,6 +9,12 @@
 - Unity prefab/shop/NPC-default/sprite changes may require refreshing this editor's schema, weapon catalog, displayed defaults and vectors. Preserve old projects, optional authoring, category-specific automatic generation and architecture-only image exports. Verify affected flows on both sides; do not infer runtime correctness from editor-only checks.
 - Repository roles, local locations and integration entry points are also documented in [README.md](README.md) and the companion `Assets/RevolaMapManager/Documentation/README_MAP_MANAGER.md`.
 
+## This computer: maintain the Revola build edition with releases
+
+- The game includes a third edition of Drawer. It renders inside the **same game window**, with Save, Save as, Save and launch and Show in explorer, and uses the game's User Maps source/cache/generation system. Preserve mouse/keyboard editing and the controller cursor (left stick, Action/Attack click/drag, right-stick scroll/zoom and controller text entry). Do not replace it with a separate desktop window or a web link.
+- On this computer, release maintenance also includes updating `C:\Users\samin\Desktop\Revola`: run `node Tools/UserMaps/sync-drawer.cjs C:\Users\samin\Desktop\RevolaMapDrawer`, `npm ci --prefix Tools/UserMaps`, `npm run build --prefix Tools/UserMaps` and `npm run build:drawer --prefix Tools/UserMaps` there, then `UserMapBuildSupport.Prepare` in Unity. Verify both editor generation and a Windows build's create/edit/save/launch/reopen flow. Commit and push the matching Revola changes to its `main` as part of an authorized release update; never leave the game edition on an older snapshot. These checkout paths are machine-local maintenance instructions, never player/runtime prerequisites.
+- Record exact checks and remaining limitations in both repositories. Keep generated runtime packages, personal maps, dependency directories and desktop shortcuts out of Git. The game's normal Windows x64 build hook packages the vendored editor/runtime next to the player.
+
 ## Implementation
 
 - Read `docs/DESIGN.md`, `docs/CHECKLIST.md` and relevant reference notes before changing the implementation. The original Finnish brief and both source PNGs remain unchanged.

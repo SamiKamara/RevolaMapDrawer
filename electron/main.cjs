@@ -1,3 +1,6 @@
+if (process.argv.some(value => value.startsWith('--revola-game='))) {
+  require('./game-host.cjs');
+} else {
 const { app, BrowserWindow, dialog, ipcMain, Menu } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
@@ -176,3 +179,5 @@ function createWindow() {
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+
+}

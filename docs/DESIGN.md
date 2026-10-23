@@ -380,3 +380,22 @@ Dark desktop workspace inspired by conventional graphics editors: top File actio
 - Invalid imports are bounded and rejected without losing the active document.
 - Reference texture is stable; UI remains usable at typical desktop sizes.
 - Packaged Windows app opens independently of the development server and successfully writes/reads a file.
+
+## Integrated game host
+
+`electron/game-host.cjs` is selected only by the game's authenticated loopback
+startup argument. Its BrowserWindow is hidden and offscreen for its entire lifetime.
+It sends bounded BGRA frames to the game's full-screen RawImage, receives input and
+resize events from that same game window, and blocks external navigation/network
+requests. Only one frame is in flight; changed frames are coalesced until Unity
+acknowledges consumption. Shutdown/disconnect terminates the renderer.
+`game-preload.cjs` exposes only explicit game operations. Unity owns source paths,
+atomic writes, normalized project validation, immutable cached revisions and
+existing runtime generation. Desktop and web export workflows remain available in
+their own editions. `src/game-ui.js` supplies edition-specific file buttons,
+controller hints, text entry and dirty-close confirmation.
+Explicit game zoom commands reuse the canvas zoom operation. Mouse-wheel input
+still travels as pointer input, preserving sidebar scrolling and zoom anchoring.
+Unity owns the centered Save and launch progress overlay, so it can stay visible
+through converter work, generation, fade and scene activation after the renderer
+has closed. Failures dismiss it and restore editor input.

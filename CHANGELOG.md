@@ -5,6 +5,8 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+- Add an offline Revola build edition rendered in the game's own window, with Save, Save as, Save and launch, Show in explorer, controller cursor/text entry and maintained companion-release synchronization. Desktop and web exports retain their existing workflows.
+
 - Add manual NPC patrol routes: choose a point count in Advanced setup, click numbered points, reconfigure atomically, and preserve the route in project/PNG metadata for both Unity generation paths. Route markers appear only during configuration.
 
 ## [0.14.0] - 2026-10-22
