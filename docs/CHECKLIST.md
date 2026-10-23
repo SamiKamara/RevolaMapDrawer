@@ -2,6 +2,108 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Integrated controller text and menu navigation — 2026-10-23
+
+- [x] Swap the game's sticks: right stick cursor, left stick scroll/zoom. Retain
+  Action/Attack click/drag, the owner's inverted D-pad pan and ignored ZoomIn/Out.
+- [x] Game-only DOM caret blinks at the map-name/keyboard insertion point without
+  native OS focus. Smoke checks real transmitted BGRA pixels across blink phases.
+- [x] Reliable controller keyboard opens after the complete field click, including
+  an already-focused field and mouse-to-controller handoff. QWERTY/numeric layouts,
+  Shift, Space, insertion arrows, backspace, Clear, Cancel and Done; respect selection
+  and maximum length, commit only on Done, avoid reopening on focus restoration.
+- [x] Source/packaged game smoke covers mid-string insertion, deletion, case,
+  reopening, cancellation, Save as, numeric input and switching to physical
+  keyboard typing inside the preview. Screenshots under ignored
+  `artifacts/game-keyboard*.png` and `game-map-name-caret.png` were inspected.
+- [x] Companion Test maps navigation follows horizontal actions and neighboring
+  rows, remembers the column through full-width maps, skips disabled actions,
+  reveals scrolled selections and has no edge wrap. Covers Add maps, Remove maps,
+  removal confirmation and instructions; physical D-pad joins left-stick/arrows.
+- [x] 354 unit checks and full UI/packaged suites pass. Both source/packaged game
+  smoke pass. Companion Unity verifies all 21 targeted cases across the initial
+  20 passing cases and the corrected navigation fixture retry (1/1); the two
+  fixture fixes shortened a Windows path and used reference identity for rows.
+- [x] Both offline packages and complete 36-file Unity snapshot/provenance are
+  current; exporter rebuilt. The maintained desktop shortcut was inspected and
+  launched to the current packaged UI, then only that fresh process was closed.
+- [x] Native Windows build: zero errors; the final current renderer package also
+  passes the player's complete create/save/launch/pause/edit/relaunch/return probe,
+  right-stick cursor, left-stick zoom, inverted pan and keyboard open/Escape/reopen
+  on the same field. `Builds/DrawerControlsValidation/proof/result.json` in the
+  companion checkout reports `passed: true`. The in-game keyboard screenshot was
+  inspected. All test-only sources/Steam changes were removed/restored.
+- No schema, geometry, generation, desktop/web file-button or save-format change.
+  Physical-controller feel is not certified by synthetic input checks.
+
+## D-pad direction preference — 2026-10-23
+
+- [x] Invert both D-pad axes in Unity's input conversion: view moves toward the
+  pressed direction and map content moves opposite. Speed, diagonal normalization,
+  mouse/RB dragging, cursor and right-stick zoom remain unchanged.
+- [x] Companion runtime/producer need no matching change: pan packets still carry
+  the same CSS-pixel camera deltas. Update controls documentation only; the existing
+  desktop package/shortcut was inspected and launched successfully.
+- [x] Updated four-direction Unity regression passes (including scaling and diagonals):
+  companion `Library/RevolaMapManager/DrawerDpadInverseValidation/results.xml`.
+
+## Integrated controller D-pad pan — 2026-10-23
+
+- [x] Remove the ZoomIn/ZoomOut command path from Unity, host and preload.
+  Mouse wheel/right-stick wheel zoom and the canvas zoom controls remain.
+- [x] Physical D-pad directions continuously pan in screen space, using unscaled
+  time and equal diagonal speed. Prefer the assigned player's Rewired gamepad
+  template, with Unity Input System fallback; gameplay bindings remain unchanged.
+  Cursor position and project contents stay fixed; modal dialogs block canvas pan.
+- [x] Game hints and both projects' current controls documentation now describe
+  D-pad pan. The frontend pan matches the pixels of an equivalent middle-button
+  drag, returns exactly with the opposite delta and preserves zoom.
+- [x] 354 unit cases, full UI/packaged suites and source/packaged game smoke pass.
+  Companion Unity: 17/18 passed initially; the pre-existing atomic replacement
+  test hit a Windows file lock and passed its isolated retry. All 18 cases are
+  verified across those runs; no unrelated store implementation change.
+- [x] Rebuilt both packages, snapshot/provenance/exporter, inspected and launched
+  the maintained desktop shortcut to the current packaged editor.
+- [x] Native Windows player build has zero errors; probe passes all four pan
+  directions, exact inverse pan, fixed cursor, ignored ZoomIn/ZoomOut,
+  right-stick zoom and create/edit/save/launch/return. Companion proof:
+  `Builds/DrawerDpadValidation/proof/result.json` (`passed: true`), with screenshots.
+- Physical-controller feel is not certified by the synthetic input checks.
+
+## Integrated editor aspect and performance — 2026-10-23
+
+- [x] Owner-confirmed baseline committed/pushed to main: Drawer `d1e1528`,
+  companion Revola `2040cdb7`. The following fixes are local working changes.
+- [x] Preserve aspect with a single viewport scale. Game host no longer raises
+  individual axes to independent minimums; normal, ultrawide and portrait test
+  sizes reach the renderer/frame transport unchanged.
+- [x] Cache unchanged game architecture at full viewport resolution. Hover and
+  live overlays reuse it; geometry, grid, zoom, pan, resize and floor readiness
+  invalidate it. Source/packaged game smoke verifies grid/mirror round trips.
+- [x] Read-only 56-wall benchmark: identical initial canvas SHA-256 before/after.
+  For the same 180 pointer moves, renderer CPU time fell from 1.526 s to 0.533 s
+  (about 65%); delivery remained about 29 fps under the unchanged 30 fps cap.
+  Idle generated zero bitmap frames over two seconds in both versions. Evidence:
+  `artifacts/game-performance-before.json` and `game-performance-after.json`;
+  repeat with `node scripts/game-performance.mjs --project=PATH --label=NAME`.
+- [x] Companion suppresses covered-world culling, depth and postprocessing work,
+  keeps Camera.main accessible, uses 60 fps for input/cursor, and restores exact
+  original states. Native comparison: Unity CPU 2.031 s → 0.656 s over 2.5 s;
+  hidden world/postprocessing cameras 1 → 0, frame loop 240 → 60 fps.
+- [x] Eliminate the second full BGRA payload allocation/copy in Unity's reader.
+  Wire format and texture resolution remain unchanged.
+- [x] 354 unit cases, full UI/packaged suites, source/packaged game smoke and
+  17 companion Unity cases pass. Desktop/web file actions remain unchanged;
+  edition-only save customization is explicit in AGENTS.md.
+- [x] Rebuilt desktop/game packages and snapshot/provenance/exporter. Inspected
+  and launched the actual desktop shortcut to its current packaged editor.
+- [x] Final native Windows create/edit/launch/return probe passes. Screenshots
+  confirm 3440 × 1440, 1920 × 1080 and 1440 × 1080 without distortion, including
+  live resizes. Companion proof: `Builds/DrawerOptimizedValidation/proof/result.json`
+  (`passed: true`), with `performance.json` and screenshots alongside it.
+- These are local short measurements, not a hardware-independent fan/noise
+  guarantee. Physical controller feel and non-Windows platforms remain untested.
+
 ## Integrated editor follow-up — 2026-10-23
 
 - [x] Companion Unity accepts raw mouse scroll from either input API, normalizes

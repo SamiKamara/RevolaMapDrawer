@@ -6,5 +6,5 @@ contextBridge.exposeInMainWorld('revolaGame', Object.freeze({
   setDirty: dirty => ipcRenderer.send('revola:game-dirty', dirty === true),
   onClose: callback => ipcRenderer.on('revola:game-close', () => callback()),
   onInputMode: callback => ipcRenderer.on('revola:game-input-mode', (_event, gamepad) => callback(gamepad)),
-  onZoom: callback => ipcRenderer.on('revola:game-zoom', (_event, factor) => callback(factor)),
+  onPan: callback => ipcRenderer.on('revola:game-pan', (_event, x, y) => callback(x, y)),
 }));

@@ -1,7 +1,9 @@
+import { setupGameTextInput } from './game-text.js';
+
 // Only active in the renderer embedded in Revola's own window.
 export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, blocked, closed, status, setBusy }) {
   const bridge = window.revolaGame;
-  let gamepadMode = false, keyboardOpen = false;
+  const setGamepadMode = setupGameTextInput();
   document.body.classList.add('game-editor');
   // Render dropdowns as DOM controls too: native OS menus cannot own the game's
   // controller cursor or reliably appear in an offscreen bitmap.
@@ -81,39 +83,9 @@ export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, 
   button('game-folder', 'Show in explorer', () => bridge.request('folder').catch(error => status(error.message, true)));
   const back = button('game-back', 'Back to Test maps', close);
   const hint = document.createElement('div'); hint.className = 'gamepad-help'; hint.hidden = true;
-  hint.textContent = 'Left stick: cursor · Action / Attack: click or hold to drag · Right stick: scroll / zoom · Zoom in / out: zoom · RB: pan · Utility: back';
+  hint.textContent = 'Right stick: cursor · Action / Attack: click or hold to drag · D-pad: pan · Left stick: scroll / zoom · RB: pan with cursor · Utility: back';
   document.querySelector('.topbar').after(hint);
-  function textField(element) {
-    return element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement && ['text', 'number', 'search'].includes(element.type);
-  }
-  async function showKeyboard(target) {
-    if (!gamepadMode || keyboardOpen || !textField(target) || target.readOnly || target.disabled) return;
-    keyboardOpen = true;
-    const element = document.createElement('dialog'); element.className = 'game-keyboard'; element.id = 'game-keyboard';
-    const heading = document.createElement('h2'); heading.textContent = target.type === 'number' ? 'Enter number' : 'Enter text';
-    const preview = document.createElement('input'); preview.readOnly = true; preview.value = target.value; preview.setAttribute('aria-label', 'Controller text');
-    element.append(heading, preview);
-    let uppercase = true;
-    const letters = [];
-    function key(label, action) { const key = document.createElement('button'); key.type = 'button'; key.textContent = label; key.addEventListener('click', action); element.append(key); return key; }
-    for (const char of target.type === 'number' ? '1234567890.-' : '1234567890QWERTYUIOPASDFGHJKLZXCVBNM-_.') {
-      const keyButton = key(char, () => { preview.value += uppercase ? char : char.toLowerCase(); });
-      if (/[A-Z]/.test(char)) letters.push({ element: keyButton, char });
-    }
-    key('Space', () => { preview.value += ' '; }); key('⌫', () => { preview.value = preview.value.slice(0, -1); });
-    key('Clear', () => { preview.value = ''; });
-    if (letters.length) key('Shift', () => { uppercase = !uppercase; for (const { element, char } of letters) element.textContent = uppercase ? char : char.toLowerCase(); });
-    key('Cancel', () => element.close());
-    key('Done', () => {
-      target.value = target.maxLength > 0 ? preview.value.slice(0, target.maxLength) : preview.value;
-      target.dispatchEvent(new Event('input', { bubbles: true })); target.dispatchEvent(new Event('change', { bubbles: true })); element.close();
-    });
-    document.body.append(element);
-    element.addEventListener('close', () => { element.remove(); setTimeout(() => { keyboardOpen = false; }, 0); }, { once: true });
-    element.showModal();
-  }
-  document.addEventListener('focusin', event => showKeyboard(event.target));
-  bridge.onInputMode(value => { gamepadMode = value; hint.hidden = !value; if (value) showKeyboard(document.activeElement); });
+  bridge.onInputMode(value => { hint.hidden = !value; setGamepadMode(value); });
   function update() {
     for (const element of saves) element.disabled = saving || blocked();
     saves[2].disabled ||= !closed(); back.disabled = saving;

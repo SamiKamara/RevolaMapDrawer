@@ -32,6 +32,7 @@ let spaceHeld = false, busy = false, scheduled = false;
 let clipboard = null, paste = null;
 let floor = null, floorKey = '', floorPendingKey = '', starsPattern, starsRequested = false;
 let gameEditor;
+let gameBackground;
 function loadStars() {
   if (starsRequested || starsPattern) return;
   starsRequested = true;
@@ -415,22 +416,15 @@ function corridorRoute(current, release) {
   }
   return remember({ path, endTarget: null });
 }
-function render() {
-  const ratio = window.devicePixelRatio || 1;
-  const width = container.clientWidth, height = container.clientHeight;
-  if (canvas.width !== Math.round(width * ratio) || canvas.height !== Math.round(height * ratio)) {
-    canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
-  }
+function paintBackground(ctx, viewDoc, boundsDoc, width, height, ratio, floorCurrent) {
+  ctx.save();
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   ctx.fillStyle = '#101612'; ctx.fillRect(0, 0, width, height);
   ctx.translate(camera.x, camera.y); ctx.scale(camera.scale, camera.scale);
-  const viewDoc = gesture?.preview || doc;
-  const boundsDoc = paste?.preview || viewDoc;
   const bounds = model.getMapBounds(boundsDoc);
   ctx.fillStyle = '#000000'; ctx.fillRect(bounds.left, bounds.top, boundsDoc.width, boundsDoc.height);
   ctx.strokeStyle = '#35463b'; ctx.lineWidth = 1 / camera.scale; ctx.strokeRect(bounds.left, bounds.top, boundsDoc.width, boundsDoc.height);
   ctx.save(); ctx.beginPath(); ctx.rect(bounds.left, bounds.top, boundsDoc.width, boundsDoc.height); ctx.clip();
-  const floorCurrent = floorKey === floorGeometryKey() && !floorPendingKey && floor?.closed;
   if (floorCurrent && starsPattern) {
     ctx.save(); ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.fillStyle = starsPattern; ctx.fillRect(0, 0, width, height); ctx.restore();
@@ -445,6 +439,33 @@ function render() {
   }
   if (floorCurrent) drawFloor(ctx, floor);
   drawMap(ctx, viewDoc, { shipImage });
+  ctx.restore(); ctx.restore();
+}
+function render() {
+  const ratio = window.devicePixelRatio || 1;
+  const width = container.clientWidth, height = container.clientHeight;
+  if (canvas.width !== Math.round(width * ratio) || canvas.height !== Math.round(height * ratio)) {
+    canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
+  }
+  const viewDoc = gesture?.preview || doc, boundsDoc = paste?.preview || viewDoc;
+  const bounds = model.getMapBounds(boundsDoc), geometryKey = floorGeometryKey();
+  const floorCurrent = floorKey === geometryKey && !floorPendingKey && floor?.closed;
+  if (window.revolaGame && viewDoc === doc && boundsDoc === doc) {
+    // Hover/placement overlays change far more often than architecture. Reuse an
+    // exact viewport bitmap; edits, zoom, pan, resize and floor state invalidate it.
+    const key = JSON.stringify([geometryKey, camera, canvas.width, canvas.height, ratio,
+      !!floorCurrent, !!starsPattern, $('grid-toggle').checked]);
+    gameBackground ||= { canvas: document.createElement('canvas'), key: null };
+    if (gameBackground.key !== key) {
+      gameBackground.canvas.width = canvas.width; gameBackground.canvas.height = canvas.height;
+      paintBackground(gameBackground.canvas.getContext('2d'), viewDoc, boundsDoc, width, height, ratio, floorCurrent);
+      gameBackground.key = key;
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(gameBackground.canvas, 0, 0);
+  } else paintBackground(ctx, viewDoc, boundsDoc, width, height, ratio, floorCurrent);
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.translate(camera.x, camera.y); ctx.scale(camera.scale, camera.scale);
+  ctx.save(); ctx.beginPath(); ctx.rect(bounds.left, bounds.top, boundsDoc.width, boundsDoc.height); ctx.clip();
   objectEditor.draw(ctx);
   ctx.restore();
   // Drawing previews may cross the current boundary; commit expands the map
@@ -917,12 +938,15 @@ new ResizeObserver(renderSoon).observe(container);
 try { shipImage = await loadShip(); status('Ready.'); }
 catch (error) { status(error.message, true); }
 if (window.revolaGame) {
-  window.revolaGame.onZoom(factor => {
+  window.revolaGame.onPan((x, y) => {
     if (busy || document.querySelector('dialog[open]')) return;
     const at = pointer && { x: pointer.x * camera.scale + camera.x, y: pointer.y * camera.scale + camera.y };
-    zoom(factor, at || undefined);
+    camera.x += x; camera.y += y;
+    // Keep a simultaneous middle-button drag anchored to the moved view.
+    if (gesture?.type === 'pan') { gesture.x += x; gesture.y += y; }
     // Keep an active placement preview attached to its screen position.
     if (at) { pointer = world(at); if (paste) updatePaste(pointer); }
+    renderSoon();
   });
   gameEditor = setupGameEditor({ snapshot: () => model.validateDocument(clone(doc)),
     replace: project => replaceDocument(model.validateDocument(project)), confirmReplacement,

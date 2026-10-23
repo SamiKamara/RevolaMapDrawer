@@ -37,7 +37,8 @@
 .game-editor .topbar{flex-wrap:wrap;height:auto;min-height:60px}.game-editor .topbar nav{flex-wrap:wrap}.game-editor dialog input,.game-editor dialog select{display:block;min-width:280px;margin:16px 0;padding:10px}.game-editor dialog button{margin-right:10px}
 
 
-.gamepad-help{flex-shrink:0;padding:7px 20px;background:#27392f;color:#d3f1dd;font-size:12px}.game-keyboard{width:640px;max-width:92vw}.game-keyboard button{min-width:42px;margin:2px;padding:12px;background:#29372e}.game-keyboard input{width:100%;margin-bottom:12px}
+.gamepad-help{flex-shrink:0;padding:7px 20px;background:#27392f;color:#d3f1dd;font-size:12px}.game-keyboard{width:660px;max-width:92vw;max-height:92vh;overflow:auto}.game-keyboard-numeric{width:360px}.game-keyboard-keys{display:flex;flex-direction:column;align-items:center;gap:5px}.game-keyboard-row{display:grid;grid-template-columns:repeat(var(--keys),minmax(0,1fr));gap:5px}.game-keyboard-controls{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px}.game-editor .game-keyboard button{min-width:0;margin:0;padding:12px;background:#29372e}.game-editor .game-keyboard button.primary{background:var(--accent)}.game-keyboard input{width:100%;margin-bottom:12px}
+.game-editor .game-caret-target{caret-color:transparent}.game-text-caret{position:fixed;z-index:10000;width:2px;background:var(--accent);pointer-events:none;animation:game-caret-blink 1s steps(2,jump-none) infinite}@keyframes game-caret-blink{to{opacity:0}}
 
 
 .game-select-list{display:flex;flex-direction:column;max-height:55vh;overflow:auto;margin-bottom:12px}.game-select-list button{text-align:left;padding:12px 16px}

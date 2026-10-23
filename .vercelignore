@@ -4,6 +4,7 @@
 !src
 !src/app.js
 !src/game-ui.js
+!src/game-text.js
 !src/clipboard.js
 !src/corridors.js
 !src/doors.js

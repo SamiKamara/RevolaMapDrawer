@@ -393,9 +393,33 @@ acknowledges consumption. Shutdown/disconnect terminates the renderer.
 atomic writes, normalized project validation, immutable cached revisions and
 existing runtime generation. Desktop and web export workflows remain available in
 their own editions. `src/game-ui.js` supplies edition-specific file buttons,
-controller hints, text entry and dirty-close confirmation.
-Explicit game zoom commands reuse the canvas zoom operation. Mouse-wheel input
-still travels as pointer input, preserving sidebar scrolling and zoom anchoring.
+controller hints and dirty-close confirmation. `src/game-text.js` owns the game-only
+blinking DOM insertion caret and controller keyboard. The hidden renderer has no
+OS focus, so native caret painting cannot be relied upon. The keyboard opens on a
+completed controller click (also on an already-focused field), or programmatic
+text focus in controller mode. It preserves the selection and insertion point,
+supports cursor movement/backspace/case/clear, and commits only on Done. Cancel
+restores the original value. Focus restoration cannot immediately reopen it.
+The preview also accepts physical keyboard input during an input-mode handoff.
+The right stick moves Unity's cursor; Action/Attack selects the virtual keys.
+Explicit pan commands translate the camera like a middle-button drag. Unity
+inverts physical D-pad axes so the view moves toward the pressed direction and
+map content moves opposite, without moving the cursor or changing zoom. Rewired ZoomIn/ZoomOut are ignored
+by this edition. Mouse wheel and left-stick input still travel as wheel input,
+preserving sidebar scrolling and zoom anchoring. Pan pauses for modal dialogs.
 Unity owns the centered Save and launch progress overlay, so it can stay visible
 through converter work, generation, fade and scene activation after the renderer
 has closed. Failures dismiss it and restore editor input.
+
+Game viewport dimensions use one uniform scale within 2560 × 1600. The host
+accepts the resulting axes without minimum-size clamps that would alter the
+aspect ratio. Pointer coordinates use the same viewport. The integrated renderer
+caches the unchanged architecture at the viewport's exact pixel resolution;
+geometry, camera, size, pixel ratio, grid and floor readiness invalidate it.
+Dynamic editing/object overlays remain live, and desktop/web rendering and file
+buttons retain their existing behavior. Idle rendering remains event-driven.
+Unity temporarily suppresses the hidden world's culling, depth and postprocessing
+passes and uses 60 fps for cursor/input while retaining the host's 30 fps.
+It keeps Camera.main available and restores original camera/frame-pacing settings
+before returning to gameplay or loading another scene. Frame pixels are read
+directly into one payload buffer instead of copying a second full image.

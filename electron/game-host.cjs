@@ -55,12 +55,14 @@ function receive(message) {
     else return;
     window.webContents.sendInputEvent(event);
   } else if (message.type === 'resize' && window) {
-    window.setContentSize(Math.max(640, Math.min(2560, message.width)), Math.max(480, Math.min(1600, message.height)));
+    // Unity applies a single aspect-preserving scale. Do not clamp either axis
+    // upward here: that would distort very wide/portrait game windows again.
+    window.setContentSize(Math.max(1, Math.min(2560, Math.round(message.width))), Math.max(1, Math.min(1600, Math.round(message.height))));
     window.webContents.invalidate();
   } else if (message.type === 'frame-ack') { framePending = false; if (latestImage) { const image = latestImage; latestImage = null; paint(image); } }
   else if (message.type === 'input-mode') { gamepadMode = message.gamepad === true; window?.webContents.send('revola:game-input-mode', gamepadMode); }
-  else if (message.type === 'zoom' && Number.isFinite(message.factor) && message.factor > 0)
-    window?.webContents.send('revola:game-zoom', Math.max(.5, Math.min(2, message.factor)));
+  else if (message.type === 'pan' && Number.isFinite(message.x) && Number.isFinite(message.y))
+    window?.webContents.send('revola:game-pan', Math.max(-256, Math.min(256, message.x)), Math.max(-256, Math.min(256, message.y)));
   else if (message.type === 'close-request') window?.webContents.send('revola:game-close');
   else if (message.type === 'shutdown') app.quit();
 }

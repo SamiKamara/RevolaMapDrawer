@@ -257,12 +257,16 @@ progress bar, visible through saving, generation and scene startup. Imported ZIP
 cached source and saved as an owned `.revola` copy; their original exports are
 never overwritten. The game remains paused throughout editing.
 
-Controller support: left stick moves an on-screen cursor; Action or Attack clicks
-and holds to drag; right stick scrolls/zooms; RB pans; Utility returns/cancels.
-The mouse wheel and Rewired ZoomIn/ZoomOut bindings also zoom, including held
-bindings while paused. The game accepts both Unity mouse input APIs without
+Controller support: right stick moves an on-screen cursor; Action or Attack clicks
+and holds to drag; D-pad moves the view in the pressed direction (map content moves opposite); left stick scrolls/zooms;
+RB pans with the cursor; Utility returns/cancels. Rewired ZoomIn/ZoomOut bindings
+do not zoom in this edition. The mouse wheel still zooms. The game accepts both Unity mouse input APIs without
 counting the same wheel notch twice, including after a controller-mode switch.
 Text and number inputs offer an on-screen keyboard when a controller is active.
+Select its keys with the right-stick cursor and Action/Attack. It includes Shift,
+Space, insertion-point arrows, backspace, Clear, Cancel and Done; text is inserted
+at the caret instead of always appended. The map name and keyboard preview have
+a blinking insertion marker, including in the game's offscreen renderer.
 The ordinary mouse and keyboard remain usable and switch input mode automatically.
 The renderer has no general filesystem/network bridge and never opens a separate
 visible editor window. The bundled Electron runtime is an implementation dependency,
