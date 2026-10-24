@@ -22,8 +22,62 @@ Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pen
 - [x] Browser footer shows Version 0.16.1 and its build. Waiting-update unit
   tests and the real worker lifecycle preserve unsaved edits, activate only
   after the last old tab closes and retain offline use on the next visit.
-- [-] Verify matching Unity editor/runtime generation and final game resources.
-- [ ] Record final delivery and publication evidence for 0.16.1.
+- [x] Production Vercel 0.16.1 is ready at
+  [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app), build
+  `b84c072ff9e608c2`. All seven production files match both the final build
+  manifest and local web-dist SHA-256 hashes, including HTML, service worker
+  and app `edcd63dfe4fe8b3f`. Production web/offline and population checks pass.
+  The exact personal-source production probe also passes replacement/cancel,
+  ten NPCs, randomized facing, ship exclusion, Undo/Redo and reopen; its actual
+  footer version/build and screenshot were checked. Original bytes are unchanged.
+- [x] GitHub [Verify application 40039119358](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/40039119358)
+  and [Build release 40039718350](https://github.com/SamiKamara/RevolaMapDrawer/actions/runs/40039718350)
+  pass for release commit `c49eb78b`. Downloaded GitHub ZIP/checksum agree, and
+  the maintained archive verifier compares all 77 portable files byte-for-byte
+  with the final local package. The downloaded extracted app passes offline
+  native save/reopen and the exact 36-wall graph round trip, with zero renderer
+  errors or network requests. Published
+  [v0.16.1](https://github.com/SamiKamara/RevolaMapDrawer/releases/tag/v0.16.1)
+  as latest stable with the verified two assets. Published ZIP SHA-256:
+  `ead10bfddebcbba1f222dc35248c665041baf1af97b97c6907472aa1e207a02f`.
+- [x] Inspect the actual refreshed desktop shortcut: canonical packaged
+  executable, empty arguments, repository working directory and all referenced
+  paths exist. Launch the actual shortcut normally; the clean Untitled map
+  editor was observed, then closed with Alt+F4. The final packaged personal-map
+  probe also passes with 27 valid objects and zero exclusions.
+- [x] Push matching Unity integration
+  [`21435d7f`](https://github.com/SamiKamara/Revola/commit/21435d7fbcf271cc01f98e3bc107e11e14ce3640)
+  to `main`. Sync all 41 runtime files from clean release commit `c49eb78b`,
+  rebuild Jint/offline renderer and run UserMapBuildSupport.Prepare. Audit the
+  copied runtime resource: serialized values, metadata and all binary bytes
+  except the 64-byte revision remain identical. Runtime revision is
+  `c4da02d24c2da1a0d677a3d98fba3402ea91fe294a14eda5c3579c5ec72f0417`;
+  the packaged game fingerprint is
+  `cde115d985dfe1ea4b490c30f1dbd90a5e70adb4e915ceccb4fdd4a5e5f977bd`.
+- [x] Unity focused groups pass 96/96 and final 30/30, including current closed
+  leaf versus future travel, adjacent NPC bodies, all five categories outside
+  the ship, loot persistence, authored categories and cache/reopen behavior.
+  The two real Reserve maps increase from 6 to 10 and 8 to 13 NPCs, and their
+  generated actors/loadouts apply to scenes. Current door-body checks use native
+  audited rectangles/collider projections; future travel stays available to NPCs.
+  Ship exclusion applies to automatic spawns, not permanent movement boundaries.
+- [x] Fresh Windows development player builds with zero errors (two warnings)
+  and passes its complete automatic embedded Drawer save/launch/edit/relaunch,
+  controller keyboard/cursor/pan/zoom, pause and hub-return flow. Automatic
+  no-object fixtures generate 14 NPCs and 10 NPCs for the personal-map geometry;
+  all categories stay outside the ship, bodies avoid one another and the current
+  closed leaf, prop angles vary, and saved plans reopen exactly. Root/clone
+  Steam source and the original personal map retain their hashes; owned probe
+  sources were removed after comparing their archived copies.
+  Evidence remains in the Unity checkout's ignored PopulationValidation and
+  PopulationRelease0161 folders, plus Builds/PopulationRelease0161/proof.
+  Hidden-player ScreenCapture images are black and do not certify window
+  appearance; rendering/controller assertions inspect the live RawImage texture
+  and exact pixel-hash changes/restoration. Native window control stopped on the
+  user's physical Escape and was not resumed. The actual desktop shortcut UI
+  above was observed before that stop. Personal maps/builds are excluded from Git.
+- [x] Record verified desktop, production-web and GitHub 0.16.1 delivery above;
+  matching native Unity delivery is verified above as well.
 
 ## Release 0.16.0 — 2026-10-24
 

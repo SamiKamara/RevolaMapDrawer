@@ -2,7 +2,8 @@
 
 The browser application is the same specialized **Revola: Post Hyper** editor as the native Windows application. Geometry, world coordinates, ship artwork, project schema and transparent exports are shared. The Windows package remains independently runnable from bundled files.
 
-Production: [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app).
+Production: [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app),
+version **0.16.1**, build `b84c072ff9e608c2` (verified 2026-10-24).
 
 ## Build and verify
 
@@ -46,12 +47,23 @@ Historical measurements for the verified 0.15.0 build: the conservative first-vi
 
 Further build sizes, real network accounting and deployment evidence are recorded in [CHECKLIST.md](CHECKLIST.md). These are response-body figures, not an account quota guarantee; negotiated compression, HTTP headers, service-worker checks and browser cache behavior affect actual usage.
 
-The verified 0.16.0 production build is `097f799c360a1104`. Its conservative
-first-visit estimate is **82,073 bytes** with Brotli text or **110,629 bytes**
-with gzip text, including offline installation's extra HTML request. All seven
-production files match their local SHA-256 hashes. Production checks pass for
-offline reload/export, object generation and expanded legacy-map replacement,
-including cancellation and Undo/Redo; local map actions send no requests.
+Historical 0.16.0 production build `097f799c360a1104` was verified on
+2026-10-24. Its conservative first-visit estimate was **82,073 bytes** with
+Brotli text or **110,629 bytes** with gzip text, including offline installation's
+extra HTML request. Its production checks passed offline reload/export,
+generation and expanded legacy-map replacement with cancellation and Undo/Redo.
+
+The current verified 0.16.1 production build is `b84c072ff9e608c2`. Its
+conservative first-visit estimate is **83,436 bytes** with Brotli text or
+**112,141 bytes** with gzip text, including offline installation's extra HTML
+request. All seven production files match the final build manifest and local
+web-dist SHA-256 hashes, including the app, HTML and service worker. Production
+web/offline and population checks pass; the supplied source regenerates ten NPCs
+with randomized pickup/prop facing and no generated placements inside the ship.
+Confirmation/cancel, Undo/Redo and exact save/reopen also pass. The actual footer
+shows Version 0.16.1 and build b84c072f; its full build identity matches the
+manifest. Local map actions send no requests. The update lifecycle additionally
+retains unsaved maps until every old Drawer tab closes before activation.
 
 ## Deploy
 
