@@ -1,7 +1,7 @@
 import { setupGameTextInput } from './game-text.js';
 
 // Only active in the renderer embedded in Revola's own window.
-export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, blocked, closed, status, setBusy }) {
+export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, blocked, closed, status, setBusy, shared = () => null }) {
   const bridge = window.revolaGame;
   const setGamepadMode = setupGameTextInput();
   document.body.classList.add('game-editor');
@@ -42,8 +42,9 @@ export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, 
   }
   let saving = false;
   async function save(saveAs = false, launch = false) {
+    if (shared() && !shared().host) return;
     if (saving || blocked() || launch && !closed()) return;
-    const project = snapshot();
+    let project = snapshot();
     let name = project.name;
     if (saveAs) {
       const field = document.createElement('input'); field.required = true; field.maxLength = 80; field.value = name;
@@ -51,6 +52,7 @@ export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, 
       name = await dialog('Save map as', field, 'Save');
       if (name === null) return;
       project.name = name.trim() || 'Untitled map';
+      if (shared()) { await shared().submit(snapshot(), project); project = snapshot(); }
     }
     saving = true; setBusy(true); update(); status(launch ? 'Saving and generating map…' : 'Saving map…');
     try {
@@ -63,10 +65,12 @@ export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, 
     finally { saving = false; setBusy(false); update(); }
   }
   async function close() {
+    if (shared() && !shared().host) return;
     if (saving || document.querySelector('dialog[open]') || !(await confirmReplacement('Leave the map editor?'))) return;
     await bridge.request('close');
   }
   async function open() {
+    if (shared() && !shared().host) return;
     if (saving || blocked() || !(await confirmReplacement())) return;
     try {
       const result = await bridge.request('list');
@@ -80,6 +84,8 @@ export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, 
   const saves = [button('game-save', 'Save', () => save()), button('game-save-as', 'Save as', () => save(true)),
     button('game-launch', 'Save and launch', () => save(false, true))];
   saves[2].classList.add('save-all');
+  const cancelSave = button('game-cancel-save', 'Cancel save', () => bridge.request('cancel-save').catch(error => status(error.message, true)));
+  cancelSave.hidden = true;
   button('game-folder', 'Show in explorer', () => bridge.request('folder').catch(error => status(error.message, true)));
   const back = button('game-back', 'Back to Test maps', close);
   const hint = document.createElement('div'); hint.className = 'gamepad-help'; hint.hidden = true;
@@ -87,10 +93,12 @@ export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, 
   document.querySelector('.topbar').after(hint);
   bridge.onInputMode(value => { hint.hidden = !value; setGamepadMode(value); });
   function update() {
-    for (const element of saves) element.disabled = saving || blocked();
-    saves[2].disabled ||= !closed(); back.disabled = saving;
-    document.getElementById('new-button').disabled = saving;
-    document.getElementById('open-button').disabled = saving;
+    const guest = shared() && !shared().host;
+    cancelSave.hidden = !shared()?.frozen || guest; cancelSave.disabled = !shared()?.canCancel;
+    for (const element of saves) element.disabled = guest || saving || blocked();
+    saves[2].disabled ||= !closed(); back.disabled = guest || saving;
+    document.getElementById('new-button').disabled = guest || saving;
+    document.getElementById('open-button').disabled = guest || saving;
   }
   bridge.onClose(close);
   return { save, open, close, update };

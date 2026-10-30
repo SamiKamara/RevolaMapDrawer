@@ -279,5 +279,7 @@ export function createObjectEditor(api) {
       }
     }
   }
-  return { tool, down, move, up, draw, refresh, remove, cancel, leave, clear() { selectedId = null; cancel(); }, get active() { return !!pending || !!drag || !!route; }, get hasSelection() { return !!selected(); } };
+  return { tool, down, move, up, draw, refresh, remove, cancel, leave,
+    remap(aliases) { selectedId = aliases[selectedId] ?? selectedId; hoveredId = aliases[hoveredId] ?? hoveredId; },
+    clear() { selectedId = null; cancel(); }, get active() { return !!pending || !!drag || !!route; }, get hasSelection() { return !!selected(); } };
 }

@@ -2,6 +2,55 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## In-game multiplayer collaboration — 2026-10-30
+
+- [x] Collaboration is gated by Unity's authenticated initial `shared` capability.
+  Browser/Vercel and standalone desktop remain offline single-user editors.
+  No deployment or standalone collaboration service was added.
+- [x] Host document authority, allocated IDs, shared endpoints, revisioned patches,
+  conflicting-edit rejection and personal author undo/redo. New/Open reset history.
+  All existing completed editing transactions use the same patch path.
+- [x] Three actual offscreen game renderers: wall drawing, mirror, independent
+  undo/redo, host-only file controls, named remote cursors, a failed save barrier,
+  Cancel save and byte-identical independently saved sources. Packaged evidence:
+  `artifacts/shared-game-1793318807582`, including `named-cursors.png`.
+- [x] 393/393 unit tests, complete source/packaged UI regressions, web/offline
+  regressions and source/packaged solo game-host smoke checks pass. Latest solo
+  game-host evidence has 111/114 rendered frames and zero separate visible windows.
+- [x] Full source snapshot/provenance, trusted Jint producer and packaged in-game
+  renderer synchronized to the companion Unity multiplayer branch. The map schema,
+  architecture exports and optional per-category population remain unchanged.
+- [x] Three real Unity players with isolated source/cache directories and simulated
+  WAN: shared pause, author edits, undo/redo, names, one simulated disk failure
+  preventing launch for everyone, retry and the same generated runtime map pass.
+  First runtime evidence: Unity `Library/SD/20261030-020030-6d643bef` under its
+  isolated foundation-1 checkout. Further reconnect/late-join evidence is recorded
+  in Unity's `instructions/multiplayer-test25-shared-drawer.md`.
+- [x] Final Unity multiplayer test 25: 51-scene full build, 50-assembly Release
+  script compile, expanded 3–4-player WAN probe 12/12 (author history after
+  reconnect, cancellation, failed save/retry, a new late joiner's local import),
+  ordinary normal/alternative WAN regressions 38/38 each. Final shared probe:
+  Unity `Library/SD/20261030-021544-89b22efc` under foundation-1. Complete 498-file
+  game ZIP verified before replacing the prior multiplayer test delivery.
+- [x] `npm run package` rebuilt the current Windows package and refreshed the
+  actual desktop `.lnk`. Inspected its direct EXE target, empty arguments and
+  repository working directory; all referenced paths exist. Launched the actual
+  shortcut through Windows Shell and visually verified the normal standalone
+  editor via computer-use. Packaged source verification: 41 files / 45 entries.
+- [ ] Real two-account Steam acceptance, physical guest controller acceptance
+  and long concurrent-edit stress tests remain pending. No public release/tag,
+  Vercel deployment or companion-main push is implied by this milestone.
+
+### Source checkpoint — 2026-10-30
+
+The user requested committing and pushing the completed integration to each
+repository's active branch: Drawer `main` and Unity
+`codex/steam-multiplayer-wip`. This checkpoint includes Unity multiplayer tests
+25–27; test 27 adds the managerless guest Rewired controller fix. Its full build,
+Release compile, 1/1 controller test, 33/33 regressions and 14/14 shared WAN probe
+passed. Physical Steam Deck retesting remains pending. No release tag or version
+change is part of this checkpoint.
+
 ## Door-neighbor NPCs, ship exclusion and browser updates — 2026-10-24
 
 - [x] Reproduce the supplied source with the 0.15 generator: its complete 15-object

@@ -2,6 +2,40 @@
 
 Implementation baseline: version 0.14.0. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
 
+## In-game multiplayer collaboration
+
+Only Unity's authenticated in-game bridge can return an initial `shared`
+capability. `app.js` dynamically loads `shared-game.js` for that capability;
+browser/Vercel and standalone desktop editions retain their single-user history,
+file controls and offline behavior. They do not host or join shared sessions.
+
+Unity's host runs `SharedDocumentAuthority` from `shared-document.js` inside its
+trusted bundled Jint producer. Finished UI transactions submit entity/field
+patches with before values, document revision and a monotonically increasing
+author operation ID. The host derives authors from authenticated connections,
+allocates new identities, merges coincident graph endpoints, validates the whole
+result and broadcasts the canonical transaction. Personal tools, camera and
+incomplete gestures stay local. Remote results wait until a local gesture ends;
+its patch still compares against the gesture's original baseline. Conflicts
+resynchronize and explain the rejection rather than overwriting another edit.
+
+Undo/redo histories belong to Steam authors for the lifetime of the document.
+An inverse patch preserves independent edits; changed entities or invalid graph
+dependencies reject the undo. New/Open resets the document and its histories.
+Cursor coordinates are transient, best-effort presence with small literal Steam
+names, rendered in each participant's camera. Source files contain neither
+personal history nor cursor presence. The map schema remains unchanged.
+
+The game host owns opening, New/Open, closing, Save and Save and launch. Unity
+freezes edits while every participant persists the same normalized source and
+imports its own local library entry, verified by content hash. A failed save
+keeps the editor open; a waiting save can be cancelled by the host. The host
+generates and starts the runtime map after all acknowledgements. Unity also
+persists the source for late runtime joiners before offering the world. No
+renderer frames travel between players; every player renders locally inside the
+same paused game window. The Unity multiplayer development branch carries this
+integration; no Vercel deployment or standalone collaboration release is needed.
+
 ## Product and first milestone
 
 A standalone, offline Windows map editor specialized for **Revola: Post Hyper**, not a general-purpose drawing application. Draw white, constant-width walls at multiples of 45 degrees on a black editing canvas. A fixed ship and airlock anchor the lower part of every map. The current application exports transparent wall PNG/SVG and separate closed-map floor PNG/SVG images; wall PNG and JSON project files retain editable geometry.

@@ -15,7 +15,7 @@ app.commandLine.appendSwitch('force-device-scale-factor', '1');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 let window, socket, buffer = Buffer.alloc(0), serial = 0, framePending = false, latestImage, gamepadMode = false;
 const pending = new Map();
-const operations = new Set(['initial', 'new', 'list', 'open', 'save', 'folder', 'close']);
+const operations = new Set(['initial', 'new', 'list', 'open', 'save', 'folder', 'close', 'shared', 'cursor', 'snapshot', 'cancel-save']);
 function send(value) {
   const body = Buffer.from(JSON.stringify(value));
   const header = Buffer.alloc(5); header.writeUInt32LE(body.length + 1); header[4] = 1;
@@ -31,13 +31,14 @@ ipcMain.handle('revola:game', async (event, operation, options) => {
   if (operation === 'initial') window.webContents.send('revola:game-input-mode', gamepadMode);
   const id = ++serial;
   const message = { ...options, type: 'request', id, operation };
-  if (Buffer.byteLength(JSON.stringify(message)) > 5 * 1024 * 1024) throw new Error('Project exceeds the game limit.');
+  if (Buffer.byteLength(JSON.stringify(message)) > 12 * 1024 * 1024) throw new Error('Project exceeds the game limit.');
   return new Promise((resolve, reject) => { pending.set(id, { resolve, reject }); send(message); });
 });
 ipcMain.on('revola:game-dirty', (event, dirty) => {
   try { trusted(event); send({ type: 'dirty', dirty: dirty === true }); } catch { /* Untrusted frame. */ }
 });
 function receive(message) {
+  if (message.type === 'shared-event') { window?.webContents.send('revola:game-shared', message.payload); return; }
   if (message.type === 'response') {
     const request = pending.get(message.id); if (!request) return;
     pending.delete(message.id);
@@ -107,7 +108,7 @@ app.whenReady().then(() => {
     buffer = Buffer.concat([buffer, bytes]);
     while (buffer.length >= 4) {
       const length = buffer.readUInt32LE(0);
-      if (length < 2 || length > 6 * 1024 * 1024) { socket.destroy(); return; }
+      if (length < 2 || length > 12 * 1024 * 1024) { socket.destroy(); return; }
       if (buffer.length < length + 4) return;
       const packet = buffer.subarray(4, length + 4); buffer = buffer.subarray(length + 4);
       if (packet[0] !== 1) { socket.destroy(); return; }

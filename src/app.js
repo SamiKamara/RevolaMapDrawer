@@ -33,6 +33,7 @@ let spaceHeld = false, busy = false, scheduled = false;
 let clipboard = null, paste = null;
 let floor = null, floorKey = '', floorPendingKey = '', starsPattern, starsRequested = false;
 let gameEditor;
+let sharedEditor;
 let objectGeneration;
 let gameBackground;
 function loadStars() {
@@ -107,8 +108,8 @@ function refresh() {
   $('dirty-dot').classList.toggle('dirty', changed);
   if (document.activeElement !== $('map-name')) $('map-name').value = doc.name;
   $('graph-stats').textContent = `${doc.edges.length} walls · ${doc.edges.reduce((count, e) => count + e.doors.length, 0)} doors`;
-  $('undo-button').disabled = busy || !history.length;
-  $('redo-button').disabled = busy || !future.length;
+  $('undo-button').disabled = busy || !(sharedEditor ? sharedEditor.canUndo : history.length);
+  $('redo-button').disabled = busy || !(sharedEditor ? sharedEditor.canRedo : future.length);
   for (const id of ['new-button', 'open-button', 'mirror-button', 'map-name', 'guide-rotate-room']) $(id).disabled = busy;
   for (const button of document.querySelectorAll('[data-tool]')) button.disabled = busy;
   $('mirror-label').textContent = doc.ship.mirrored ? 'Ship facing left' : 'Ship facing right';
@@ -145,9 +146,12 @@ function commit(operation, message) {
     const result = operation();
     const after = JSON.stringify(doc);
     if (before !== after) {
-      history.push(before);
-      if (history.length > 100) history.shift();
-      future = [];
+      if (sharedEditor) sharedEditor.submit(JSON.parse(before), JSON.parse(after));
+      else {
+        history.push(before);
+        if (history.length > 100) history.shift();
+        future = [];
+      }
       if (message) status(message + (doc.width > previousWidth ? ' Canvas expanded to 16384 × 16384 around the same center.' : ''));
     }
     refresh();
@@ -219,6 +223,7 @@ function setTool(next) {
 function undo() {
   if (busy) return;
   if (paste) { cancelGesture(); status('Paste canceled.'); return; }
+  if (sharedEditor) { cancelGesture(); sharedEditor.undo(); return; }
   if (!history.length) return;
   future.push(JSON.stringify(doc)); doc = JSON.parse(history.pop()); cancelGesture();
   status('Undone.'); refresh();
@@ -226,6 +231,7 @@ function undo() {
 function redo() {
   if (busy) return;
   if (paste) { cancelGesture(); status('Paste canceled.'); return; }
+  if (sharedEditor) { cancelGesture(); sharedEditor.redo(); return; }
   if (!future.length) return;
   history.push(JSON.stringify(doc)); doc = JSON.parse(future.pop()); cancelGesture();
   status('Redone.'); refresh();
@@ -570,6 +576,7 @@ function render() {
     ctx.beginPath(); ctx.arc(pointer.x, pointer.y, eraserRadius(), 0, Math.PI * 2);
     ctx.fillStyle = '#e5bca515'; ctx.fill(); ctx.strokeStyle = '#e5bca5'; ctx.lineWidth = 1.2 / camera.scale; ctx.stroke();
   }
+  sharedEditor?.draw(ctx, camera);
   $('zoom-value').textContent = `${Math.round(camera.scale * 100)}%`;
 }
 
@@ -745,7 +752,9 @@ function replaceDocument(next) {
   cancelGesture(); fit(); refresh();
 }
 async function newDocument() {
+  if (sharedEditor && !sharedEditor.host) return;
   if (busy || !(await confirmReplacement())) return;
+  if (sharedEditor) { if (sharedEditor.host) await window.revolaGame.request('new'); return; }
   if (window.revolaGame) await window.revolaGame.request('new');
   replaceDocument(model.createDocument()); status('New map ready. Start drawing above the airlock.');
 }
@@ -819,7 +828,7 @@ async function saveAll() {
       status(`Downloaded ${zipName} · all five formats included · ${(bytes.length / 1024).toFixed(0)} KB`);
     }
   } catch (error) { status(`Could not save all: ${error.message}`, true); }
-  finally { saving(false); }
+  finally { saving(sharedEditor?.frozen ?? false); }
 }
 async function saveDocument(kind = 'png') {
   if (busy || gesture || paste || wallStart || objectEditor.active) return;
@@ -955,7 +964,8 @@ if (window.revolaGame) {
     renderSoon();
   });
   gameEditor = setupGameEditor({ snapshot: () => model.validateDocument(clone(doc)),
-    replace: project => replaceDocument(model.validateDocument(project)), confirmReplacement,
+    replace: project => { if (!sharedEditor) replaceDocument(model.validateDocument(project)); }, confirmReplacement,
+    shared: () => sharedEditor,
     saved: project => { savedState = JSON.stringify(project); refresh(); },
     blocked: () => busy || !!gesture || !!paste || !!wallStart || objectEditor.active,
     closed: () => floor?.closed && floorKey === floorGeometryKey() && !floorPendingKey, status, setBusy: saving });
@@ -963,6 +973,25 @@ if (window.revolaGame) {
   try {
     const file = await window.revolaGame.request('initial');
     if (file?.project) replaceDocument(model.validateDocument(JSON.parse(file.project)));
+    // Deliberately outside the browser dependency graph: Vercel and standalone
+    // desktop have neither this game bridge nor the shared-session capability.
+    const sharedFactory = file?.shared ? (await import(new URL('./shared-game.js', import.meta.url).href)).sharedGame : null;
+    if (sharedFactory) sharedEditor = sharedFactory(file, {
+      blocked: () => !!gesture || !!paste || objectEditor.active,
+      apply: (project, reset) => {
+        if (reset) replaceDocument(model.validateDocument(project));
+        else { doc = model.validateDocument(clone(project)); selected = pruneSelection(doc, selected); refresh(); }
+      }, busy: saving, status, render: renderSoon, pointer: () => pointer,
+      saved: project => { savedState = JSON.stringify(project); refresh(); },
+      remap: aliases => {
+        selected = { edgeIds: selected.edgeIds.map(id => aliases[id] ?? id), vertexIds: selected.vertexIds.map(id => aliases[id] ?? id) };
+        objectEditor.remap(aliases);
+      },
+      history: () => {
+        if (!sharedEditor) return;
+        $('undo-button').disabled = busy || !sharedEditor.canUndo; $('redo-button').disabled = busy || !sharedEditor.canRedo;
+      }, host: () => gameEditor?.update(),
+    });
     status('Revola map editor ready. Save maps here, then Save and launch to test.');
   } catch (error) { status(`Could not open map: ${error.message}`, true); }
   finally { saving(false); }
