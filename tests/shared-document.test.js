@@ -63,3 +63,33 @@ test('conflicting changes do not overwrite document; reset clears author histori
   assert.throws(() => edit(host, '2', base, next), /cannot be applied/); assert.equal(host.document.name, 'A');
   host.reset(base); assert.equal(host.state('1').canUndo, false); assert.equal(host.revision, 0);
 });
+
+test('reopening a shared source lets its original guest draw first without colliding with saved ids', () => {
+  const first = new SharedDocumentAuthority(model.createDocument());
+  edit(first, '2', first.document, wall(first.document, 1000));
+  const saved = copy(first.document), reopened = new SharedDocumentAuthority(JSON.stringify(saved));
+  const event = edit(reopened, '2', reopened.document, wall(reopened.document, 2500));
+  assert.equal(reopened.document.edges.length, 2);
+  assert.deepEqual(reopened.document.edges[0], saved.edges[0]);
+  assert.deepEqual(reopened.document.vertices.slice(0, 2), saved.vertices);
+  assert.equal(new Set([...reopened.document.vertices, ...reopened.document.edges].map(value => value.id)).size, 6);
+  reopened.execute('2', { id: 2, revision: event.revision, action: 'undo' });
+  assert.deepEqual(reopened.document, saved);
+  reopened.execute('2', { id: 3, revision: reopened.revision, action: 'redo' });
+  assert.equal(reopened.document.edges.length, 2);
+});
+
+test('allocated identities avoid existing vertices edges doors gaps and gameplay objects after reset', () => {
+  const initial = model.createDocument(); model.addWall(initial, { x: 1000, y: 1000 }, { x: 3000, y: 1000 });
+  model.addDoor(initial, initial.edges[0].id, { x: 2000, y: 1000 });
+  initial.vertices[0].id = 'p2_1_1'; initial.vertices[1].id = 'p2_1_2';
+  const edge = initial.edges[0]; edge.id = 'p2_1_3'; edge.a = initial.vertices[0].id; edge.b = initial.vertices[1].id;
+  edge.doors[0].id = 'p2_1_4'; edge.gaps = [{ id: 'p2_1_5', start: .1, end: .2 }];
+  initial.objects = [{ id: 'p2_1_6', category: 'crates', type: '', x: 1500, y: 2000, rotation: 0 }];
+  const host = new SharedDocumentAuthority(initial), saved = copy(host.document);
+  edit(host, '2', host.document, wall(host.document, 3500));
+  assert.deepEqual(host.document.edges[0], saved.edges[0]);
+  assert.deepEqual(host.document.objects, saved.objects);
+  const ids = [...host.document.vertices, ...host.document.edges, ...host.document.edges.flatMap(value => [...value.doors, ...value.gaps]), ...host.document.objects].map(value => value.id);
+  assert.equal(new Set(ids).size, ids.length);
+});

@@ -48,7 +48,16 @@ export function applyDocumentPatch(document, changes, strict = true) {
 function allocate(document, changes, prefix) {
   if (!Array.isArray(changes) || changes.length > 50000) throw new Error('Invalid shared edit.');
   const aliases = Object.create(null), skip = new Set(); let serial = 0;
-  const allocateId = id => { if (!aliases[id]) aliases[id] = `${prefix}_${++serial}`; };
+  // A saved shared map retains its canonical IDs, while a newly opened
+  // authority starts its transaction counter at zero. Reserve the complete
+  // existing namespace, including nested openings and gameplay objects.
+  const used = new Set([...document.vertices, ...document.edges, ...(document.objects ?? []),
+    ...document.edges.flatMap(edge => [...edge.doors, ...(edge.gaps ?? [])])].map(value => value.id));
+  const allocateId = id => {
+    if (aliases[id]) return;
+    let value; do { value = `${prefix}_${++serial}`; } while (used.has(value));
+    used.add(value); aliases[id] = value;
+  };
   for (const change of changes) if (groups.includes(change.kind) && change.before === null && change.after) {
     if (change.kind === 'vertices') {
       const shared = document.vertices.find(v => v.x === change.after.x && v.y === change.after.y);
