@@ -11,7 +11,7 @@ import { SharedDocumentAuthority } from '../src/shared-document.js';
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const peers = [], apps = [], errors = [], session = crypto.randomBytes(16).toString('hex');
 let document = crypto.randomBytes(16).toString('hex'), failSave = true, launches = 0, cursorRelays = 0;
-let cancelProbe = false, cancelPendingSave;
+let cancelProbe = false, cancelPendingSave, suppressCursors = false;
 const project = createDocument();
 const points = [[3739.5,4740],[3739.5,4400],[2000,4400],[2000,1000],[6500,1000],[6500,4400],[4452.5,4400],[4452.5,4740]];
 for (let i = 1; i < points.length; i++) addWall(project, { x: points[i-1][0], y: points[i-1][1] }, { x: points[i][0], y: points[i][1] }, { joinTolerance: 0 });
@@ -35,7 +35,7 @@ async function request(peer, message) {
       case 'snapshot': send(peer, { type: 'shared-event', payload: state(peer.author) }); break;
       case 'cursor': {
         const position = JSON.parse(message.data); cursorRelays++;
-        event({ ...position, kind: 'cursor', author: peer.author, name: `Steam player ${peer.author}` }); break;
+        if (!suppressCursors) event({ ...position, kind: 'cursor', author: peer.author, name: `Steam player ${peer.author}` }); break;
       }
       case 'save': {
         assert.equal(peer.author, '1', 'Guests cannot save or launch');
@@ -132,8 +132,63 @@ try {
   failSave = false; await host.locator('#game-launch').click(); await expect.poll(() => launches).toBe(1);
   const saved = await Promise.all(peers.map(peer => fs.readFile(path.join(output, peer.author, 'shared.revola'), 'utf8')));
   assert.equal(new Set(saved).size, 1); assert.equal(saved[0], JSON.stringify(authority.document));
+
+  // Returning from gameplay creates a new authority over the same saved source.
+  // The original guest must be able to draw first, with no host edit consuming
+  // the colliding transaction namespace in between.
+  async function replaceShared(project) {
+    authority.reset(project); document = crypto.randomBytes(16).toString('hex');
+    for (const peer of peers) send(peer, { type: 'shared-event', payload: state(peer.author) });
+    for (const peer of peers) {
+      await expect(peer.page.locator('#map-name')).toHaveValue(authority.document.name);
+      await expect(peer.page.locator('#map-name')).toBeEnabled();
+    }
+  }
+  async function guestWall(y, count) {
+    await guest.locator('[data-tool="wall"]').click(); await guest.locator('#map-canvas').focus(); await guest.keyboard.press('f');
+    const box = await guest.locator('#map-canvas').boundingBox();
+    const scale = Math.min((box.width - 64) / 8192, (box.height - 52) / 8192);
+    const x = box.x + (box.width - 8192 * scale) / 2 + 500 * scale;
+    const top = box.y + (box.height - 8192 * scale) / 2 + y * scale;
+    await guest.mouse.move(x, top); await guest.mouse.down(); await guest.mouse.move(x + 500 * scale, top, { steps: 5 }); await guest.mouse.up();
+    await expect.poll(() => authority.document.edges.length).toBe(count); await expect(guest.locator('#map-name')).toBeEnabled();
+  }
+  await replaceShared(project); await guestWall(500, originalEdges + 1);
+  const playedSource = JSON.stringify(authority.document), originalWall = structuredClone(authority.document.edges.at(-1));
+  await fs.writeFile(path.join(output, 'before-playing.revola'), playedSource);
+  await replaceShared(JSON.parse(await fs.readFile(path.join(output, 'before-playing.revola'), 'utf8')));
+  await new Promise(resolve => setTimeout(resolve, 11000));
+  await guestWall(1500, originalEdges + 2);
+  assert.deepEqual(authority.document.edges.find(value => value.id === originalWall.id), originalWall);
+  await guest.locator('#undo-button').click(); await expect.poll(() => authority.document.edges.length).toBe(originalEdges + 1);
+  assert.deepEqual(authority.document, JSON.parse(playedSource));
+  await guest.locator('#redo-button').click(); await expect.poll(() => authority.document.edges.length).toBe(originalEdges + 2);
+
+  // Observe actual overlay paints between two known packets. No test accessor
+  // or extra network/presentation command is added to the application.
+  suppressCursors = true;
+  await host.locator('#map-canvas').focus(); await host.keyboard.press('f');
+  await host.evaluate(() => {
+    window.cursorPaints = [];
+    const move = CanvasRenderingContext2D.prototype.moveTo;
+    CanvasRenderingContext2D.prototype.moveTo = function (x, y) {
+      if (this.canvas.id === 'map-canvas' && this.font === '11px system-ui' && this.strokeStyle === '#dab2ff')
+        window.cursorPaints.push({ x, y, at: performance.now() });
+      return move.call(this, x, y);
+    };
+  });
+  const cursorPacket = (x, visible = true) => send(peers[0], { type: 'shared-event', payload: {
+    session, document, kind: 'cursor', author: '2', name: 'Steam player 2', x, y: 3000, visible } });
+  cursorPacket(1000, false); cursorPacket(1000); await new Promise(resolve => setTimeout(resolve, 150));
+  await host.evaluate(() => { window.cursorPaints = []; }); cursorPacket(3000);
+  await new Promise(resolve => setTimeout(resolve, 350));
+  const paints = await host.evaluate(() => window.cursorPaints);
+  const positions = new Set(paints.map(value => Math.round(value.x * 100) / 100));
+  assert.ok(positions.size >= 8, `Remote cursor must render intermediate positions without more packets: ${positions.size}`);
+  await fs.writeFile(path.join(output, 'cursor-paints.json'), JSON.stringify(paints, null, 2));
+  await host.screenshot({ path: path.join(output, 'smoothed-cursor.png') }); suppressCursors = false;
   for (const peer of peers) await peer.page.screenshot({ path: path.join(output, `player-${peer.author}.png`) });
-  assert.deepEqual(errors, []); console.log('PASS shared in-game source UI: three editors, authors, undo/redo, cursor relay, host controls, failed save barrier and identical local sources. ' + output);
+  assert.deepEqual(errors, []); console.log('PASS shared in-game UI: three editors, author history, guest-first drawing after saved-source reopen and 11 seconds idle, local cursor animation, host controls, failed save barrier and identical local sources. ' + output);
 } catch (error) {
   console.error(JSON.stringify({ statuses: await Promise.all(peers.map(peer => peer.page?.locator('#status-message').textContent().catch(() => null))),
     edges: authority.document.edges, vertices: authority.document.vertices, history: [...authority.histories] }));

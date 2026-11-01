@@ -1,4 +1,5 @@
 import { applyDocumentPatch, documentPatch } from './shared-document.js';
+import { SharedCursors } from './shared-cursors.js';
 
 // Activated only by the authenticated Unity game bridge's initial capability.
 // Browser and standalone desktop windows have no such bridge or capability.
@@ -7,7 +8,13 @@ export function sharedGame(initial, api) {
   let documentId = info.document, revision = info.revision, authoritative = JSON.parse(initial.project), serial = info.lastId ?? 0;
   let queued = null, pending = false, frozen = info.frozen === true, canUndo = info.canUndo, canRedo = info.canRedo;
   let canCancel = info.cancelable === true;
-  const cursors = new Map();
+  const cursors = new SharedCursors();
+  let cursorFrame = false;
+  function animateCursors() {
+    if (cursorFrame || !cursors.moving(performance.now())) return;
+    cursorFrame = true;
+    requestAnimationFrame(() => { cursorFrame = false; api.render(); animateCursors(); });
+  }
   function enqueue(project, reset = false) { queued = { project, reset }; flush(); }
   function flush() {
     if (queued && !pending && !api.blocked()) { const value = queued; queued = null; api.apply(value.project, value.reset); }
@@ -19,7 +26,7 @@ export function sharedGame(initial, api) {
       const reset = value.document !== documentId;
       documentId = value.document; revision = value.revision; authoritative = JSON.parse(value.project);
       canUndo = value.canUndo; canRedo = value.canRedo; serial = Math.max(reset ? 0 : serial, value.lastId ?? 0); pending = false;
-      api.busy(frozen); if (reset) cursors.clear();
+      api.busy(frozen); if (reset) { cursors.clear(); api.render(); }
       enqueue(authoritative, reset);
     } else if (value.document !== documentId) return;
     else if (value.kind === 'change') {
@@ -29,7 +36,7 @@ export function sharedGame(initial, api) {
       if (value.author === info.author) { canUndo = value.canUndo; canRedo = value.canRedo; api.remap?.(value.aliases ?? {}); }
       enqueue(authoritative);
     } else if (value.kind === 'cursor') {
-      if (value.author !== info.author) { cursors.set(value.author, { ...value, received: performance.now() }); api.render(); }
+      if (value.author !== info.author) { cursors.update(value, performance.now()); api.render(); animateCursors(); }
     } else if (value.kind === 'freeze') { frozen = value.active; canCancel = value.cancelable === true; api.busy(frozen || pending); api.status(value.message || (frozen ? 'Waiting for all players to save…' : 'Shared map ready.')); }
     else if (value.kind === 'saved') { api.saved(authoritative); }
   }
@@ -53,13 +60,13 @@ export function sharedGame(initial, api) {
       previousCursor = text; lastCursor = now;
       bridge.request('cursor', { data: text }).catch(() => {});
     }
-    for (const [id, value] of cursors) if (now - value.received > 3000) { cursors.delete(id); api.render(); }
+    if (cursors.expire(now)) api.render();
   }, 66);
   return { host: info.host, get frozen() { return frozen; }, get canCancel() { return canCancel; }, get canUndo() { return canUndo; }, get canRedo() { return canRedo; },
     submit: (before, after) => send('edit', before, after), undo: () => send('undo'), redo: () => send('redo'),
     draw(ctx, camera) {
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = '11px system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      for (const value of cursors.values()) {
+      for (const value of cursors.values(performance.now())) {
         if (!value.visible) continue;
         const x = value.x * camera.scale + camera.x, y = value.y * camera.scale + camera.y;
         let color = 0; for (const character of value.author) color = (color * 31 + character.charCodeAt(0)) >>> 0;

@@ -2,6 +2,45 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Reopened shared-map identities and remote cursor presentation — 2026-11-01
+
+- [x] Reproduce the false conflict when the same guest edits first after a saved
+  shared source is reopened. A host edit in between can advance the transaction
+  namespace past the collision; elapsed idle time does not release it.
+- [x] Reserve existing vertex/wall/opening/object IDs when allocating identities.
+  Preserve real conflict rejection, existing sources and personal undo/redo.
+- [x] Receiver-local remote cursor smoothing, independent trajectories, immediate
+  hide/reappearance, packet-age expiry, reset cleanup and idle repaint stopping.
+  No pointer/input smoothing, network additions or map-format changes.
+- [x] 402/402 unit tests; complete source and packaged UI regressions pass.
+  Three offscreen renderers verify actual guest wall input after reopening the
+  saved source and 11 seconds without host edits, exact undo/redo and intermediate
+  cursor paints without additional packets. Evidence:
+  `artifacts/shared-game-1793544843494` (source),
+  `artifacts/shared-game-1793545274117` (packaged), including `cursor-paints.json`.
+- [x] Solo game-host source (111 frames) and packaged (113 frames) checks pass with
+  zero separate visible windows. One packaged run timed out sampling a blinking
+  caret pixel; the unchanged package passed on retry. Evidence:
+  `artifacts/test39-game.log`, `artifacts/test39-game-packaged-retry.log`.
+- [x] Rebuilt standalone package: 42 maintained source files / 46 archive entries.
+  `postpackage` refreshed the actual desktop shortcut. Verified its EXE target,
+  empty arguments, repository working directory and existing paths; launched the
+  actual `.lnk`, then Computer Use confirmed the clean standalone editor opened.
+- [x] Unity producer/snapshot/package synchronized. Old producer fails both new
+  native Jint cases; fixed producer passes. 871 Unity regressions pass, with five
+  separate-MapManager-checkout tests explicitly skipped by their path guard.
+  Four actual Windows players pass 17/17 WAN checks, including playing, reopening
+  the saved map, guest-first editing after 11 seconds without host edits, exact
+  undo/redo and four byte-verified source/cache saves. Final runtime evidence:
+  Unity foundation-1 `Library/SD/20261101-172601-ffa28d39/result.json`.
+  Complete multiplayer delivery validation is recorded in Unity's
+  `instructions/multiplayer-test39-drawer-reopen-cursors.md`.
+- [x] Companion multiplayer test 39: 50-assembly Release compile, 51-scene
+  non-Development Windows build and 379-file ZIP/delivery verification pass.
+  The delivered embedded renderer matches the tested package byte-for-byte.
+- [ ] Two-account physical Steam/controller acceptance remains user-side. This
+  milestone does not publish a release, create a tag or deploy the web edition.
+
 ## In-game multiplayer collaboration — 2026-10-30
 
 - [x] Collaboration is gated by Unity's authenticated initial `shared` capability.

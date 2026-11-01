@@ -19,12 +19,23 @@ incomplete gestures stay local. Remote results wait until a local gesture ends;
 its patch still compares against the gesture's original baseline. Conflicts
 resynchronize and explain the rejection rather than overwriting another edit.
 
+Identity allocation reserves every ID already in the source, including vertices,
+walls, nested doors/gaps and gameplay objects. Returning from gameplay creates a
+new authority with a fresh transaction counter over a saved project that still
+contains canonical author IDs; those IDs must never be allocated again.
+
 Undo/redo histories belong to Steam authors for the lifetime of the document.
 An inverse patch preserves independent edits; changed entities or invalid graph
 dependencies reject the undo. New/Open resets the document and its histories.
 Cursor coordinates are transient, best-effort presence with small literal Steam
 names, rendered in each participant's camera. Source files contain neither
 personal history nor cursor presence. The map schema remains unchanged.
+Each receiver smooths its remote cursors locally with a 55 ms exponential
+settling time. Animation frames repaint intermediate positions between packets;
+stationary cursors stop repainting. A first appearance or reappearance snaps to
+the received point, hiding is immediate, and three-second expiry/document reset
+clears presence. Actual outgoing pointer coordinates and edit geometry are never
+smoothed; packet frequency and the wire format are unchanged.
 
 The game host owns opening, New/Open, closing, Save and Save and launch. Unity
 freezes edits while every participant persists the same normalized source and
