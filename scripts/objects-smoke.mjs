@@ -172,6 +172,21 @@ try {
   await openNpc(); await expect(page.locator('[name="currentGeneralState"]')).toHaveValue('manual');
   await page.locator('[name="currentGeneralState"]').selectOption('8'); await page.locator('#npc-form button[type="submit"]').click();
   assert.equal(JSON.parse(await save('manual-to-automatic.revola')).objects.find(o=>o.category==='npc').patrolPoints,undefined,'Automatic patrol removes the manual route');
+  const capped = structuredClone(doc); capped.name = 'NPC limit regression';
+  capped.objects = Array.from({ length: 99 }, (_, i) => ({ id: `npc${i}`, category: 'npc', type: i % 2 ? 'ranged' : 'melee', x: 900 + i % 14 * 400, y: 3900 + Math.floor(i / 14) * 400, rotation: 0 }));
+  const cappedPath = path.join(folder,'npc-limit-input.revola'); await fs.writeFile(cappedPath,JSON.stringify(capped));
+  await desktop.evaluate((_,input)=>global.__objects.opens.push(input),cappedPath); await page.locator('#open-button').click();
+  await expect(page.locator('#document-title')).toHaveText(capped.name);
+  await page.locator('[data-tool="npc"]').click();
+  await page.locator('#object-picker-list').getByRole('button',{name:'Melee NPC',exact:true}).click();
+  await click({x:2000,y:2000}); await click({x:2200,y:2000});
+  await expect(page.locator('#map-error-dialog')).toBeVisible();
+  await expect(page.locator('#map-error-dialog p')).toContainText('99');
+  await expect(page.locator('#map-error-dialog p')).toContainText('Remove existing NPCs');
+  await page.screenshot({path:path.join(folder,'npc-limit.png')});
+  await page.locator('#map-error-dialog button').click();
+  assert.equal(JSON.parse(await save('npc-limit-after.revola')).objects.length,99,'Rejected placement keeps all old objects and adds none');
+  await expect(page.locator('#undo-button')).toBeDisabled();
   await page.screenshot({ path: path.join(folder, 'editor.png') }); assert.deepEqual(errors, []);
   console.log(JSON.stringify({ packaged, objectCount: 6, manualPatrol:true, patrolCount:true, patrolReconfigure:true, patrolCancel:true, patrolMarkersTransient:true, placement: true, facing: true, doorSnap: true, doorPreview:true, doorKinds:true, doorDrag:true, hoverAdvanced: true, partialOverrides: true, creationAndInstanceTypes: true, dragAndRotate: true, deleteUndo: true, reopen: true, architecturePngIdentical: true, errors }));
 } finally { await desktop.evaluate(({ dialog }) => { dialog.showMessageBox = async () => ({ response: 1 }); }); await desktop.close(); }

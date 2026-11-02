@@ -5,6 +5,10 @@ source; it does not by itself mean that a GitHub Release has been published.
 
 ## [Unreleased]
 
+- Limit new placements to 99 NPCs and 50 each of barrels, crates, door objects, weapons and devices; show a dismissible explanation only when exceeded. Preserve oversized legacy sources for editing.
+- Show structured game-generation failures in a centered OK dialog with persistent white map highlights when source locations are known. Keep diagnostics outside source/history/exports.
+- Show shared in-game player cursors over the full interface, including dialogs, while retaining receiver-local smoothing and map coordinates over the drawing area.
+
 ## [0.16.1] - 2026-10-24
 
 Correct automatic placement capacity and make browser updates visible for **Revola: Post Hyper**.

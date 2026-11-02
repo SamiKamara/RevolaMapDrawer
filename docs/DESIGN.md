@@ -95,7 +95,16 @@ Absence and an empty array retain automatic game generation. Categories are `npc
 `doors`, `crates`, `barrels`, `weapons`, `devices`; positions use the original world
 pixels and rotation is clockwise degrees from source +X. Catalog keys identify
 canonical game prefabs through a fixed allowlist, never imported asset paths/code.
-At most 4096 objects are accepted. NPC `npc` contains only explicitly overridden
+The source parser accepts at most 4096 objects for legacy compatibility. New
+placements and automatic Drawer population allow 99 NPCs and 50 each of barrels,
+crates, door objects, weapons and devices. Weapons/devices have independent limits.
+Only an exceeded category opens a centered error with its limit and removal advice.
+Opening an old oversized source preserves it; edits/deletions remain possible,
+while another increase is rejected. Shared edits enforce this atomically on the
+host after concurrent changes merge. Undo/Redo can restore existing history.
+Unity launch also checks the original counts rather than silently dropping excess
+placements. Structural doorway gaps remain geometry; the door-object limit counts
+authored gameplay doors. NPC `npc` contains only explicitly overridden
 allowlisted fields; false and zero remain meaningful overrides. Other fields use
 the game's existing generation preset. States are standing (0), random wander (1)
 and patrol (8). Patrol uses generated destinations unless optional `patrolPoints`
@@ -115,8 +124,12 @@ discard the draft and keep the previous route. **Reconfigure route** repeats the
 count and placement steps; saving any other state removes the manual route.
 Unity transforms the exact ordered points, certifies their character footprint and
 native paths from spawn through each point and back to the first, and reserves
-destinations before placing automatic props. An invalid route reports the NPC/point;
-it is never silently replaced. Manual patrols target point 1 initially with zero
+destinations before placing automatic props. An invalid point is replaced, in the
+generated plan only, by the nearest bounded candidate passing character footprint,
+ship boundary, object clearance and native path checks; loop closure is certified
+too. The source route and shared content hash remain intact. Diagnostics record
+each correction. If no certified replacement exists, generation reports the NPC
+and source point. Manual patrols target point 1 initially with zero
 waits; a one-point route is supported. Both generation paths and runtime plan reopen
 preserve this behavior. Architecture exports never draw routes or their markers.
 An optional `npcWeapon` selects one usable weapon; an absent key keeps the random

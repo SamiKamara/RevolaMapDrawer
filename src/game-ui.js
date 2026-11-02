@@ -1,7 +1,7 @@
 import { setupGameTextInput } from './game-text.js';
 
 // Only active in the renderer embedded in Revola's own window.
-export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, blocked, closed, status, setBusy, shared = () => null }) {
+export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, blocked, closed, status, setBusy, issues, shared = () => null }) {
   const bridge = window.revolaGame;
   const setGamepadMode = setupGameTextInput();
   document.body.classList.add('game-editor');
@@ -62,7 +62,10 @@ export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, 
       saved(project);
       status(shared() ? `${shared().labels.saved.replaceAll('{0}', () => result.name)}${result.warning ? ` ${result.warning}` : launch ? ` ${shared().labels.loading}` : ''}` :
         `Saved ${result.name}.${result.warning ? ` ${result.warning}` : launch ? ' Launching map…' : ''}`);
-    } catch (error) { status(shared() ? error.message || shared().labels.failed : `Could not ${launch ? 'launch' : 'save'}: ${error.message}`, true); }
+    } catch (error) {
+      status(shared() ? error.message || shared().labels.failed : `Could not ${launch ? 'launch' : 'save'}: ${error.message}`, true);
+      if (error.issue || launch && !bridge.onIssue) issues?.show(error.issue || { message: error.message });
+    }
     finally { saving = false; setBusy(false); update(); }
   }
   async function close() {

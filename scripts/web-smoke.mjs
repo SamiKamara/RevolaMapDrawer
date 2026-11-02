@@ -35,6 +35,23 @@ async function verifyGameplayPalettes(page) {
   }
   assert.equal(WEAPONS.length, 10);
 }
+async function verifyObjectLimit(page, snapshot, open, prefix = '') {
+  const capped=createDocument(); capped.name='NPC limit regression';
+  capped.vertices=[{id:'a',x:500,y:500},{id:'b',x:7500,y:500},{id:'c',x:7500,y:7500},{id:'d',x:500,y:7500}];
+  capped.edges=['ab','bc','cd','da'].map(([a,b])=>({id:a+b,a,b,doors:[],gaps:[]}));
+  capped.objects=Array.from({length:99},(_,i)=>({id:`npc${i}`,category:'npc',type:i%2?'ranged':'melee',x:900+i%14*400,y:3900+Math.floor(i/14)*400,rotation:0}));
+  const input=destination(`${prefix}npc-limit-input.revola`); await fs.writeFile(input,JSON.stringify(capped)); await open(input,capped.name);
+  await page.locator('#fit-button').click(); await page.locator('[data-tool="npc"]').click();
+  await page.locator('#object-picker-list').getByRole('button',{name:'Melee NPC',exact:true}).click();
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const click=async p=>{const point=await page.locator('#map-canvas').evaluate((element,p)=>{const r=element.getBoundingClientRect(),t=element.getContext('2d').getTransform();return{x:r.x+(p.x*t.a+t.e)/(element.width/r.width),y:r.y+(p.y*t.d+t.f)/(element.height/r.height)};},p);await page.mouse.click(point.x,point.y);};
+  await click({x:2000,y:2000});await click({x:2200,y:2000});
+  await expect(page.locator('#map-error-dialog')).toBeVisible();await expect(page.locator('#map-error-dialog p')).toContainText('99');
+  await expect(page.locator('#map-error-dialog p')).toContainText('Remove existing NPCs');
+  await page.screenshot({path:destination(`${prefix}npc-limit.png`)});await page.locator('#map-error-dialog button').click();
+  assert.equal((await snapshot(`${prefix}npc-limit-after`)).objects.length,99);await expect(page.locator('#undo-button')).toBeDisabled();
+  return {npcLimit:99, rejectedAtomically:true, popupAndOk:true};
+}
 await fs.access(path.join(output, 'index.html'));
 await fs.mkdir(artifacts, { recursive: true });
 
@@ -313,6 +330,7 @@ if (process.argv.length > 2) {
     const drawingStart = finished.length;
     result.drawingModifiers = await verifyDrawingModifiers(page, snapshot, open, 'production-'); await settle();
     result.manualPatrol = await verifyManualPatrol(page, snapshot, open, 'production-');
+    result.objectLimit = await verifyObjectLimit(page, snapshot, open, 'production-');
     result.drawingActions = finished.slice(drawingStart);
     assert.ok(result.drawingActions.filter(item => !item.fromServiceWorker).every(item => new URL(item.url).pathname === '/sw.js'), 'Production Shift and short corridor drawing use no host resources while offline');
     assert.ok(requests.every(item => ['GET', 'HEAD'].includes(item.method) && (!/^https?:/.test(item.url) || new URL(item.url).origin === deployed.origin)), 'Production editor sends no uploads and contacts no other domain');
@@ -543,6 +561,7 @@ try {
   const drawingStart = hostRequests.length;
   evidence.drawingModifiers = await verifyDrawingModifiers(page, snapshot, open);
   evidence.manualPatrol = await verifyManualPatrol(page, snapshot, open);
+  evidence.objectLimit = await verifyObjectLimit(page, snapshot, open);
   const drawingRequests = hostRequests.slice(drawingStart);
   assert.ok(drawingRequests.every(item => item.path === '/sw.js' && item.bodyBytes === 0), 'Shift square and short corridor drawing operate offline with no host resource traffic');
   evidence.transfers.drawingModifiers = summarize(drawingRequests);

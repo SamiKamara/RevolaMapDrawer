@@ -17,6 +17,8 @@
 !src/floors.js
 !src/model.js
 !src/object-schema.js
+!src/object-limits.js
+!src/map-issues.js
 !src/weapon-catalog.js
 !src/objects.js
 !src/object-editor.js

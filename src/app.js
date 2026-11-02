@@ -16,6 +16,8 @@ import { createObjectEditor } from './object-editor.js';
 import { OBJECT_CATEGORIES } from './object-schema.js';
 import { setupGameEditor } from './game-ui.js';
 import { setupObjectGeneration } from './population-ui.js';
+import { checkObjectLimits } from './object-limits.js';
+import { createMapIssues } from './map-issues.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('map-canvas');
@@ -36,6 +38,15 @@ let gameEditor;
 let sharedEditor;
 let objectGeneration;
 let gameBackground;
+const mapIssues = createMapIssues({ doc: () => doc, render: renderSoon,
+  focus: points => {
+    const left = Math.min(...points.map(p => p.x - p.radius)), right = Math.max(...points.map(p => p.x + p.radius));
+    const top = Math.min(...points.map(p => p.y - p.radius)), bottom = Math.max(...points.map(p => p.y + p.radius));
+    camera.scale = Math.max(.025, Math.min(camera.scale, (container.clientWidth - 80) / Math.max(300, right - left), (container.clientHeight - 80) / Math.max(300, bottom - top)));
+    camera.x = container.clientWidth / 2 - (left + right) / 2 * camera.scale;
+    camera.y = container.clientHeight / 2 - (top + bottom) / 2 * camera.scale;
+  } });
+window.revolaGame?.onIssue?.(issue => mapIssues.show(issue));
 function loadStars() {
   if (starsRequested || starsPattern) return;
   starsRequested = true;
@@ -144,8 +155,10 @@ function commit(operation, message) {
   const previousWidth = doc.width;
   try {
     const result = operation();
+    checkObjectLimits(JSON.parse(before), doc);
     const after = JSON.stringify(doc);
     if (before !== after) {
+      mapIssues.clear();
       if (sharedEditor) sharedEditor.submit(JSON.parse(before), JSON.parse(after));
       else {
         history.push(before);
@@ -159,6 +172,7 @@ function commit(operation, message) {
   } catch (error) {
     doc = JSON.parse(before);
     status(error.message, true);
+    if (error.issue) mapIssues.show(error);
     refresh();
     return false;
   }
@@ -478,6 +492,7 @@ function render() {
   ctx.translate(camera.x, camera.y); ctx.scale(camera.scale, camera.scale);
   ctx.save(); ctx.beginPath(); ctx.rect(bounds.left, bounds.top, boundsDoc.width, boundsDoc.height); ctx.clip();
   objectEditor.draw(ctx);
+  mapIssues.draw(ctx, camera);
   ctx.restore();
   // Drawing previews may cross the current boundary; commit expands the map
   // without moving the camera, content or original center.
@@ -746,6 +761,7 @@ async function confirmReplacement(message = 'Replace the current map?') {
   return new Promise(resolve => { dialog.addEventListener('close', () => resolve(dialog.returnValue === 'discard'), { once: true }); dialog.showModal(); });
 }
 function replaceDocument(next) {
+  mapIssues.clear();
   objectEditor.clear();
   doc = next; savedState = JSON.stringify(doc); history = []; future = []; selected = emptySelection(); selectionMode = 'single';
   objectGeneration?.reset();
@@ -968,7 +984,7 @@ if (window.revolaGame) {
     shared: () => sharedEditor,
     saved: project => { savedState = JSON.stringify(project); refresh(); },
     blocked: () => busy || !!gesture || !!paste || !!wallStart || objectEditor.active,
-    closed: () => floor?.closed && floorKey === floorGeometryKey() && !floorPendingKey, status, setBusy: saving });
+    closed: () => floor?.closed && floorKey === floorGeometryKey() && !floorPendingKey, status, setBusy: saving, issues: mapIssues });
   saving(true);
   try {
     const file = await window.revolaGame.request('initial');
@@ -981,7 +997,7 @@ if (window.revolaGame) {
       apply: (project, reset) => {
         if (reset) replaceDocument(model.validateDocument(project));
         else { doc = model.validateDocument(clone(project)); selected = pruneSelection(doc, selected); refresh(); }
-      }, busy: saving, status, render: renderSoon, pointer: () => pointer,
+      }, busy: saving, status, render: renderSoon, pointer: () => pointer, issues: mapIssues,
       saved: project => { savedState = JSON.stringify(project); refresh(); },
       remap: aliases => {
         selected = { edgeIds: selected.edgeIds.map(id => aliases[id] ?? id), vertexIds: selected.vertexIds.map(id => aliases[id] ?? id) };

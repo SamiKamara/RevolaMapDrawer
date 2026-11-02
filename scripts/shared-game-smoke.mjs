@@ -39,7 +39,7 @@ async function request(peer, message) {
       }
       case 'snapshot': send(peer, { type: 'shared-event', payload: state(peer.author) }); break;
       case 'cursor': {
-        const position = JSON.parse(message.data); cursorRelays++;
+        const position = JSON.parse(message.data); peer.lastCursor = position; cursorRelays++;
         if (!suppressCursors) event({ ...position, kind: 'cursor', author: peer.author, name: `Steam player ${peer.author}` }); break;
       }
       case 'save': {
@@ -189,7 +189,7 @@ try {
     window.cursorPaints = [];
     const move = CanvasRenderingContext2D.prototype.moveTo;
     CanvasRenderingContext2D.prototype.moveTo = function (x, y) {
-      if (this.canvas.id === 'map-canvas' && this.font === '11px system-ui' && this.strokeStyle === '#dab2ff')
+      if (this.canvas.id === 'shared-cursor-overlay' && this.font === '11px system-ui' && this.strokeStyle === '#dab2ff')
         window.cursorPaints.push({ x, y, at: performance.now() });
       return move.call(this, x, y);
     };
@@ -204,6 +204,20 @@ try {
   assert.ok(positions.size >= 8, `Remote cursor must render intermediate positions without more packets: ${positions.size}`);
   await fs.writeFile(path.join(output, 'cursor-paints.json'), JSON.stringify(paints, null, 2));
   await host.screenshot({ path: path.join(output, 'smoothed-cursor.png') }); suppressCursors = false;
+  suppressCursors = true;
+  await host.mouse.move(15, 60);
+  await expect.poll(() => peers[0].lastCursor?.space).toBe('ui');
+  assert.ok(peers[0].lastCursor.x >= 0 && peers[0].lastCursor.x <= 1);
+  await host.evaluate(() => document.getElementById('confirm-dialog').showModal());
+  const uiCursor = { session, document, kind: 'cursor', author: '2', name: 'Steam player 2', x: .5, y: .5, visible: true, space: 'ui' };
+  send(peers[0], { type: 'shared-event', payload: uiCursor });
+  await expect.poll(() => host.evaluate(() => {
+    const canvas = document.getElementById('shared-cursor-overlay');
+    return canvas.getContext('2d').getImageData(Math.round(canvas.width / 2),Math.round(canvas.height / 2),1,1).data[3];
+  })).toBeGreaterThan(0);
+  await expect(host.locator('#shared-cursor-overlay')).toHaveJSProperty('popover', 'manual');
+  await host.screenshot({ path: path.join(output, 'cursor-over-dialog.png') });
+  await host.evaluate(() => document.getElementById('confirm-dialog').close());
   for (const peer of peers) await peer.page.screenshot({ path: path.join(output, `player-${peer.author}.png`) });
   assert.deepEqual(errors, []); console.log('PASS shared in-game UI: three editors, author history, guest-first drawing after saved-source reopen and 11 seconds idle, local cursor animation, host controls, failed save barrier and identical local sources. ' + output);
 } catch (error) {

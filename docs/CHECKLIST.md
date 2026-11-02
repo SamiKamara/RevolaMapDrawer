@@ -2,6 +2,43 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Generation recovery and object limits — 2026-11-02
+
+- [x] Independent 99 NPC / 50 barrels / 50 crates / 50 door objects / 50 weapons /
+  50 devices limits; legacy preservation, atomic concurrent final-slot contention,
+  cancellation and author history checked. 412/412 unit tests pass.
+- [x] Actual source and packaged native UI reject NPC 100 with a centered OK error,
+  preserve all 99 old NPCs and create no Undo entry. Browser local/production checks
+  cover the same flow (`artifacts/test44-limits-ui.log`, `test44-web-limits.log`,
+  `web-production-results.json`).
+- [x] Complete packaged UI suite and game bridge checks pass. Structured generation
+  failures cross real Electron IPC, show their cause/source glow/OK, preserve the
+  editable map and return to saving (`test44-game-packaged.log`).
+- [x] Three real in-game renderer fixtures retain history/reopen behavior and locally
+  smooth cursors; normalized UI cursors render above modal dialogs and outside the
+  canvas (`test44-shared-ui-v2.log`, `shared-game-1793589320020/`).
+- [x] Web deployment `dpl_7LiBF2uU39hsM13FbAL18P1DL7xd` is READY and aliased to
+  `revolamapdrawer.vercel.app`; full published-browser smoke, offline exports and
+  new NPC limit pass. Version remains manually selected 0.16.1, build 218edd3df8cfc653.
+  The final population signature includes the limits, so old generated results
+  offer confirmed/undoable regeneration even without geometry changes. Final
+  412-test run and packaged/browser generation-history checks pass.
+- [x] `npm run package` refreshed the desktop shortcut. VerifyOnly confirmed its
+  direct packaged EXE target, empty arguments and repository working directory.
+  Launched the actual shortcut and visually checked the working Untitled editor
+  with Computer Use. No GitHub version tag or native release was published.
+- [x] Matching Unity editor/runtime patrol repair, local door geometry certification
+  and per-recipient localized errors pass. Unity focused suites 112/112 and final
+  39/39; native editor repair and runtime repaired-route generate/reopen/start pass.
+  Four ordinary Windows processes pass all 19 simulated-WAN checks, including the
+  same disk-error code on each peer, blocked failed-save launch, retry, UI cursor
+  relay, reconnect/late join, matching geometry and gameplay-to-Drawer return.
+- [x] Companion ordinary non-Development test 44/protocol 23 full build and 379-file
+  ZIP are verified. Vendored 47-file snapshot/producer/renderer and source/build/
+  delivery hashes match. SHA-256 and exact evidence/limitations are recorded in
+  `instructions/multiplayer-test44-drawer-generation-recovery.md` in Revola.
+  Changes are committed in the existing branches; no native release tag.
+
 ## Localized in-game multiplayer presentation — 2026-11-01
 
 - [x] Receive multiplayer labels from the authenticated local Unity bridge.

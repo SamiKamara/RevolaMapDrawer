@@ -3,7 +3,7 @@
 The browser application is the same specialized **Revola: Post Hyper** editor as the native Windows application. Geometry, world coordinates, ship artwork, project schema and transparent exports are shared. The Windows package remains independently runnable from bundled files.
 
 Production: [revolamapdrawer.vercel.app](https://revolamapdrawer.vercel.app),
-version **0.16.1**, build `b84c072ff9e608c2` (verified 2026-10-24).
+version **0.16.1**, build `218edd3df8cfc653` (verified 2026-11-02).
 
 ## Build and verify
 

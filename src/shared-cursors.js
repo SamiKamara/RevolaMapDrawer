@@ -7,12 +7,13 @@ export class SharedCursors {
     const remaining = Math.exp(-Math.max(0, now - cursor.at) / 55);
     const x = cursor.x + (cursor.fromX - cursor.x) * remaining;
     const y = cursor.y + (cursor.fromY - cursor.y) * remaining;
-    return Math.hypot(x - cursor.x, y - cursor.y) < .01 ? { x: cursor.x, y: cursor.y } : { x, y };
+    return Math.hypot(x - cursor.x, y - cursor.y) < (cursor.space === 'ui' ? .000005 : .01) ? { x: cursor.x, y: cursor.y } : { x, y };
   }
   update(value, now) {
     if (!value || typeof value.author !== 'string' || !Number.isFinite(value.x) || !Number.isFinite(value.y)) return;
     const previous = this.cursors.get(value.author);
-    const from = previous?.visible && value.visible ? this.position(previous, now) : value;
+    if (value.space === 'ui' && (value.x < 0 || value.x > 1 || value.y < 0 || value.y > 1)) return;
+    const from = previous?.visible && value.visible && (previous.space ?? 'map') === (value.space ?? 'map') ? this.position(previous, now) : value;
     this.cursors.set(value.author, { ...value, fromX: from.x, fromY: from.y, at: now, received: now });
   }
   expire(now) {

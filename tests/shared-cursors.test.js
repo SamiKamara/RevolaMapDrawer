@@ -1,6 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SharedCursors } from '../src/shared-cursors.js';
+test('UI coordinates smooth within the normalized viewport and switching spaces snaps safely', () => {
+  const cursors = new SharedCursors();
+  cursors.update({ author: '2', x: 1000, y: 3000, visible: true }, 0);
+  cursors.update({ author: '2', x: .2, y: .4, space: 'ui', visible: true }, 50);
+  assert.equal([...cursors.values(50)][0].x, .2);
+  cursors.update({ author: '2', x: .8, y: .4, space: 'ui', visible: true }, 60);
+  const x = [...cursors.values(100)][0].x; assert.ok(x > .2 && x < .8);
+  cursors.update({ author: '2', x: 2, y: .4, space: 'ui', visible: true }, 110);
+  assert.equal(cursors.cursors.get('2').x, .8);
+});
 
 const cursor = (author, x, y = 0, visible = true) => ({ author, x, y, visible, name: `Player ${author}` });
 const point = (cursors, author, now) => [...cursors.values(now)].find(value => value.author === author);

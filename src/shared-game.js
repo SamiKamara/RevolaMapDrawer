@@ -1,5 +1,6 @@
 import { applyDocumentPatch, documentPatch } from './shared-document.js';
 import { SharedCursors } from './shared-cursors.js';
+import { createCursorOverlay } from './shared-cursor-overlay.js';
 
 // Activated only by the authenticated Unity game bridge's initial capability.
 // Browser and standalone desktop windows have no such bridge or capability.
@@ -11,6 +12,8 @@ export function sharedGame(initial, api) {
   let queued = null, pending = false, frozen = info.frozen === true, canUndo = info.canUndo, canRedo = info.canRedo;
   let canCancel = info.cancelable === true;
   const cursors = new SharedCursors();
+  const cursorOverlay = createCursorOverlay(cursors);
+  api.issues?.labels(info.labels?.issues);
   let cursorFrame = false;
   function animateCursors() {
     if (cursorFrame || !cursors.moving(performance.now())) return;
@@ -39,7 +42,11 @@ export function sharedGame(initial, api) {
       enqueue(authoritative);
     } else if (value.kind === 'cursor') {
       if (value.author !== info.author) { cursors.update(value, performance.now()); api.render(); animateCursors(); }
-    } else if (value.kind === 'freeze') { frozen = value.active; canCancel = value.cancelable === true; api.busy(frozen || pending); api.status(value.message || (frozen ? labels.waiting : labels.ready)); }
+    } else if (value.kind === 'freeze') {
+      frozen = value.active; canCancel = value.cancelable === true; api.busy(frozen || pending);
+      api.status(value.message || (frozen ? labels.waiting : labels.ready));
+      if (value.issue) api.issues?.show(value.issue);
+    }
     else if (value.kind === 'saved') { api.saved(authoritative); }
   }
   bridge.onShared(receive);
@@ -50,13 +57,13 @@ export function sharedGame(initial, api) {
       const result = await bridge.request('shared', { data: JSON.stringify({ id: ++serial, revision, action,
         patch: action === 'edit' ? documentPatch(before, after) : undefined }) });
       receive(result);
-    } catch (error) { api.status(error.message, true); await bridge.request('snapshot').catch(() => {}); enqueue(authoritative); }
+    } catch (error) { api.status(error.message, true); if (error.issue) api.issues?.show(error); await bridge.request('snapshot').catch(() => {}); enqueue(authoritative); }
     finally { pending = false; api.busy(frozen); flush(); }
   }
   let previousCursor = '', lastCursor = 0;
   setInterval(() => {
     flush();
-    const point = api.pointer(), cursor = point && !document.querySelector('dialog[open]') ? { x: point.x, y: point.y, visible: true } : { x: 0, y: 0, visible: false };
+    const cursor = cursorOverlay.pointer(api.pointer()) || { x: 0, y: 0, visible: false, space: 'ui' };
     const text = JSON.stringify(cursor), now = performance.now();
     if ((text !== previousCursor || now - lastCursor > 1000) && now - lastCursor >= 66) {
       previousCursor = text; lastCursor = now;
@@ -67,16 +74,6 @@ export function sharedGame(initial, api) {
   return { host: info.host, labels, get frozen() { return frozen; }, get canCancel() { return canCancel; }, get canUndo() { return canUndo; }, get canRedo() { return canRedo; },
     submit: (before, after) => send('edit', before, after), undo: () => send('undo'), redo: () => send('redo'),
     draw(ctx, camera) {
-      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = '11px system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      for (const value of cursors.values(performance.now())) {
-        if (!value.visible) continue;
-        const x = value.x * camera.scale + camera.x, y = value.y * camera.scale + camera.y;
-        let color = 0; for (const character of value.author) color = (color * 31 + character.charCodeAt(0)) >>> 0;
-        ctx.strokeStyle = ['#97d6ff', '#ffc693', '#dab2ff', '#a4edb3'][color % 4]; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(x - 7, y); ctx.lineTo(x + 7, y); ctx.moveTo(x, y - 7); ctx.lineTo(x, y + 7); ctx.stroke();
-        const name = String(value.name || '?').slice(0, 100), width = ctx.measureText(name).width;
-        ctx.fillStyle = '#000d'; ctx.fillRect(x + 10, y + 7, width + 8, 19); ctx.fillStyle = ctx.strokeStyle; ctx.fillText(name, x + 14, y + 10);
-      }
-      ctx.restore();
+      cursorOverlay.draw(camera);
     } };
 }

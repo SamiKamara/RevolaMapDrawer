@@ -1,4 +1,5 @@
 import { validateDocument } from './model.js';
+import { OBJECT_LIMITS } from './object-limits.js';
 import { generateFloor, floorRegionContainsPoint, floorContainsPoint } from './floors.js';
 import { filterGameplayObjects, objectDoorTargets } from './objects.js';
 import { shipWorldPoint } from './ship.js';
@@ -13,7 +14,7 @@ const geometryInput = doc => [doc.width, doc.height, doc.originX, doc.originY, d
 export async function objectGenerationGeometry(doc) {
   // A new population policy also makes an earlier generated result replaceable
   // through the ordinary confirmation/undo flow, including unchanged geometry.
-  const bytes = new TextEncoder().encode(JSON.stringify([3, geometryInput(doc)]));
+  const bytes = new TextEncoder().encode(JSON.stringify([4, OBJECT_LIMITS, geometryInput(doc)]));
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(n => n.toString(16).padStart(2, '0')).join('');
 }
 function randomFor(doc) {
@@ -138,6 +139,7 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
   }
   await tick('Measuring reachable floor', .02);
   if (!skipped.has('doors')) for (const target of objectDoorTargets(doc)) {
+    if ((counts.doors ?? 0) >= OBJECT_LIMITS.doors) break;
     const zone = doorClearance({ ...target, type: 'auto' });
     if (manualReservations.some(other => other.category !== 'npc' && zone.overlaps(other, other.radius))) continue;
     const object = { id: `candidate-${generated.length}`, category: 'doors', type: 'auto', ...target.point, rotation: 0, doorId: target.id };
@@ -171,7 +173,7 @@ export async function generateDefaultObjects(input, { floor = generateFloor(inpu
     if (read % 256 === 0) await tick('Checking room connections', .33);
   }
   area = reachable.length * (step * unit) ** 2;
-  for (const category of categories.filter(c => c !== 'doors' && !skipped.has(c))) targets[category] = defaultPopulationCount(area, category, defaults, random.float());
+  for (const category of categories.filter(c => c !== 'doors' && !skipped.has(c))) targets[category] = Math.min(OBJECT_LIMITS[category], defaultPopulationCount(area, category, defaults, random.float()));
   const cell = p => Math.floor((p.y - top) / step) * width + Math.floor((p.x - left) / step);
   // Cap every authored architectural doorway, regardless of its gameplay-door
   // choice. This separates rooms without changing actual floor reachability.

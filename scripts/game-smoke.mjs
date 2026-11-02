@@ -9,7 +9,7 @@ import { createDocument, addWall } from '../src/model.js';
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const token = crypto.randomBytes(32).toString('hex'), requests = [], frames = [];
-let socket, project = createDocument(), buffer = Buffer.alloc(0), saveError = null, latestFrame;
+let socket, project = createDocument(), buffer = Buffer.alloc(0), saveError = null, saveIssue = null, latestFrame;
 const points = [[3739.5,4740],[3739.5,4400],[2000,4400],[2000,1000],[6500,1000],[6500,4400],[4452.5,4400],[4452.5,4740]];
 for (let i = 1; i < points.length; i++) addWall(project, {x:points[i-1][0],y:points[i-1][1]}, {x:points[i][0],y:points[i][1]}, {joinTolerance:0});
 const send = message => { const body = Buffer.from(JSON.stringify(message)), header = Buffer.alloc(5); header.writeUInt32LE(body.length + 1); header[4] = 1; socket.write(Buffer.concat([header, body])); };
@@ -34,7 +34,7 @@ const server = net.createServer(connection => {
         error = saveError;
         if (!error) { project = JSON.parse(message.project); payload = { name: 'Map-fixture.revola' }; }
       }
-      send({ type: 'response', id: message.id, payload: JSON.stringify(payload), error });
+      send({ type: 'response', id: message.id, payload: JSON.stringify(payload), error, issue: error && saveIssue ? JSON.stringify(saveIssue) : null });
     }
   });
 });
@@ -139,10 +139,29 @@ try {
   send({ type: 'input', event: { type: 'keyDown', keyCode: 'Tab' } });
   send({ type: 'input', event: { type: 'keyUp', keyCode: 'Tab' } });
   await expect(page.locator('#document-title')).toHaveText('Game roundtrip');
+  await page.evaluate(() => {
+    window.issueMarks=[]; const arc=CanvasRenderingContext2D.prototype.arc;
+    CanvasRenderingContext2D.prototype.arc=function(x,y,...rest){
+      if(this.canvas.id==='map-canvas' && this.shadowBlur===16 && this.strokeStyle==='#ffffff') window.issueMarks.push({x,y});
+      return arc.call(this,x,y,...rest);
+    };
+  });
+  saveIssue = { id: 'failure-probe', code: 'patrol_unreachable', message: 'NPC n: patrol point 2 has no safe reachable replacement.', detail: 'No complete navigation path.', targets: [{ x: 3000, y: 3000, hasPoint: true }] };
   saveError = 'Test write failure'; await click('#game-save');
   await expect(page.locator('#status-message')).toContainText('Test write failure');
+  await expect(page.locator('#map-error-dialog')).toBeVisible();
+  await expect(page.locator('#map-error-dialog p')).toContainText('patrol point 2');
+  await expect(page.locator('#map-error-dialog p')).toContainText('white glow');
+  const issueBox = await page.locator('#map-error-dialog').boundingBox();
+  const viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+  assert.ok(Math.abs(issueBox.x + issueBox.width / 2 - viewport.width / 2) < 2);
+  assert.ok(Math.abs(issueBox.y + issueBox.height / 2 - viewport.height / 2) < 2);
+  await page.screenshot({ path: path.join(root, `artifacts/game-issue${packaged ? '-packaged' : ''}.png`) });
+  await click('#map-error-dialog button'); await expect(page.locator('#map-error-dialog')).not.toBeVisible();
+  await expect.poll(()=>page.evaluate(()=>window.issueMarks.some(p=>p.x===3000 && p.y===3000))).toBe(true);
+  await page.screenshot({path:path.join(root,`artifacts/game-issue-glow${packaged?'-packaged':''}.png`)});
   assert.match(await page.title(), /•/);
-  saveError = null; await click('#game-save');
+  saveError = null; saveIssue = null; await click('#game-save');
   await expect.poll(() => requests.filter(request => request.operation === 'save').length).toBe(2);
   await expect(page.locator('#status-message')).toContainText('Saved');
   assert.equal(project.name, 'Game roundtrip'); assert.doesNotMatch(await page.title(), /•/);

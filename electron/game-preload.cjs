@@ -1,5 +1,11 @@
 const { contextBridge, ipcRenderer } = require('electron');
 let sharedCallback;
+let issueCallback;
+const issueQueue = [];
+ipcRenderer.on('revola:game-issue', (_event, value) => {
+  if (issueCallback) issueCallback(value);
+  else if (issueQueue.length < 64) issueQueue.push(value);
+});
 const sharedQueue = [];
 ipcRenderer.on('revola:game-shared', (_event, value) => {
   if (sharedCallback) sharedCallback(value);
@@ -14,4 +20,5 @@ contextBridge.exposeInMainWorld('revolaGame', Object.freeze({
   onInputMode: callback => ipcRenderer.on('revola:game-input-mode', (_event, gamepad) => callback(gamepad)),
   onPan: callback => ipcRenderer.on('revola:game-pan', (_event, x, y) => callback(x, y)),
   onShared: callback => { sharedCallback = callback; for (const value of sharedQueue.splice(0)) callback(value); },
+  onIssue: callback => { issueCallback = callback; for (const value of issueQueue.splice(0)) callback(value); },
 }));

@@ -42,7 +42,12 @@ function receive(message) {
   if (message.type === 'response') {
     const request = pending.get(message.id); if (!request) return;
     pending.delete(message.id);
-    if (message.error) request.reject(new Error(message.error));
+    if (message.error) {
+      if (message.issue) {
+        try { window.webContents.send('revola:game-issue', JSON.parse(message.issue)); } catch { }
+      }
+      request.reject(new Error(message.error));
+    }
     else { try { request.resolve(JSON.parse(message.payload || 'null')); } catch (error) { request.reject(error); } }
   } else if (message.type === 'input' && window) {
     const input = message.event;

@@ -1,6 +1,7 @@
 // Document transactions for Revola's authenticated in-game session only.
 // No network, filesystem or UI entry point is exposed by this module.
 import { validateDocument } from './model.js';
+import { checkObjectLimits } from './object-limits.js';
 
 const groups = ['vertices', 'edges', 'objects'];
 const fields = ['name', 'width', 'height', 'originX', 'originY', 'style', 'ship', 'seed', 'objectGeneration'];
@@ -112,6 +113,7 @@ export class SharedDocumentAuthority {
     let next;
     try { next = applyDocumentPatch(previous, patch); }
     catch (error) { throw new Error(`Edit cannot be applied without changing another edit or invalidating the map: ${error.message}`); }
+    if (request.action === 'edit') checkObjectLimits(previous, next);
     const actual = documentPatch(previous, next);
     if (!actual.length) throw new Error('This edit no longer changes the map.');
     this.document = next; this.revision++;
