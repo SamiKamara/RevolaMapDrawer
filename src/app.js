@@ -992,7 +992,7 @@ if (window.revolaGame) {
         $('undo-button').disabled = busy || !sharedEditor.canUndo; $('redo-button').disabled = busy || !sharedEditor.canRedo;
       }, host: () => gameEditor?.update(),
     });
-    status('Revola map editor ready. Save maps here, then Save and launch to test.');
+    status(sharedEditor ? sharedEditor.labels.ready : 'Revola map editor ready. Save maps here, then Save and launch to test.');
   } catch (error) { status(`Could not open map: ${error.message}`, true); }
   finally { saving(false); }
   gameEditor.update();

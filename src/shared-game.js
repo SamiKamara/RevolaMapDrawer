@@ -5,6 +5,8 @@ import { SharedCursors } from './shared-cursors.js';
 // Browser and standalone desktop windows have no such bridge or capability.
 export function sharedGame(initial, api) {
   const bridge = window.revolaGame, info = initial.shared;
+  const labels = { waiting: 'Waiting for all players to save…', ready: 'Shared map ready.', cancel: 'Cancel save',
+    saving: 'Saving map…', saved: 'Saved {0}.', loading: 'Loading map…', failed: 'The shared map operation failed.', ...info.labels };
   let documentId = info.document, revision = info.revision, authoritative = JSON.parse(initial.project), serial = info.lastId ?? 0;
   let queued = null, pending = false, frozen = info.frozen === true, canUndo = info.canUndo, canRedo = info.canRedo;
   let canCancel = info.cancelable === true;
@@ -37,7 +39,7 @@ export function sharedGame(initial, api) {
       enqueue(authoritative);
     } else if (value.kind === 'cursor') {
       if (value.author !== info.author) { cursors.update(value, performance.now()); api.render(); animateCursors(); }
-    } else if (value.kind === 'freeze') { frozen = value.active; canCancel = value.cancelable === true; api.busy(frozen || pending); api.status(value.message || (frozen ? 'Waiting for all players to save…' : 'Shared map ready.')); }
+    } else if (value.kind === 'freeze') { frozen = value.active; canCancel = value.cancelable === true; api.busy(frozen || pending); api.status(value.message || (frozen ? labels.waiting : labels.ready)); }
     else if (value.kind === 'saved') { api.saved(authoritative); }
   }
   bridge.onShared(receive);
@@ -62,7 +64,7 @@ export function sharedGame(initial, api) {
     }
     if (cursors.expire(now)) api.render();
   }, 66);
-  return { host: info.host, get frozen() { return frozen; }, get canCancel() { return canCancel; }, get canUndo() { return canUndo; }, get canRedo() { return canRedo; },
+  return { host: info.host, labels, get frozen() { return frozen; }, get canCancel() { return canCancel; }, get canUndo() { return canUndo; }, get canRedo() { return canRedo; },
     submit: (before, after) => send('edit', before, after), undo: () => send('undo'), redo: () => send('redo'),
     draw(ctx, camera) {
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = '11px system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';

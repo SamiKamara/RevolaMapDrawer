@@ -10,6 +10,11 @@ import { SharedDocumentAuthority } from '../src/shared-document.js';
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const peers = [], apps = [], errors = [], session = crypto.randomBytes(16).toString('hex');
+const labels = {
+  '1': { ready: 'Shared map ready.', waiting: 'Waiting for all players to save…', cancel: 'Cancel shared save' },
+  '2': { ready: 'Yhteinen kartta on valmis.', waiting: 'Odotetaan pelaajien tallennuksia…', cancel: 'Peru yhteistallennus' },
+  '3': { ready: 'Gemeinsame Karte bereit.', waiting: 'Warten auf alle Spieler…', cancel: 'Speichern abbrechen' },
+};
 let document = crypto.randomBytes(16).toString('hex'), failSave = true, launches = 0, cursorRelays = 0;
 let cancelProbe = false, cancelPendingSave, suppressCursors = false;
 const project = createDocument();
@@ -27,7 +32,7 @@ async function request(peer, message) {
   let payload = null, error = null;
   try {
     switch (message.operation) {
-      case 'initial': payload = { project: JSON.stringify(authority.document), shared: { ...state(peer.author), host: peer.author === '1', author: peer.author } }; peer.ready = true; break;
+      case 'initial': payload = { project: JSON.stringify(authority.document), shared: { ...state(peer.author), host: peer.author === '1', author: peer.author, labels: labels[peer.author] } }; peer.ready = true; break;
       case 'shared': {
         const result = authority.execute(peer.author, JSON.parse(message.data));
         payload = { ...result, kind: 'change', session, document }; event(payload); break;
@@ -50,7 +55,7 @@ async function request(peer, message) {
         }));
         assert.ok(peers.every(target => target.saved));
         if (message.launch) launches++;
-        event({ kind: 'saved' }); event({ kind: 'freeze', active: false }); payload = { name: 'shared.revola' }; break;
+        event({ kind: 'saved' }); event({ kind: 'freeze', active: false }); payload = { name: 'shared-$&-{0}.revola' }; break;
       }
       case 'cancel-save':
         assert.equal(peer.author, '1'); cancelPendingSave?.(); cancelPendingSave = null;
@@ -89,6 +94,11 @@ try {
     if (i !== 1) for (const id of ['game-save', 'game-save-as', 'game-launch', 'game-back', 'new-button', 'open-button']) await expect(peer.page.locator('#' + id)).toBeDisabled();
   }
   const host = peers[0].page, guest = peers[1].page;
+  event({ kind: 'freeze', active: true, cancelable: true });
+  for (const peer of peers) await expect(peer.page.locator('#status-message')).toHaveText(labels[peer.author].waiting);
+  await expect(host.locator('#game-cancel-save')).toHaveText(labels['1'].cancel);
+  event({ kind: 'freeze', active: false });
+  for (const peer of peers) await expect(peer.page.locator('#status-message')).toHaveText(labels[peer.author].ready);
   await host.locator('#map-name').fill('Shared collaboration'); await host.locator('#map-name').press('Tab');
   await expect(guest.locator('#map-name')).toHaveValue('Shared collaboration');
   await guest.locator('#mirror-button').click(); await expect(host.locator('#mirror-label')).toHaveText('Ship facing left');
@@ -129,7 +139,14 @@ try {
   await host.locator('#game-cancel-save').click();
   await expect(host.locator('#status-message')).toContainText('cancelled');
   await expect(host.locator('#game-save')).toBeEnabled(); assert.equal(launches, 0); cancelProbe = false;
+  await host.evaluate(() => {
+    window.saveStatuses = [];
+    new MutationObserver(changes => {
+      for (const change of changes) for (const node of change.addedNodes) window.saveStatuses.push(node.textContent);
+    }).observe(document.getElementById('status-message'), { childList: true });
+  });
   failSave = false; await host.locator('#game-launch').click(); await expect.poll(() => launches).toBe(1);
+  await expect.poll(() => host.evaluate(() => window.saveStatuses.some(value => value.includes('Saved shared-$&-{0}.revola.')))).toBe(true);
   const saved = await Promise.all(peers.map(peer => fs.readFile(path.join(output, peer.author, 'shared.revola'), 'utf8')));
   assert.equal(new Set(saved).size, 1); assert.equal(saved[0], JSON.stringify(authority.document));
 

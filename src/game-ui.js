@@ -54,14 +54,15 @@ export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, 
       project.name = name.trim() || 'Untitled map';
       if (shared()) { await shared().submit(snapshot(), project); project = snapshot(); }
     }
-    saving = true; setBusy(true); update(); status(launch ? 'Saving and generating map…' : 'Saving map…');
+    saving = true; setBusy(true); update(); status(shared() ? shared().labels.saving : launch ? 'Saving and generating map…' : 'Saving map…');
     try {
       const result = await bridge.request('save', { project: JSON.stringify(project), name: project.name, saveAs, launch });
       // A cancelled save, write failure or generation failure never clears dirty state.
       if (saveAs) replace(project);
       saved(project);
-      status(`Saved ${result.name}.${result.warning ? ` ${result.warning}` : launch ? ' Launching map…' : ''}`);
-    } catch (error) { status(`Could not ${launch ? 'launch' : 'save'}: ${error.message}`, true); }
+      status(shared() ? `${shared().labels.saved.replaceAll('{0}', () => result.name)}${result.warning ? ` ${result.warning}` : launch ? ` ${shared().labels.loading}` : ''}` :
+        `Saved ${result.name}.${result.warning ? ` ${result.warning}` : launch ? ' Launching map…' : ''}`);
+    } catch (error) { status(shared() ? error.message || shared().labels.failed : `Could not ${launch ? 'launch' : 'save'}: ${error.message}`, true); }
     finally { saving = false; setBusy(false); update(); }
   }
   async function close() {
@@ -94,6 +95,11 @@ export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, 
   bridge.onInputMode(value => { hint.hidden = !value; setGamepadMode(value); });
   function update() {
     const guest = shared() && !shared().host;
+    if (shared()) {
+      cancelSave.textContent = shared().labels.cancel;
+      for (const element of [...saves, back, document.getElementById('new-button'), document.getElementById('open-button')])
+        element.title = guest ? shared().labels.guestControls || '' : shared().labels.hostControls || '';
+    }
     cancelSave.hidden = !shared()?.frozen || guest; cancelSave.disabled = !shared()?.canCancel;
     for (const element of saves) element.disabled = guest || saving || blocked();
     saves[2].disabled ||= !closed(); back.disabled = guest || saving;

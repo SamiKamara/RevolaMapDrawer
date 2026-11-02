@@ -4,6 +4,12 @@ Implementation baseline: version 0.14.0. Product source: the unchanged original 
 
 ## In-game multiplayer collaboration
 
+Multiplayer-only labels are supplied by each local Unity bridge in `shared.labels`.
+Waiting/ready/save/cancel messages and host-control tooltips can therefore use each
+receiver's game language. Missing capability/labels retain the English defaults;
+the ordinary standalone/web authoring interface stays English. Unity translates
+network status/error codes on receipt; localized UI text is never map source data.
+
 Only Unity's authenticated in-game bridge can return an initial `shared`
 capability. `app.js` dynamically loads `shared-game.js` for that capability;
 browser/Vercel and standalone desktop editions retain their single-user history,

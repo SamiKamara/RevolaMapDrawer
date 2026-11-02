@@ -2,6 +2,36 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Localized in-game multiplayer presentation — 2026-11-01
+
+- [x] Receive multiplayer labels from the authenticated local Unity bridge.
+  Preserve ordinary web/desktop and solo game-host English defaults.
+- [x] Localize shared waiting/ready/save/cancel captions and host-control tooltips;
+  preserve literal user-authored map names and shared source identity.
+- [x] 402/402 unit tests and complete source/packaged UI checks pass. Three actual
+  renderer fixtures use English/Finnish/German labels independently for the same
+  freeze/unfreeze event. Source evidence `artifacts/shared-game-1793560592162`,
+  packaged `artifacts/shared-game-1793560886509`; `artifacts/test41-*.log`.
+  Final literal filename (`$&`, `{0}`) checks also pass:
+  `artifacts/shared-game-1793569532864` and `artifacts/shared-game-1793569577450`.
+- [x] Solo game-host source 108 / packaged 107 frames, zero separate visible windows.
+- [x] Package refreshed and actual desktop shortcut target/arguments/working
+  directory/paths verified. The verified dist target returned the expected clean
+  desktop editor window through Computer Use launch. No user maps were edited.
+- [ ] Visual desktop-window inspection was interrupted by the user's physical Esc;
+  window control stopped. Automated packaged UI verification passed independently.
+- [x] Companion Unity full non-Development build and verified test41 package:
+  50 Release assemblies, 51 scenes, 379 files with matching source/build/delivery
+  hashes. All 44 vendored files and the packaged same-window renderer match.
+  Package SHA-256 `a08781db9f6938f72fec89723c8201035d1985d692ed31de63b98483d164119e`.
+  Final evidence in `instructions/multiplayer-test41-localization-audit.md`
+  in the Revola checkout (handoff 2026-11-02).
+  No version/tag/release or web deployment is performed.
+- [x] Unity 816 regression tests and 13 final localization tests pass; four actual
+  Windows players pass 17/17 WAN checks, including failed/cancelled saves, launch,
+  cold late join and reopening after play. Evidence foundation-1
+  `Library/SD/20261101-234439-4032a56d/result.json`.
+
 ## Reopened shared-map identities and remote cursor presentation — 2026-11-01
 
 - [x] Reproduce the false conflict when the same guest edits first after a saved
