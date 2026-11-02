@@ -19,6 +19,8 @@
 !src/object-schema.js
 !src/object-limits.js
 !src/map-issues.js
+!src/map-names.js
+!src/game-localization.js
 !src/weapon-catalog.js
 !src/objects.js
 !src/object-editor.js

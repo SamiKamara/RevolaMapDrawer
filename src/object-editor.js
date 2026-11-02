@@ -3,6 +3,7 @@ import { filterGameplayObjects, gameplayPointIsPlayable, objectDoorSnap, objectP
 import { chooseNpcVisual, drawObjectVisual } from './object-visuals.js';
 import { NPC_DEFAULTS } from './npc-defaults.js';
 import { doorPreviewTypes } from './door-preview.js';
+import { translateGameText as t } from './game-localization.js';
 
 const labels = { npc: 'NPC', doors: 'Door object', crates: 'Crate', barrels: 'Explosive barrel', weapons: 'Weapon spawn', devices: 'Device spawn' };
 const colors = { npc: '#efb46e', doors: '#89c5ff', crates: '#d8bf8a', barrels: '#ee8a8a', weapons: '#badb8d', devices: '#b6a5f0' };
@@ -265,9 +266,10 @@ export function createObjectEditor(api) {
       ctx.restore();
       const extentY = Math.abs(Math.sin(angle)) * doc.style.doorWidth / 2 + Math.abs(Math.cos(angle)) * doc.style.wallWidth;
       ctx.save(); ctx.translate(snapping.point.x, snapping.point.y - extentY); ctx.scale(1 / api.scale(), 1 / api.scale());
-      ctx.fillStyle = '#13271be6'; ctx.fillRect(-46, -23, 92, 17);
+      const hint = t(snapping.occupied ? 'OCCUPIED' : 'DOOR SNAP'); ctx.font = '10px system-ui'; const width = ctx.measureText(hint).width + 14;
+      ctx.fillStyle = '#13271be6'; ctx.fillRect(-width / 2, -23, width, 17);
       ctx.fillStyle = color; ctx.font = '10px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(snapping.occupied ? 'OCCUPIED' : 'DOOR SNAP', 0, -14); ctx.restore();
+      ctx.fillText(hint, 0, -14); ctx.restore();
     }
     if (route) {
       const points = route.points.map((point, index) => ({ ...point, number: index + 1 }));

@@ -2,6 +2,62 @@
 
 Update on every verified milestone. `[x]` verified, `[-]` in progress, `[ ]` pending.
 
+## Game menu localization follow-up — 2026-11-02
+
+- [x] The maintained table now includes Test Maps / Add Maps / Remove Maps,
+  progress counters, instructions and source-state messages: 302 keys, ten
+  languages, matching placeholders and unambiguous source aliases. Five focused
+  localization/name checks pass. Unity validates actual menu construction across
+  ten languages and multilingual font coverage.
+- [x] No producer/schema/geometry or renderer JavaScript changes are needed.
+  Standalone/web remain English; the current desktop ASAR still exactly matches
+  all 47 maintained runtime files (51 archive entries). No package rebuild or web
+  deployment is necessary for these Unity-only menus. The existing shortcut's
+  exact target, empty arguments and working directory were verified and launched.
+- [x] Companion Unity test 46 fixes player name overlays/status/shop behavior
+  and uses the actual double-sided generated wall extrusion for railgun tests.
+  Focused tests pass (139 cases plus the final 17 name/spectator cases), as do
+  45 simulated-WAN native checks. Ordinary package/source/renderer audits pass:
+  430 files, 51 scenes, 50 Release script assemblies, non-Development runtime.
+  ZIP: 446,311,284 bytes, SHA-256
+  `4fadd53dc91c32e03e1909fe09e1415625d0c83d59f9359cee9c27d06d825b81`. Actual shortcut UI opened as `Iron Voyager Bastion`
+  from the packaged ASAR. See `Revola/instructions/multiplayer-test46-feedback.md`.
+  Source changes are included in the accompanying commits; real Steam acceptance testing is still needed.
+
+## In-game localization and generated map names — 2026-11-02
+
+- [x] 242 UI keys across all ten game languages, with unambiguous English aliases
+  and matching placeholders. Unity supplies each machine's local presentation to
+  solo/shared game renderers. Ordinary web/desktop stay English. Technical details
+  and source names/values/IDs never become translated source data.
+- [x] 32,768 unique station-themed proper names; new/cleared/blank-save names persist
+  and shared authority assigns them once. Old sources and optional generation,
+  authored values, PNG metadata and architecture exports remain compatible.
+- [x] 417/417 unit tests; full source UI and packaged UI suites; local browser and
+  deployed browser/offline checks. Ten-language real game-renderer checks cover all
+  tools and NPC advanced defaults; a literal `Save` source name and unchanged
+  vertices/objects round-trip. Game bridge source/packaged checks pass, including
+  controller text entry/caret and same-window frame rendering.
+- [x] `npm run package` rebuilt 47 runtime files/51 ASAR entries and refreshed the
+  shortcut. VerifyOnly confirmed the exact EXE, empty arguments and repository
+  working directory. Actual shortcut launch was inspected with Computer Use:
+  `Inner Parallax Relay — Revola Map Drawer`, packaged ASAR, clean drawing UI.
+- [x] Web build `9cacd045c693a565`, deployment `DmpjUqnFgY2RdK1eaaMLosMijbrQ`, READY
+  at `revolamapdrawer.vercel.app`; published/offline browser tests pass. The manual
+  version stays 0.16.1. No GitHub release or tag was published.
+- [x] Companion Unity source snapshot refreshed (49 files), producer and embedded
+  renderer rebuilt. Native simulated-WAN shared Drawer test passes 19 checks with
+  four players, save recovery, gameplay/reopen and late join. Source schema and
+  generated geometry are unchanged; the game's solo/multiplayer railgun fix is
+  projectile-side and requires no producer geometry change.
+- [x] Final ordinary Unity player/package audit passes: 51 scenes, non-Development
+  runtime, 50 Release script assemblies, all current source/renderer hashes and
+  430 ZIP files verified. Test 45 ZIP is 446,168,486 bytes; SHA-256
+  `f78920bcdb1e928953b6d4b421c0de4baddda650a9659baa15519bd2e22482f2`.
+  See `Revola/instructions/multiplayer-test45-drawer-localization-and-coop.md`.
+  Prior Drawer work is committed/pushed as `c10f3b2` / Unity `74a7f024`; new work
+  is included in the accompanying commits. Real two-account Steam testing remains a tester step.
+
 ## Generation recovery and object limits — 2026-11-02
 
 - [x] Independent 99 NPC / 50 barrels / 50 crates / 50 door objects / 50 weapons /

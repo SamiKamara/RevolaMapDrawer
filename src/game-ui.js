@@ -1,4 +1,5 @@
 import { setupGameTextInput } from './game-text.js';
+import { randomMapName } from './map-names.js';
 
 // Only active in the renderer embedded in Revola's own window.
 export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, blocked, closed, status, setBusy, issues, shared = () => null }) {
@@ -12,6 +13,7 @@ export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, 
     const popup = document.createElement('dialog'); popup.id = 'game-select';
     const heading = document.createElement('h2'); heading.textContent = target.getAttribute('aria-label') || 'Choose an option'; popup.append(heading);
     const list = document.createElement('div'); list.className = 'game-select-list'; popup.append(list);
+    if (target.hasAttribute('data-revola-literal')) list.setAttribute('data-revola-literal', '');
     for (const option of target.options) {
       const button = document.createElement('button'); button.type = 'button'; button.textContent = option.textContent; button.disabled = option.disabled;
       button.addEventListener('click', () => { target.value = option.value; target.dispatchEvent(new Event('input', { bubbles: true })); target.dispatchEvent(new Event('change', { bubbles: true })); popup.close(); }); list.append(button);
@@ -47,11 +49,11 @@ export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, 
     let project = snapshot();
     let name = project.name;
     if (saveAs) {
-      const field = document.createElement('input'); field.required = true; field.maxLength = 80; field.value = name;
+      const field = document.createElement('input'); field.maxLength = 80; field.value = name;
       field.setAttribute('aria-label', 'Map name');
       name = await dialog('Save map as', field, 'Save');
       if (name === null) return;
-      project.name = name.trim() || 'Untitled map';
+      project.name = name.trim() || randomMapName();
       if (shared()) { await shared().submit(snapshot(), project); project = snapshot(); }
     }
     saving = true; setBusy(true); update(); status(shared() ? shared().labels.saving : launch ? 'Saving and generating map…' : 'Saving map…');
@@ -80,6 +82,7 @@ export function setupGameEditor({ snapshot, replace, confirmReplacement, saved, 
       const result = await bridge.request('list');
       if (!result.entries.length) { status('No saved maps yet. Use New to create one.'); return; }
       const field = document.createElement('select'); field.setAttribute('aria-label', 'Saved map');
+      field.setAttribute('data-revola-literal', '');
       for (const entry of result.entries) { const option = document.createElement('option'); option.value = entry.key; option.textContent = entry.name; field.append(option); }
       const key = await dialog('Open map', field, 'Open'); if (key === null) return;
       const file = await bridge.request('open', { key }); replace(JSON.parse(file.project)); status(`Opened ${file.name}.`);

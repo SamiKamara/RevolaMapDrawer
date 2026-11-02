@@ -1,4 +1,5 @@
 import { generateDefaultObjects, objectGenerationGeometry } from './population.js';
+import { translateGameText as t } from './game-localization.js';
 
 export function setupObjectGeneration(api) {
   const button = document.getElementById('generate-objects'), confirm = document.getElementById('object-regenerate-dialog');
@@ -37,13 +38,13 @@ export function setupObjectGeneration(api) {
       if (api.doc() !== owner || JSON.stringify(owner) !== original) throw new Error('The map changed. No generated objects were applied.');
       if (!regenerate && result.objects.length === 0) { api.status('No new objects fit. Categories with valid objects are kept; other categories still use Map Manager generation.'); return; }
       api.setBusy(false);
-      const kept = result.skipped.length ? ` Kept existing categories: ${result.skipped.join(', ')}.` : '';
+      const kept = result.skipped.length ? ' ' + t('Kept existing categories: {0}.', result.skipped.map(value => t(value)).join(', ')) : '';
       const short = Object.keys(result.targets).filter(key => (result.counts[key] ?? 0) < result.targets[key]);
       api.commit(() => {
         owner.objects = [...(regenerate ? [] : owner.objects ?? []), ...result.objects];
         owner.objectGeneration = { version: 1, geometry: signature };
         api.clearSelection();
-      }, `${regenerate ? 'Regenerated' : 'Generated'} ${result.objects.length} objects.${kept}${short.length ? ` Limited safe space: ${short.join(', ')}.` : ''}`);
+      }, t(regenerate ? 'Regenerated {0} objects.' : 'Generated {0} objects.', result.objects.length) + kept + (short.length ? ' ' + t('Limited safe space: {0}.', short.map(value => t(value)).join(', ')) : ''));
     } catch (error) { api.status(error.message, !cancellation.signal.aborted); }
     finally { progress.close(); working = false; cancellation = null; api.setBusy(false); update(); }
   }

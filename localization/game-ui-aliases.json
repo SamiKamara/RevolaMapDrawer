@@ -1,0 +1,381 @@
+{
+  "select": [],
+  "wall": [
+    "Wall (W)",
+    "Wall tool"
+  ],
+  "door": [
+    "Door opening (D)",
+    "Door tool"
+  ],
+  "eraser": [
+    "Eraser (E)",
+    "Eraser tool"
+  ],
+  "rectangle": [
+    "Rectangle room tool",
+    "Rectangular room (B)",
+    "Rectangular room tool"
+  ],
+  "room": [
+    "Chamfered room (R)",
+    "Room tool"
+  ],
+  "corridor": [
+    "Corridor tool",
+    "Freehand corridor (C)"
+  ],
+  "door_object": [
+    "Door object",
+    "Door object (snap to opening)",
+    "Door object tool"
+  ],
+  "crate": [
+    "Crate",
+    "Crate and contents",
+    "Crate contents",
+    "Crate tool",
+    "Crates tool"
+  ],
+  "barrel": [
+    "Barrel tool",
+    "Explosive barrel",
+    "Barrels tool"
+  ],
+  "weapon_spawn": [
+    "Weapon spawn",
+    "Weapon spawn tool"
+  ],
+  "device_spawn": [
+    "Devices tool",
+    "Device spawn tool"
+  ],
+  "undo": [
+    "Undo",
+    "Undo (Ctrl+Z)"
+  ],
+  "redo": [
+    "Redo",
+    "Redo (Ctrl+Y)"
+  ],
+  "copy": [
+    "Copy",
+    "Copy selected walls and walls between selected points (Ctrl+C)"
+  ],
+  "paste": [
+    "Paste",
+    "Preview a copy, then click to place (Ctrl+V)"
+  ],
+  "fit": [
+    "Fit",
+    "Fit map (F)"
+  ],
+  "guide_wall": [
+    "Click a start point, then click to place each wall. Press Escape to end the chain.",
+    "Click the next corner, or drag to draw a wall. Escape ends the chain.",
+    "Click to chain walls, or drag to draw. Nearby ends join automatically. Draw along a wall to extend it or fill an opening. Escape ends the chain."
+  ],
+  "guide_door": [
+    "Click a wall to cut a 375 px opening. Aim near the middle between corners or branches to snap exactly to CENTER. Click an existing opening to restore the wall."
+  ],
+  "guide_eraser": [
+    "Drag to erase any length of wall. Choose Brush size in the top bar. One stroke is one undo step. The fixed ship stays protected."
+  ],
+  "guide_room": [
+    "Drag a room with four square corners. Hold Shift to keep width and depth equal. Start at DOOR, END or CENTER for a centered door. Free rooms use Rotate 45° or Shift + R.",
+    "Drag to size a room.",
+    "Hold Shift while dragging to keep width and depth equal. Start at DOOR, END or CENTER for a centered door. Drag outward, sideways or diagonally to size the room; the adjoining side stays centered on the start. Free rooms use Rotate 45° or Shift + R.",
+    "Select Room (R) or Rectangular room (B), then enable",
+    "Release to place the room with its centered door.",
+    "Room start aligned to the {0}. Drag to size the room.",
+    "Room start aligned to the {0}. Drag toward clear space to size the room."
+  ],
+  "guide_corridor": [
+    "Drag a route to draw a 580 px corridor.",
+    "Drag a route to draw a 580 px corridor. CENTER or DOOR aligns the start; from END, continue outward before turning. The ship’s outer airlock door also aligns. Finish near a target to align the endpoint while keeping your start and turn directions. Use broad turns.",
+    "Drag the route. Finish near CENTER, DOOR or END to align the endpoint automatically.",
+    "Corridor endpoint aligned to the {0}.",
+    "Corridor endpoint aligned to the {0}. Release to place.",
+    "Corridor start aligned to the {0}. Drag the route."
+  ],
+  "guide_hand": [
+    "Drag to move around the map. Scroll to zoom at your cursor, or press F to fit the whole map."
+  ],
+  "guide_objects": [
+    "Choose the type, click to set a position, aim the facing direction and click again. Select (V) to move or delete objects. Hover an NPC for advanced setup. Red objects are excluded from game generation."
+  ],
+  "guide_door_object": [
+    "Choose Automatic, Sliding door or Hinged door. Hover an opening for DOOR SNAP, then click to place. Red OCCUPIED means it already has a door. Other openings stay open when this category is authored."
+  ],
+  "guide_npc": [
+    "Unset fields use generator defaults. Values in parentheses describe the standard Map Manager defaults; custom generation profiles may differ. Choose Patrol points (manual) to place a route on the map."
+  ],
+  "guide_route": [
+    "Choose how many points to place, then click them on the map in order. Numbered points are visible only while configuring the route. Escape cancels and keeps the previous route."
+  ],
+  "guide_generate": [
+    "Generate gameplay objects with Map Manager defaults. Categories with valid placements are kept.",
+    "Optional: categories without valid objects are generated automatically."
+  ],
+  "replacement": [
+    "Map geometry or generation defaults have changed. All existing gameplay objects, including hand-placed objects, will be removed and new objects created with Map Manager defaults."
+  ],
+  "save_first": [
+    "Save your map first if you want to keep your changes."
+  ],
+  "flip_hint": [
+    "Flip the ship while keeping the airlock in place."
+  ],
+  "included": [
+    "Included in game generation. Drag to move; Delete removes it."
+  ],
+  "ready": [
+    "Ready.",
+    "Revola map editor ready. Save maps here, then Save and launch to test."
+  ],
+  "changed": [
+    "Gameplay object moved.",
+    "Gameplay object type changed.",
+    "Manual patrol route saved. Route markers are hidden.",
+    "Map renamed.",
+    "NPC overrides saved. Unset fields inherit generator defaults.",
+    "Room rotation set to 0°.",
+    "Room rotation set to 45°. Drag on the canvas to place it.",
+    "Ship mirrored. Airlock connection stays in place.",
+    "Wall drawn. Nearby ends joined; covered openings filled.",
+    "Wall erased. Draw over the gap to restore it.",
+    "Wall placed. Continue drawing or press Escape.",
+    "Selection cleared.",
+    "Release to apply. Connected walls keep their directions.",
+    "Door centered between wall junctions."
+  ],
+  "placed": [
+    "Corridor placed from the corridor end.",
+    "Corridor placed from the door center.",
+    "Corridor placed from the wall midpoint. Use the Door tool to open the wall.",
+    "Corridor placed. Use the Door tool to connect through existing walls.",
+    "Door object snapped to opening.",
+    "Gameplay object placed.",
+    "Rectangular room placed. Drag a side to resize it.",
+    "Room placed with its door at the {0}.",
+    "Room placed. Drag a side to resize it while keeping its chamfers."
+  ],
+  "moved": [
+    "Connected walls moved.",
+    "Selected group moved."
+  ],
+  "removed": [
+    "Door removed; wall restored.",
+    "Gameplay object removed.",
+    "Selected walls and points removed."
+  ],
+  "cancelled": [
+    "Gesture canceled.",
+    "Paste canceled.",
+    "Object generation cancelled.",
+    "Save all canceled.",
+    "Save canceled."
+  ],
+  "selected": [
+    "Area selected. Ctrl-click to adjust; drag a selected item to move.",
+    "Selection updated. Drag a selected item to move the group."
+  ],
+  "undone": [
+    "Undone."
+  ],
+  "redone": [
+    "Redone."
+  ],
+  "copied": [
+    "Copied {0} walls and their openings. Ctrl+V to place a copy."
+  ],
+  "pasted": [
+    "Pasted {0} walls. The copy is selected. Ctrl+V to place another."
+  ],
+  "close_floor": [
+    "Close the map before generating gameplay objects.",
+    "Floor generation requires a closed map.",
+    "Close the map to validate gameplay objects."
+  ],
+  "floor_open": [
+    "Open map: an exterior wall has {0}. Close it before generating the floor.",
+    "Open map: the ship can reach the exterior through a doorway, erased gap or unfinished wall."
+  ],
+  "too_dense": [
+    "Floor closure analysis exceeds the supported 2,000,000 nearby intersection checks.",
+    "Floor courtyard analysis exceeds the supported 2,000,000 boundary-point checks.",
+    "Floor exterior-opening analysis exceeds the supported 2,000,000 boundary-point checks.",
+    "Project exceeds the geometry limit.",
+    "Project exceeds the wall-gap limit.",
+    "Project geometry is too dense to validate safely.",
+    "The floor boundary could not be resolved."
+  ],
+  "map_changed": [
+    "The generated floor no longer matches the map bounds. Generate it again.",
+    "The map changed. No generated objects were applied.",
+    "The map changed. Press Generate objects again."
+  ],
+  "no_space": [
+    "No new objects fit. Categories with valid objects are kept; other categories still use Map Manager generation.",
+    "No walkable floor fits this map."
+  ],
+  "size_limit": [
+    "Generated objects would exceed the 4096-object project limit.",
+    "Invalid or excessive gameplay objects (maximum 4096).",
+    "Maps must use the initial 8192 or centered expanded 16384 pixel canvas.",
+    "The largest supported canvas is 16384 × 16384 around the original center.",
+    "The maximum is 4096 gameplay objects.",
+    "This file exceeds the 32 MiB import limit.",
+    "This project exceeds the 4 MiB limit.",
+    "Walls must stay inside the maximum 16384 × 16384 map."
+  ],
+  "need_opening": [
+    "Aim at an existing door opening. Door objects snap to openings.",
+    "Move the door onto an unoccupied opening."
+  ],
+  "door_space": [
+    "A doorway is too close to a wall endpoint.",
+    "There is not enough room for a door here. Keep clear of corners and other doors."
+  ],
+  "overlap": [
+    "Coincident vertices must share one graph identifier.",
+    "Doorways cannot overlap.",
+    "Duplicate graph identifier.",
+    "Duplicate wall.",
+    "Erased gaps cannot overlap a doorway.",
+    "Erased gaps cannot overlap.",
+    "Intersecting walls must be split at a shared graph vertex.",
+    "Overlapping walls must form separate segments with shared graph vertices.",
+    "This intersection would cut through a doorway."
+  ],
+  "direction45": [
+    "A corridor needs a nonzero path.",
+    "A corridor needs at least two points.",
+    "Corridor centerlines must follow 45° directions.",
+    "Every wall must be nonzero and follow a 45° direction.",
+    "Walls must have length and follow a 45° direction."
+  ],
+  "room_small": [
+    "Rooms must be wider and taller than {0} pixels.",
+    "The room is too small to preserve its corners."
+  ],
+  "corridor_turn": [
+    "Corridor corners are too close together.",
+    "Corridor has an unsupported reversal.",
+    "Corridors cannot turn more than 90° at one corner.",
+    "This corridor overlaps itself."
+  ],
+  "paste_separate": [
+    "A pasted group must stay separate from the fixed ship ports."
+  ],
+  "move_blocked": [
+    "A join cannot reverse a wall.",
+    "Only free wall ends may extend to a nearby corner.",
+    "This move is blocked by a connection, ship port, doorway or map boundary. Include adjoining points to move the group.",
+    "Release to keep the original position."
+  ],
+  "copy_first": [
+    "Copy some walls before pasting.",
+    "Select at least one wall or both endpoints of a wall to copy.",
+    "Select walls or both ends of a wall, then press Ctrl+C first.",
+    "Select walls or connected points to copy."
+  ],
+  "place_first": [
+    "Place patrol point 1 of {0}. Click playable floor; Escape keeps the previous route."
+  ],
+  "open_failed": [
+    "Could not open map: {0}",
+    "Could not open: {0}"
+  ],
+  "save_failed": [
+    "Could not save all: {0}",
+    "Could not save: {0}"
+  ],
+  "operation_failed": [
+    "Could not {0}: {1}"
+  ],
+  "invalid_map": [
+    "A door object needs an opening ID.",
+    "A generated object failed placement validation. No objects were changed.",
+    "Cannot allocate a generated object ID.",
+    "Erased gaps must have positive length.",
+    "Invalid NPC overrides.",
+    "Invalid NPC visual variant.",
+    "Invalid NPC weapon.",
+    "Invalid NPC {0}.",
+    "Invalid copied graph identifiers.",
+    "Invalid copied point.",
+    "Invalid copied wall openings.",
+    "Invalid erased wall endpoints.",
+    "Invalid fixed ship anchor.",
+    "Invalid gameplay object position or rotation.",
+    "Invalid generated floor dimensions.",
+    "Invalid generated floor outline.",
+    "Invalid graph identifier.",
+    "Invalid manual patrol point.",
+    "Invalid manual patrol route (1–{0} points in Patrol state).",
+    "Invalid map geometry.",
+    "Invalid map name.",
+    "Invalid object generation history.",
+    "Invalid or duplicate object ID.",
+    "Invalid or excessive door data.",
+    "Invalid or excessive erased-gap data.",
+    "Invalid paste position.",
+    "Invalid point or grid.",
+    "Invalid room geometry.",
+    "Invalid room movement.",
+    "Invalid texture seed.",
+    "Invalid wall point.",
+    "Invalid {0}.",
+    "Invalid {0}: Revola maps use the fixed value {1}.",
+    "Project geometry is missing.",
+    "Unknown gameplay object type.",
+    "Unsupported Revola project format or version.",
+    "A vertex is outside the map or is not finite."
+  ],
+  "object_overlap": [
+    "Object centers overlap (less than 45 px apart)."
+  ],
+  "object_outside": [
+    "Object center is outside playable floor or inside a wall."
+  ],
+  "opening_missing": [
+    "The door opening no longer exists."
+  ],
+  "guide_pad": [
+    "Right stick: cursor · Action / Attack: click or hold to drag · Left stick: pan · D-pad: scroll / zoom · RB: pan with cursor · Utility: back"
+  ],
+  "object_stats": [
+    "{0} objects · {1} valid · {2} excluded. Categories with valid objects replace automatic placement."
+  ],
+  "selection_stats": [
+    "{0} wall · {1} point",
+    "{0} wall · {1} points",
+    "{0} walls · {1} point"
+  ],
+  "stats": [
+    "{0} walls · {1} doors"
+  ],
+  "space": [
+    "Space"
+  ],
+  "guide_select": [
+    "Click a point or wall to select. Ctrl-click toggles; drag empty space for an area. Drag the selection to move it. Delete removes selected walls/points. Ctrl+C copies; Ctrl+V previews a separate copy.",
+    "Drag an area or Ctrl-click points/walls. Ctrl+C copies their walls and openings. Ctrl+V previews a copy; move the pointer and click to place, or Escape to cancel. Drag selected items to move them. A single room side still resizes."
+  ],
+  "paste_hint": [
+    "Click to place the copy. Escape cancels. Ctrl+V starts another copy after placement."
+  ],
+  "blocked_hint": [
+    "Cannot paste here: {0} Move the pointer, or Escape to cancel."
+  ],
+  "weapon": [
+    "Weapons tool"
+  ],
+  "npc_tool": [
+    "Npc tool"
+  ],
+  "menu_help_body": [
+    "User map instructions body"
+  ]
+}

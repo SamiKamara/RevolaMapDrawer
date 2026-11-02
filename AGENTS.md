@@ -20,7 +20,7 @@
 ## Implementation
 
 - Read `docs/DESIGN.md`, `docs/CHECKLIST.md` and relevant reference notes before changing the implementation. The original Finnish brief and both source PNGs remain unchanged.
-- Keep the interface English and the application offline. The native app loads bundled files without a development server.
+- Keep standalone desktop and web interfaces English and the application offline. The in-game solo/shared edition follows each machine's game language through Unity's localization TSVs. Maintain the ten-language authoring catalog in `localization/game-ui.tsv` and run `node scripts/sync-game-localization.mjs` to update the companion's keys and runtime source-text catalog. Never translate map source values or names. The native app loads bundled files without a development server.
 - Preserve the 8192 default canvas and centered automatic expansion to 16384, measured wall/door/corridor dimensions, shared graph topology, 45-degree directions, white wall pixels, transparent export and pinned ship ports. Expanded maps retain the original world center and geometry scale.
 - Update `docs/CHECKLIST.md` with verified progress and exact limitations at each milestone. Do not mark unverified features complete.
 - Run meaningful geometry/persistence checks with `npm test`, UI checks with `npm run test:ui`, and packaged verification with `npm run package` then `npm run test:packaged` when delivery behavior changes.

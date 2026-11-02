@@ -18,6 +18,8 @@ import { setupGameEditor } from './game-ui.js';
 import { setupObjectGeneration } from './population-ui.js';
 import { checkObjectLimits } from './object-limits.js';
 import { createMapIssues } from './map-issues.js';
+import { assignMapName, randomMapName } from './map-names.js';
+import { configureGameLocalization, translateGameText as t } from './game-localization.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('map-canvas');
@@ -25,7 +27,7 @@ const ctx = canvas.getContext('2d');
 const container = $('canvas-container');
 const clone = value => structuredClone(value);
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-let doc = model.createDocument();
+let doc = assignMapName(model.createDocument());
 let savedState = JSON.stringify(doc);
 let history = [], future = [];
 let tool = 'wall', shipImage, selected = emptySelection(), selectionMode = 'single', pointer = null, wallStart = null, gesture = null;
@@ -530,9 +532,10 @@ function render() {
     ctx.strokeStyle = color; ctx.lineWidth = 1 / camera.scale; ctx.setLineDash([5 / camera.scale, 5 / camera.scale]);
     ctx.strokeRect(left - 35, top - 35, width + 70, height + 70); ctx.setLineDash([]);
     ctx.save(); ctx.translate(left, top - 35); ctx.scale(1 / camera.scale, 1 / camera.scale);
-    ctx.fillStyle = '#13271bee'; ctx.fillRect(0, -24, 160, 20);
+    const hint = t(paste.preview ? 'PASTE · click to place' : 'BLOCKED · move to clear space');
+    ctx.font = '10px system-ui'; ctx.fillStyle = '#13271bee'; ctx.fillRect(0, -24, ctx.measureText(hint).width + 12, 20);
     ctx.fillStyle = color; ctx.font = '10px system-ui'; ctx.textBaseline = 'middle';
-    ctx.fillText(paste.preview ? 'PASTE · click to place' : 'BLOCKED · move to clear space', 6, -14); ctx.restore();
+    ctx.fillText(hint, 6, -14); ctx.restore();
   }
   if (pointer && drawable(pointer) && tool === 'wall') {
     const target = snap(pointer, wallStart);
@@ -551,9 +554,10 @@ function render() {
     if (endTarget) {
       handle(endTarget.point, 5);
       ctx.save(); ctx.translate(endTarget.point.x, endTarget.point.y); ctx.scale(1 / camera.scale, 1 / camera.scale);
-      ctx.fillStyle = '#13271be6'; ctx.fillRect(-37, -29, 74, 17);
+      const hint = t('END') + ' · ' + t(targetLabel(endTarget)); ctx.font = '10px system-ui'; const width = ctx.measureText(hint).width + 14;
+      ctx.fillStyle = '#13271be6'; ctx.fillRect(-width / 2, -29, width, 17);
       ctx.fillStyle = '#b5e8c6'; ctx.font = '10px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(`END · ${targetLabel(endTarget)}`, 0, -20); ctx.restore();
+      ctx.fillText(hint, 0, -20); ctx.restore();
     }
   }
   if ((tool === 'corridor' || isRoomTool(tool)) && (gesture?.type === (isRoomTool(tool) ? 'room' : tool) || (!gesture && pointer && drawable(pointer)))) {
@@ -563,9 +567,10 @@ function render() {
     if (target) {
       const label = targetLabel(target);
       ctx.save(); ctx.translate(start.x, start.y); ctx.scale(1 / camera.scale, 1 / camera.scale);
-      ctx.fillStyle = '#13271be6'; ctx.fillRect(-27, -29, 54, 17);
+      const hint = t(label); ctx.font = '10px system-ui'; const width = ctx.measureText(hint).width + 14;
+      ctx.fillStyle = '#13271be6'; ctx.fillRect(-width / 2, -29, width, 17);
       ctx.fillStyle = '#b5e8c6'; ctx.font = '10px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(label, 0, -20); ctx.restore();
+      ctx.fillText(hint, 0, -20); ctx.restore();
     }
   }
   if (tool === 'door' && pointer) {
@@ -581,9 +586,10 @@ function render() {
       if (placement?.centered) {
         const extentY = Math.abs(Math.sin(angle)) * doc.style.doorWidth / 2 + Math.abs(Math.cos(angle)) * doc.style.wallWidth;
         ctx.save(); ctx.translate(point.x, point.y - extentY); ctx.scale(1 / camera.scale, 1 / camera.scale);
-        ctx.fillStyle = '#13271be6'; ctx.fillRect(-27, -23, 54, 17);
+        const hint = t('CENTER'); ctx.font = '10px system-ui'; const width = ctx.measureText(hint).width + 14;
+        ctx.fillStyle = '#13271be6'; ctx.fillRect(-width / 2, -23, width, 17);
         ctx.fillStyle = color; ctx.font = '10px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('CENTER', 0, -14); ctx.restore();
+        ctx.fillText(hint, 0, -14); ctx.restore();
       }
     }
   }
@@ -772,7 +778,7 @@ async function newDocument() {
   if (busy || !(await confirmReplacement())) return;
   if (sharedEditor) { if (sharedEditor.host) await window.revolaGame.request('new'); return; }
   if (window.revolaGame) await window.revolaGame.request('new');
-  replaceDocument(model.createDocument()); status('New map ready. Start drawing above the airlock.');
+  replaceDocument(assignMapName(model.createDocument())); status('New map ready. Start drawing above the airlock.');
 }
 async function importBytes(name, bytes) {
   try {
@@ -904,7 +910,7 @@ $('delete-button').addEventListener('click', deleteSelected);
 $('copy-button').addEventListener('click', copySelected);
 $('paste-button').addEventListener('click', beginPaste);
 $('mirror-button').addEventListener('click', () => commit(() => { doc.ship.mirrored = !doc.ship.mirrored; }, 'Ship mirrored. Airlock connection stays in place.'));
-$('map-name').addEventListener('change', () => commit(() => { doc.name = $('map-name').value.trim() || 'Untitled map'; }, 'Map renamed.'));
+$('map-name').addEventListener('change', () => commit(() => { doc.name = $('map-name').value.trim() || randomMapName(); }, 'Map renamed.'));
 $('grid-toggle').addEventListener('change', renderSoon);
 function refreshRotation() {
   $('guide-rotate-room').textContent = $('rotate-room').checked ? '45° rotation on — turn off' : 'Draw a 45° room';
@@ -988,6 +994,8 @@ if (window.revolaGame) {
   saving(true);
   try {
     const file = await window.revolaGame.request('initial');
+    configureGameLocalization(file?.ui);
+    if (file?.ui?.issueLabels) mapIssues.labels(file.ui.issueLabels);
     if (file?.project) replaceDocument(model.validateDocument(JSON.parse(file.project)));
     // Deliberately outside the browser dependency graph: Vercel and standalone
     // desktop have neither this game bridge nor the shared-session capability.

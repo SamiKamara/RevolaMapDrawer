@@ -1,6 +1,6 @@
 # Revola Map Drawer — implementation design
 
-Implementation baseline: version 0.14.0. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. UI language: English. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
+Implementation baseline: version 0.14.0. Product source: the unchanged original Finnish brief `../alustava toteutusohje.txt` and the two supplied reference PNGs. Desktop/web UI language: English; the in-game edition follows the local game's language. Update this document when implementation decisions change. Current completion evidence and deferred requirements are in [CHECKLIST.md](CHECKLIST.md); version history is in [CHANGELOG.md](../CHANGELOG.md).
 
 ## In-game multiplayer collaboration
 
@@ -9,6 +9,21 @@ Waiting/ready/save/cancel messages and host-control tooltips can therefore use e
 receiver's game language. Missing capability/labels retain the English defaults;
 the ordinary standalone/web authoring interface stays English. Unity translates
 network status/error codes on receipt; localized UI text is never map source data.
+
+Solo and shared game bridges also supply `ui` with presentation strings from the
+game's ten localization TSVs. `src/game-localization.js` translates DOM text,
+accessible labels and canvas hints; technical details, map names, input values,
+IDs and saved geometry remain literal. Keep the maintained English aliases
+unambiguous in `localization/game-ui-aliases.json`. The translation table lives in
+`localization/game-ui.tsv`; `scripts/sync-game-localization.mjs` updates Unity's
+TSVs and `RevolaMapDrawerLocalization.json`. Existing game weapon names are used
+by Unity's bridge. Standalone/web loading never enables this translator.
+
+New unnamed maps receive one of 32,768 unique station-themed proper names from
+`src/map-names.js`. The name is assigned at creation, clearing the name field or
+saving under a blank name, then persists as ordinary source data. Shared new-map
+creation assigns it once at the authority. Opening old named sources and source
+validation never randomize the project or its content identity.
 
 Only Unity's authenticated in-game bridge can return an initial `shared`
 capability. `app.js` dynamically loads `shared-game.js` for that capability;

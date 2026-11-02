@@ -377,7 +377,8 @@ try {
   assert.ok(!differentSeedSvg.equals(initialSeedSvg), 'A previous generated floor cannot leak through the geometry cache when only the texture seed changed');
   await expect(page.locator('#dirty-dot')).not.toHaveClass(/dirty/);
   evidence.interactions.push('Open automatically renders the black floor and repeated stars; a texture-seed-only reopening exports fresh matching floor contours without changing the project');
-  await page.locator('#new-button').click(); await expect(page.locator('#document-title')).toHaveText('Untitled map');
+  await page.locator('#new-button').click();
+  await expect(page.locator('#document-title')).toHaveText(/(?:Station|Outpost|Relay|Bastion|Observatory|Starport|Spacedock|Gateway)$/);
   await expectFloorReady(false); await page.locator('#fit-button').click(); await settled();
   await expectCanvas(createDocument(), false, false);
   await expect(page.locator('#dirty-dot')).not.toHaveClass(/dirty/);
